@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel — Azael Blog</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="admin-body">
+
+  <div id="header-mount"></div>
+
+  <main class="page-main">
+
+    <!-- DASHBOARD -->
+    <section class="admin-view" id="viewDashboard">
+      <div class="container">
+        <div class="page-head-c">
+          <h1 class="page-title-c">Panel de escritor</h1>
+          <p class="page-sub-c">Gestiona tus historias, capítulos y blog</p>
+        </div>
+
+        <div class="admin-stats">
+          <div class="admin-stat">
+            <div class="admin-stat-label">Historias</div>
+            <div class="admin-stat-value" id="statStories">—</div>
+          </div>
+          <div class="admin-stat">
+            <div class="admin-stat-label">Capítulos</div>
+            <div class="admin-stat-value" id="statChapters">—</div>
+          </div>
+          <div class="admin-stat">
+            <div class="admin-stat-label">Entradas</div>
+            <div class="admin-stat-value" id="statPosts">—</div>
+          </div>
+        </div>
+
+        <div class="admin-actions">
+          <button class="btn btn-primary" id="btnNewStory">
+            <i data-lucide="plus" style="width:16px;height:16px;"></i>
+            Nueva historia
+          </button>
+          <button class="btn btn-ghost" id="btnNewPost">
+            <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
+            Nueva entrada
+          </button>
+        </div>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Mis historias</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="adminStoriesList">
+            <div class="empty-c">
+              <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+              <div class="empty-title">Cargando…</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Blog</h2>
+            </div>
+          </div>
+          <div class="admin-list" id="adminPostsList">
+            <div class="empty-c">
+              <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+              <div class="empty-title">Cargando…</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- EDITAR HISTORIA -->
+    <section class="admin-view" id="viewStory" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromStory">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c" id="storyViewTitle">Nueva historia</h1>
+        </div>
+
+        <form class="admin-form" id="storyForm">
+          <div class="admin-form-grid">
+            <div class="admin-cover-uploader">
+              <div class="admin-cover-preview" id="storyCoverPreview">
+                <div class="book-cover book-cover-lg" id="storyCoverBook">
+                  <span id="storyCoverPlaceholder">A</span>
+                </div>
+              </div>
+              <input type="file" id="storyCoverInput" accept="image/*" hidden />
+              <button type="button" class="btn btn-ghost btn-block" id="storyCoverBtn">
+                <i data-lucide="image" style="width:14px;height:14px;"></i>
+                Subir portada
+              </button>
+              <p class="admin-hint">Relación 2:3 · Máx 5 MB</p>
+            </div>
+
+            <div class="admin-fields">
+              <label class="admin-field">
+                <span>Título</span>
+                <input type="text" id="storyTitle" required maxlength="120" placeholder="El nombre de tu historia" />
+              </label>
+
+              <label class="admin-field">
+                <span>Sinopsis</span>
+                <textarea id="storySynopsis" rows="4" maxlength="500" placeholder="De qué trata…"></textarea>
+              </label>
+
+              <label class="admin-field">
+                <span>Género principal</span>
+                <select id="storyGenre">
+                  <option value="">— Selecciona —</option>
+                  <option>Romance</option>
+                  <option>Terror</option>
+                  <option>Comedia</option>
+                  <option>Misterio</option>
+                  <option>Música</option>
+                  <option>Violencia</option>
+                  <option>Suspenso</option>
+                  <option>Aventura</option>
+                  <option>Fantasía</option>
+                  <option>Ciencia ficción</option>
+                  <option>Drama</option>
+                  <option>Poesía</option>
+                </select>
+              </label>
+
+              <label class="admin-field">
+                <span>Estado</span>
+                <select id="storyStatus">
+                  <option>En emisión</option>
+                  <option>Borrador</option>
+                  <option>Finalizado</option>
+                  <option>En pausa</option>
+                </select>
+              </label>
+
+              <label class="admin-field">
+                <span>Dedicatoria (opcional)</span>
+                <input type="text" id="storyDedication" maxlength="140" placeholder="Para…" />
+              </label>
+
+              <label class="admin-check">
+                <input type="checkbox" id="storyFeatured" />
+                <span>Marcar como historia destacada</span>
+              </label>
+
+              <label class="admin-check">
+                <input type="checkbox" id="storyPublished" checked />
+                <span>Publicada (visible en la web)</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="admin-form-actions">
+            <button type="button" class="btn btn-ghost" id="storyDeleteBtn" hidden>
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              Eliminar
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              Guardar
+            </button>
+          </div>
+        </form>
+
+        <!-- Capítulos -->
+        <section class="section" id="chaptersSection" hidden>
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Capítulos</h2>
+              <p class="section-sub">Gestiona el orden y contenido</p>
+            </div>
+            <button class="btn btn-primary" id="btnNewChapter">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i>
+              Nuevo
+            </button>
+          </div>
+          <div class="admin-chapters" id="chaptersList"></div>
+        </section>
+      </div>
+    </section>
+
+    <!-- EDITAR CAPÍTULO -->
+    <section class="admin-view" id="viewChapter" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromChapter">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver a la historia
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c" id="chapterViewTitle">Nuevo capítulo</h1>
+        </div>
+
+        <div class="editor-toolbar" id="editorToolbar">
+          <button type="button" class="ed-btn" data-cmd="bold" title="Negrita"><strong>B</strong></button>
+          <button type="button" class="ed-btn" data-cmd="italic" title="Cursiva"><em>I</em></button>
+          <button type="button" class="ed-btn" data-cmd="h2" title="Título">H2</button>
+          <button type="button" class="ed-btn" data-cmd="h3" title="Subtítulo">H3</button>
+          <button type="button" class="ed-btn" data-cmd="quote" title="Cita">
+            <i data-lucide="quote" style="width:16px;height:16px;"></i>
+          </button>
+          <button type="button" class="ed-btn" data-cmd="hr" title="Separador">
+            <i data-lucide="minus" style="width:16px;height:16px;"></i>
+          </button>
+          <button type="button" class="ed-btn" data-cmd="image" title="Imagen">
+            <i data-lucide="image" style="width:16px;height:16px;"></i>
+          </button>
+          <button type="button" class="ed-btn" data-cmd="fullscreen" title="Pantalla completa">
+            <i data-lucide="maximize-2" style="width:16px;height:16px;"></i>
+          </button>
+          <div class="ed-spacer"></div>
+          <span class="ed-counter" id="edCounter">0 palabras</span>
+        </div>
+
+        <form class="admin-form" id="chapterForm">
+          <label class="admin-field">
+            <span>Título del capítulo</span>
+            <input type="text" id="chapterTitle" required maxlength="140" placeholder="Capítulo 1: El despertar" />
+          </label>
+
+          <label class="admin-field">
+            <span>Contenido</span>
+            <div class="editor-area" id="chapterEditor" contenteditable="true" data-placeholder="Empieza a escribir…"></div>
+          </label>
+
+          <label class="admin-field">
+            <span>Nota del autor (opcional)</span>
+            <textarea id="chapterNote" rows="3" maxlength="500" placeholder="Algo que quieras decir a tus lectores…"></textarea>
+          </label>
+
+          <div class="admin-row">
+            <label class="admin-field" style="flex:1;">
+              <span>Orden</span>
+              <input type="number" id="chapterOrder" min="1" value="1" />
+            </label>
+            <label class="admin-check" style="flex:1;">
+              <input type="checkbox" id="chapterPremium" />
+              <span>Solo registrados (premium)</span>
+            </label>
+          </div>
+
+          <div class="admin-form-actions">
+            <button type="button" class="btn btn-ghost" id="chapterDeleteBtn" hidden>
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              Eliminar
+            </button>
+            <button type="button" class="btn btn-ghost" id="chapterPreviewBtn">
+              <i data-lucide="eye" style="width:14px;height:14px;"></i>
+              Vista previa
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- EDITAR POST -->
+    <section class="admin-view" id="viewPost" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromPost">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c" id="postViewTitle">Nueva entrada</h1>
+        </div>
+
+        <div class="editor-toolbar" id="postToolbar">
+          <button type="button" class="ed-btn" data-cmd="bold"><strong>B</strong></button>
+          <button type="button" class="ed-btn" data-cmd="italic"><em>I</em></button>
+          <button type="button" class="ed-btn" data-cmd="h2">H2</button>
+          <button type="button" class="ed-btn" data-cmd="h3">H3</button>
+          <button type="button" class="ed-btn" data-cmd="quote">
+            <i data-lucide="quote" style="width:16px;height:16px;"></i>
+          </button>
+          <button type="button" class="ed-btn" data-cmd="image">
+            <i data-lucide="image" style="width:16px;height:16px;"></i>
+          </button>
+          <div class="ed-spacer"></div>
+          <span class="ed-counter" id="postCounter">0 palabras</span>
+        </div>
+
+        <form class="admin-form" id="postForm">
+          <label class="admin-field">
+            <span>Título</span>
+            <input type="text" id="postTitle" required maxlength="140" />
+          </label>
+
+          <label class="admin-field">
+            <span>Contenido</span>
+            <div class="editor-area" id="postEditor" contenteditable="true" data-placeholder="Escribe lo que piensas…"></div>
+          </label>
+
+          <label class="admin-check">
+            <input type="checkbox" id="postPublished" checked />
+            <span>Publicada</span>
+          </label>
+
+          <div class="admin-form-actions">
+            <button type="button" class="btn btn-ghost" id="postDeleteBtn" hidden>
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              Eliminar
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              Guardar
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="site-footer-c">
+    <div class="container">
+      <div class="footer-brand">Azael Blog · Panel</div>
+      <p>© <span id="year"></span></p>
+    </div>
+  </footer>
+
+  <div id="auth-mount"></div>
+  <div id="toast-mount"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>
