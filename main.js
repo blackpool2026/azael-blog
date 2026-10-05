@@ -1,5 +1,5 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO (Producción)
+   AZAEL BLOG — main.js COMPLETO Y CORREGIDO
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -35,7 +35,7 @@ const cache = {
   },
 };
 
-/* ---------- LOADING GLOBAL ---------- */
+/* ---------- LOADING ---------- */
 function ensureLoadingOverlay() {
   if (document.getElementById('globalLoading')) return;
   const el = document.createElement('div');
@@ -45,12 +45,10 @@ function ensureLoadingOverlay() {
   el.innerHTML = '<div class="spinner"></div>';
   document.body.appendChild(el);
 }
-
 function showLoading() {
   ensureLoadingOverlay();
   document.getElementById('globalLoading').hidden = false;
 }
-
 function hideLoading() {
   const el = document.getElementById('globalLoading');
   if (el) el.hidden = true;
@@ -114,12 +112,14 @@ function ic(name, size = 18) {
 }
 const icon = ic;
 
+/* ---------- PAG ACTIVA (FIXED para cleanUrls de Vercel) ---------- */
 function pagActiva() {
   let p = (location.pathname.split('/').pop() || 'index').toLowerCase();
   if (p === '' || p === '/') p = 'index';
   if (!p.endsWith('.html')) p += '.html';
   return p;
 }
+
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -269,12 +269,13 @@ function inyectarDrawer() {
       document.body.classList.remove('drawer-open');
       const modal = document.getElementById('authModal');
       if (modal) modal.hidden = false;
+      if (window.__showLoginView) window.__showLoginView();
     }
   });
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- MODAL AUTH ---------- */
+/* ---------- MODAL AUTH (VISTAS SEPARADAS) ---------- */
 function inyectarAuthModal() {
   const mount = document.getElementById('auth-mount');
   if (!mount) return;
@@ -285,53 +286,67 @@ function inyectarAuthModal() {
         <button class="modal-close-c" id="authClose" aria-label="Cerrar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
-        <h2 class="modal-title-c">Bienvenido</h2>
-        <p class="modal-sub-c">Accede para leer todos los capítulos y comentar.</p>
-        <div class="modal-tabs-c">
-          <button class="modal-tab-c active" data-tab="login">Iniciar sesión</button>
-          <button class="modal-tab-c" data-tab="register">Crear cuenta</button>
+
+        <!-- VISTA LOGIN -->
+        <div id="loginView">
+          <h2 class="modal-title-c">Iniciar sesión</h2>
+          <p class="modal-sub-c">Accede con tu cuenta para seguir leyendo y comentar.</p>
+          <form id="loginForm" class="auth-form-c">
+            <label>Correo <input type="email" id="loginEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
+            <label>Contraseña <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••" /></label>
+            <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+            <p class="auth-error-c" id="loginError" hidden></p>
+          </form>
+          <p class="auth-switch-c">¿No tienes cuenta? <button type="button" id="goRegister">Crear cuenta</button></p>
         </div>
-        <form id="loginForm" class="auth-form-c">
-          <label>Correo <input type="email" id="loginEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
-          <label>Contraseña <input type="password" id="loginPassword" required autocomplete="current-password" placeholder="••••••••" /></label>
-          <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-          <p class="auth-error-c" id="loginError" hidden></p>
-        </form>
-        <form id="registerForm" class="auth-form-c" hidden>
-          <label>Nombre de usuario <input type="text" id="registerUsername" required minlength="3" maxlength="20" placeholder="Cómo te llamas" /></label>
-          <label>Correo <input type="email" id="registerEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
-          <label>Contraseña <input type="password" id="registerPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
-          <div class="auth-consent-c">
-            <input type="checkbox" id="registerConsent" required />
-            <label for="registerConsent">Acepto recibir novedades de los libros y del blog por correo.</label>
-          </div>
-          <button type="submit" class="btn btn-primary btn-block">Crear cuenta</button>
-          <p class="auth-error-c" id="registerError" hidden></p>
-        </form>
+
+        <!-- VISTA REGISTRO -->
+        <div id="registerView" hidden>
+          <h2 class="modal-title-c">Crear cuenta</h2>
+          <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
+          <form id="registerForm" class="auth-form-c">
+            <label>Nombre de usuario <input type="text" id="registerUsername" required minlength="3" maxlength="20" placeholder="Cómo te llamas" /></label>
+            <label>Correo <input type="email" id="registerEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
+            <label>Contraseña <input type="password" id="registerPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
+            <div class="auth-consent-c">
+              <input type="checkbox" id="registerConsent" required />
+              <label for="registerConsent">Acepto recibir novedades de los libros y del blog por correo.</label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Crear cuenta</button>
+            <p class="auth-error-c" id="registerError" hidden></p>
+          </form>
+          <p class="auth-switch-c">¿Ya tienes cuenta? <button type="button" id="goLogin">Iniciar sesión</button></p>
+        </div>
       </div>
     </div>
   `;
 
   const authModal = document.getElementById('authModal');
+  const loginView = document.getElementById('loginView');
+  const registerView = document.getElementById('registerView');
   const loginForm = document.getElementById('loginForm');
   const registerForm = document.getElementById('registerForm');
   const loginError = document.getElementById('loginError');
   const registerError = document.getElementById('registerError');
 
+  function showLoginView() {
+    loginView.hidden = false;
+    registerView.hidden = true;
+  }
+  function showRegisterView() {
+    loginView.hidden = true;
+    registerView.hidden = false;
+  }
+
+  // Exponer globalmente para otros botones
+  window.__showLoginView = showLoginView;
+  window.__showRegisterView = showRegisterView;
+
   document.getElementById('authClose').addEventListener('click', () => authModal.hidden = true);
   authModal.addEventListener('click', (e) => { if (e.target === authModal) authModal.hidden = true; });
 
-  document.querySelectorAll('.modal-tab-c').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.modal-tab-c').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      const isLogin = tab.dataset.tab === 'login';
-      loginForm.hidden = !isLogin;
-      registerForm.hidden = isLogin;
-      loginError.hidden = true;
-      registerError.hidden = true;
-    });
-  });
+  document.getElementById('goRegister').addEventListener('click', showRegisterView);
+  document.getElementById('goLogin').addEventListener('click', showLoginView);
 
   loginForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -381,6 +396,8 @@ function inyectarAuthModal() {
     const label = document.getElementById('drawerAuthLabel');
     if (label) label.textContent = session?.user ? 'Cerrar sesión' : 'Iniciar sesión';
   });
+
+  if (window.lucide) lucide.createIcons();
 }
 
 /* ---------- HERO ---------- */
@@ -390,7 +407,6 @@ async function cargarHero() {
   try {
     const cached = cache.get('hero');
     if (cached) { renderHero(cached, cont); return; }
-
     const { data, error } = await withTimeout(
       db.from('stories').select('id, title, synopsis, cover_url, genre, status')
         .eq('is_published', true).eq('is_featured', true).maybeSingle(),
@@ -399,9 +415,7 @@ async function cargarHero() {
     if (error || !data) { renderHero(null, cont); return; }
     cache.set('hero', data);
     renderHero(data, cont);
-  } catch (e) {
-    renderHero(null, cont);
-  }
+  } catch (e) { renderHero(null, cont); }
 }
 
 function renderHero(data, cont) {
@@ -445,7 +459,6 @@ async function cargarNovedades() {
       8000
     );
     if (error || !data?.length) return;
-
     cont.innerHTML = `
       <section class="section">
         <div class="container">
@@ -491,10 +504,8 @@ async function cargarUltimoBlogHome() {
       8000
     );
     if (error || !data) return;
-
     const excerpt = (data.content || '').replace(/<[^>]+>/g, '').slice(0, 160);
     const fecha = new Date(data.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-
     cont.innerHTML = `
       <section class="section">
         <div class="container">
@@ -518,11 +529,9 @@ async function cargarUltimoBlogHome() {
 async function cargarHistorias({ limite = null, excluirDestacada = false, genero = null, busqueda = null } = {}) {
   const grid = document.getElementById('storiesGrid');
   if (!grid) return;
-
   const cacheKey = `stories:${limite || 'all'}:${excluirDestacada}:${genero || ''}:${busqueda || ''}`;
   const cached = cache.get(cacheKey);
   if (cached) { renderStories(cached, grid); return; }
-
   try {
     let query = db.from('stories').select('id, title, cover_url, genre, status, is_featured')
       .eq('is_published', true).order('created_at', { ascending: false });
@@ -530,9 +539,7 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
     if (genero) query = query.ilike('genre', `%${genero}%`);
     if (busqueda) query = query.ilike('title', `%${busqueda}%`);
     if (limite) query = query.limit(limite);
-
     const { data, error } = await withTimeout(query, 10000);
-
     if (error || !data?.length) {
       grid.innerHTML = emptyState('book-open', 'Sin historias todavía', 'Cuando publique la primera, aparecerá aquí.');
       return;
@@ -540,7 +547,6 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
     cache.set(cacheKey, data);
     renderStories(data, grid);
   } catch (e) {
-    console.warn('Historias timeout:', e);
     grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión e intenta de nuevo.');
     if (window.lucide) lucide.createIcons();
   }
@@ -594,14 +600,11 @@ async function cargarBlog(limite = null) {
     let q = db.from('blog_posts').select('id, title, content, created_at')
       .eq('published', true).order('created_at', { ascending: false });
     if (limite) q = q.limit(limite);
-
     const { data, error } = await withTimeout(q, 10000);
-
     if (error || !data?.length) {
       list.innerHTML = emptyState('feather', 'Blog vacío', 'Las entradas que escriba aparecerán aquí.');
       return;
     }
-
     list.innerHTML = data.map(p => {
       const excerpt = (p.content || '').replace(/<[^>]+>/g, '').slice(0, 180);
       const fecha = new Date(p.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -625,19 +628,15 @@ async function cargarPost() {
   if (!cont) return;
   const id = new URLSearchParams(location.search).get('id');
   if (!id) { render404(cont, 'Entrada no encontrada', 'El enlace no incluye un identificador válido.'); return; }
-
   try {
     const { data, error } = await withTimeout(
-      db.from('blog_posts').select('id, title, content, cover_url, created_at')
-        .eq('id', id).maybeSingle(),
+      db.from('blog_posts').select('id, title, content, cover_url, created_at').eq('id', id).maybeSingle(),
       8000
     );
-
     if (error || !data) {
       render404(cont, 'Entrada no encontrada', 'Puede que haya sido eliminada o el enlace sea incorrecto.');
       return;
     }
-
     document.title = `${data.title} — Azael Blog`;
     const ht = document.querySelector('.header-title');
     if (ht) ht.textContent = data.title;
@@ -672,14 +671,12 @@ async function cargarComentarios(postId) {
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
     if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
-
     const ids = [...new Set(data.map(c => c.user_id))];
     const { data: perfiles } = await withTimeout(
       db.from('profiles').select('id, username, is_author').in('id', ids),
       8000
     );
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
-
     list.innerHTML = data.map(c => {
       const p = map[c.user_id] || {};
       const fecha = new Date(c.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -711,6 +708,7 @@ async function prepararFormComentario(postId) {
     `;
     document.getElementById('commentLoginBtn')?.addEventListener('click', () => {
       document.getElementById('authModal').hidden = false;
+      window.__showLoginView?.();
     });
     return;
   }
@@ -809,7 +807,6 @@ async function cargarBiografia() {
 async function cargarHistoriaDetalle() {
   const cont = document.getElementById('storyDetail');
   if (!cont) return;
-
   try {
     const id = new URLSearchParams(location.search).get('id');
     if (!id) { render404(cont, 'Historia no encontrada', 'El enlace no incluye un identificador válido.'); return; }
@@ -848,7 +845,6 @@ async function cargarHistoriaDetalle() {
 
     cache.set('story:' + id, { story, chapters, logged });
     renderStory({ story, chapters, logged }, cont);
-
   } catch (err) {
     console.error('Error historia:', err);
     if (!cont.innerHTML.includes('story-header')) {
@@ -960,7 +956,6 @@ async function cargarCapitulo() {
   const cont = document.getElementById('chapterContent');
   if (!cont) return;
   loadReaderPrefs();
-
   try {
     const id = new URLSearchParams(location.search).get('id');
     if (!id) { render404(cont, 'Capítulo no encontrado', 'El enlace no incluye un identificador válido.'); return; }
@@ -988,7 +983,6 @@ async function cargarCapitulo() {
 
     const story = storyRes.data;
     const siblings = siblingsRes.data || [];
-
     const num = chapter.chapter_order || 0;
     const beyondFree = num > PREMIUM_FREE_LIMIT;
     const requiresAuth = chapter.is_premium || beyondFree;
@@ -1016,10 +1010,13 @@ async function cargarCapitulo() {
           </div>
         </div>
       `;
-      document.getElementById('paywallLogin')?.addEventListener('click', () => document.getElementById('authModal').hidden = false);
+      document.getElementById('paywallLogin')?.addEventListener('click', () => {
+        document.getElementById('authModal').hidden = false;
+        window.__showLoginView?.();
+      });
       document.getElementById('paywallRegister')?.addEventListener('click', () => {
         document.getElementById('authModal').hidden = false;
-        document.querySelector('.modal-tab-c[data-tab="register"]')?.click();
+        window.__showRegisterView?.();
       });
       if (window.lucide) lucide.createIcons();
       return;
@@ -1028,7 +1025,6 @@ async function cargarCapitulo() {
     const idx = siblings.findIndex(c => c.id === chapter.id);
     const prev = idx > 0 ? siblings[idx - 1] : null;
     const next = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null;
-
     const wordCount = (chapter.content || '').replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
     const readingTime = chapter.reading_time || Math.max(1, Math.round(wordCount / 200));
 
@@ -1079,9 +1075,7 @@ async function cargarCapitulo() {
       window.addEventListener('scroll', update, { passive: true });
       update();
     }
-
     setTimeout(() => restaurarPosicionLectura(chapter.id), 800);
-
   } catch (err) {
     console.error('Error capítulo:', err);
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.');
