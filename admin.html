@@ -47,13 +47,19 @@
             <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
             Nueva entrada
           </button>
+          <button class="btn btn-ghost" id="btnRedes">
+            <i data-lucide="share-2" style="width:16px;height:16px;"></i>
+            Redes
+          </button>
+          <button class="btn btn-ghost" id="btnBio">
+            <i data-lucide="user" style="width:16px;height:16px;"></i>
+            Biografía
+          </button>
         </div>
 
         <section class="section">
           <div class="section-head">
-            <div>
-              <h2 class="section-title">Mis historias</h2>
-            </div>
+            <div><h2 class="section-title">Mis historias</h2></div>
           </div>
           <div class="admin-list" id="adminStoriesList">
             <div class="empty-c">
@@ -65,9 +71,7 @@
 
         <section class="section">
           <div class="section-head">
-            <div>
-              <h2 class="section-title">Blog</h2>
-            </div>
+            <div><h2 class="section-title">Blog</h2></div>
           </div>
           <div class="admin-list" id="adminPostsList">
             <div class="empty-c">
@@ -122,18 +126,10 @@
                 <span>Género principal</span>
                 <select id="storyGenre">
                   <option value="">— Selecciona —</option>
-                  <option>Romance</option>
-                  <option>Terror</option>
-                  <option>Comedia</option>
-                  <option>Misterio</option>
-                  <option>Música</option>
-                  <option>Violencia</option>
-                  <option>Suspenso</option>
-                  <option>Aventura</option>
-                  <option>Fantasía</option>
-                  <option>Ciencia ficción</option>
-                  <option>Drama</option>
-                  <option>Poesía</option>
+                  <option>Romance</option><option>Terror</option><option>Comedia</option>
+                  <option>Misterio</option><option>Música</option><option>Violencia</option>
+                  <option>Suspenso</option><option>Aventura</option><option>Fantasía</option>
+                  <option>Ciencia ficción</option><option>Drama</option><option>Poesía</option>
                 </select>
               </label>
 
@@ -176,7 +172,6 @@
           </div>
         </form>
 
-        <!-- Capítulos -->
         <section class="section" id="chaptersSection" hidden>
           <div class="section-head">
             <div>
@@ -206,22 +201,14 @@
         </div>
 
         <div class="editor-toolbar" id="editorToolbar">
-          <button type="button" class="ed-btn" data-cmd="bold" title="Negrita"><strong>B</strong></button>
-          <button type="button" class="ed-btn" data-cmd="italic" title="Cursiva"><em>I</em></button>
-          <button type="button" class="ed-btn" data-cmd="h2" title="Título">H2</button>
-          <button type="button" class="ed-btn" data-cmd="h3" title="Subtítulo">H3</button>
-          <button type="button" class="ed-btn" data-cmd="quote" title="Cita">
-            <i data-lucide="quote" style="width:16px;height:16px;"></i>
-          </button>
-          <button type="button" class="ed-btn" data-cmd="hr" title="Separador">
-            <i data-lucide="minus" style="width:16px;height:16px;"></i>
-          </button>
-          <button type="button" class="ed-btn" data-cmd="image" title="Imagen">
-            <i data-lucide="image" style="width:16px;height:16px;"></i>
-          </button>
-          <button type="button" class="ed-btn" data-cmd="fullscreen" title="Pantalla completa">
-            <i data-lucide="maximize-2" style="width:16px;height:16px;"></i>
-          </button>
+          <button type="button" class="ed-btn" data-cmd="bold"><strong>B</strong></button>
+          <button type="button" class="ed-btn" data-cmd="italic"><em>I</em></button>
+          <button type="button" class="ed-btn" data-cmd="h2">H2</button>
+          <button type="button" class="ed-btn" data-cmd="h3">H3</button>
+          <button type="button" class="ed-btn" data-cmd="quote"><i data-lucide="quote" style="width:16px;height:16px;"></i></button>
+          <button type="button" class="ed-btn" data-cmd="hr"><i data-lucide="minus" style="width:16px;height:16px;"></i></button>
+          <button type="button" class="ed-btn" data-cmd="image"><i data-lucide="image" style="width:16px;height:16px;"></i></button>
+          <button type="button" class="ed-btn" data-cmd="fullscreen"><i data-lucide="maximize-2" style="width:16px;height:16px;"></i></button>
           <div class="ed-spacer"></div>
           <span class="ed-counter" id="edCounter">0 palabras</span>
         </div>
@@ -239,7 +226,7 @@
 
           <label class="admin-field">
             <span>Nota del autor (opcional)</span>
-            <textarea id="chapterNote" rows="3" maxlength="500" placeholder="Algo que quieras decir a tus lectores…"></textarea>
+            <textarea id="chapterNote" rows="3" maxlength="500" placeholder="Algo para tus lectores…"></textarea>
           </label>
 
           <div class="admin-row">
@@ -257,10 +244,6 @@
             <button type="button" class="btn btn-ghost" id="chapterDeleteBtn" hidden>
               <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
               Eliminar
-            </button>
-            <button type="button" class="btn btn-ghost" id="chapterPreviewBtn">
-              <i data-lucide="eye" style="width:14px;height:14px;"></i>
-              Vista previa
             </button>
             <button type="submit" class="btn btn-primary">
               <i data-lucide="check" style="width:14px;height:14px;"></i>
@@ -288,12 +271,8 @@
           <button type="button" class="ed-btn" data-cmd="italic"><em>I</em></button>
           <button type="button" class="ed-btn" data-cmd="h2">H2</button>
           <button type="button" class="ed-btn" data-cmd="h3">H3</button>
-          <button type="button" class="ed-btn" data-cmd="quote">
-            <i data-lucide="quote" style="width:16px;height:16px;"></i>
-          </button>
-          <button type="button" class="ed-btn" data-cmd="image">
-            <i data-lucide="image" style="width:16px;height:16px;"></i>
-          </button>
+          <button type="button" class="ed-btn" data-cmd="quote"><i data-lucide="quote" style="width:16px;height:16px;"></i></button>
+          <button type="button" class="ed-btn" data-cmd="image"><i data-lucide="image" style="width:16px;height:16px;"></i></button>
           <div class="ed-spacer"></div>
           <span class="ed-counter" id="postCounter">0 palabras</span>
         </div>
@@ -301,7 +280,7 @@
         <form class="admin-form" id="postForm">
           <label class="admin-field">
             <span>Título</span>
-            <input type="text" id="postTitle" required maxlength="140" />
+            <input type="text" id="postTitle" required maxlength="140" placeholder="Título de la entrada" />
           </label>
 
           <label class="admin-field">
@@ -325,6 +304,87 @@
             </button>
           </div>
         </form>
+      </div>
+    </section>
+
+    <!-- REDES -->
+    <section class="admin-view" id="viewRedes" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromRedes">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Redes sociales</h1>
+          <p class="page-sub-c">Añade tus perfiles para que te encuentren</p>
+        </div>
+
+        <div id="redesList"></div>
+
+        <div class="admin-net-add" id="redesAddPanel">
+          <p style="width:100%;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);font-weight:700;margin-bottom:8px;">Añadir red social</p>
+          <button class="admin-net-btn" data-platform="instagram" title="Instagram"><i data-lucide="instagram"></i></button>
+          <button class="admin-net-btn" data-platform="twitter" title="Twitter / X"><i data-lucide="twitter"></i></button>
+          <button class="admin-net-btn" data-platform="tiktok" title="TikTok"><i data-lucide="music"></i></button>
+          <button class="admin-net-btn" data-platform="youtube" title="YouTube"><i data-lucide="youtube"></i></button>
+          <button class="admin-net-btn" data-platform="facebook" title="Facebook"><i data-lucide="facebook"></i></button>
+          <button class="admin-net-btn" data-platform="whatsapp" title="WhatsApp"><i data-lucide="message-circle"></i></button>
+          <button class="admin-net-btn" data-platform="telegram" title="Telegram"><i data-lucide="send"></i></button>
+          <button class="admin-net-btn" data-platform="discord" title="Discord"><i data-lucide="message-square"></i></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- BIOGRAFÍA -->
+    <section class="admin-view" id="viewBio" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromBio">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Biografía</h1>
+          <p class="page-sub-c">Cuenta quién eres</p>
+        </div>
+
+        <div class="admin-form">
+          <div class="admin-form-grid">
+            <div class="admin-cover-uploader">
+              <div class="admin-cover-preview">
+                <div class="bio-avatar-c" id="bioAvatarPreview" style="width:180px;height:180px;">
+                  <span>A</span>
+                </div>
+              </div>
+              <input type="file" id="bioAvatarInput" accept="image/*" hidden />
+              <button type="button" class="btn btn-ghost btn-block" id="bioAvatarBtn">
+                <i data-lucide="image" style="width:14px;height:14px;"></i>
+                Subir foto
+              </button>
+              <p class="admin-hint">Cuadrada · Máx 5 MB</p>
+            </div>
+
+            <div class="admin-fields">
+              <label class="admin-field">
+                <span>Nombre de autor</span>
+                <input type="text" id="bioUsername" maxlength="60" placeholder="Azael" />
+              </label>
+
+              <label class="admin-field">
+                <span>Biografía</span>
+                <textarea id="bioText" rows="8" maxlength="2000" placeholder="Cuenta algo sobre ti…"></textarea>
+              </label>
+            </div>
+          </div>
+
+          <div class="admin-form-actions">
+            <button type="button" class="btn btn-primary" id="bioSaveBtn">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              Guardar biografía
+            </button>
+          </div>
+        </div>
       </div>
     </section>
 
