@@ -115,9 +115,11 @@ function ic(name, size = 18) {
 const icon = ic;
 
 function pagActiva() {
-  return (location.pathname.split('/').pop() || 'index.html').toLowerCase();
+  let p = (location.pathname.split('/').pop() || 'index').toLowerCase();
+  if (p === '' || p === '/') p = 'index';
+  if (!p.endsWith('.html')) p += '.html';
+  return p;
 }
-
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
