@@ -2787,3 +2787,98 @@ body[data-reader-theme="sepia"] .chapter-nav-btn {
   .chapter-nav { grid-template-columns: 1fr; }
   .chapter-nav-btn:nth-child(2) { grid-column: auto; order: 0; }
 }
+/* ============================================
+   PRODUCCIÓN — Spinner, Toast, Loading
+   ============================================ */
+
+.global-loading {
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  animation: fadeIn .2s ease;
+}
+
+.global-loading[hidden] { display: none; }
+
+.spinner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: var(--accent-color, #e50914);
+  animation: spin .8s linear infinite;
+  box-shadow: 0 0 24px var(--accent-glow, rgba(229,9,20,.35));
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+#toast-mount {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+
+.toast {
+  padding: 12px 20px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill, 100px);
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-weight: 500;
+  box-shadow: var(--shadow-lg, 0 20px 60px rgba(0,0,0,.6));
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity .25s, transform .25s;
+  pointer-events: auto;
+  max-width: 90vw;
+  text-align: center;
+  font-family: var(--font-sans, system-ui, sans-serif);
+}
+
+.toast.show { opacity: 1; transform: translateY(0); }
+.toast-ok { border-color: rgba(76, 175, 80, 0.45); color: #b8e8bf; }
+.toast-error { border-color: rgba(255, 107, 107, 0.45); color: #ffb0b0; }
+.toast-info { border-color: var(--border-color); }
+
+/* Skeleton (opcional para futuras mejoras) */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--bg-surface) 0%,
+    var(--bg-surface-hover) 50%,
+    var(--bg-surface) 100%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-shine 1.4s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+@keyframes skeleton-shine {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.admin-back-link {
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
