@@ -292,7 +292,7 @@ function inyectarDrawer() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- MODAL AUTH (VISTAS SEPARADAS) ---------- */
+/* ---------- MODAL AUTH ---------- */
 function inyectarAuthModal() {
   const mount = document.getElementById('auth-mount');
   if (!mount) return;
@@ -790,23 +790,6 @@ async function cargarRedes() {
 }
 
 /* ---------- DONACIONES ---------- */
-const DONATION_ICONS = {
-  paypal: 'wallet',
-  binance: 'bitcoin',
-  bitcoin: 'bitcoin',
-  zelle: 'credit-card',
-  mercantil: 'building-2',
-  bancamiga: 'building-2',
-  bdv: 'building-2',
-  pago_movil: 'smartphone',
-  patreon: 'heart',
-  kofi: 'coffee',
-  cafecito: 'coffee',
-  telegram: 'send',
-  whatsapp: 'message-circle',
-  otro: 'link',
-};
-
 async function cargarDonaciones() {
   const grid = document.getElementById('donationsGrid');
   if (!grid) return;
@@ -822,15 +805,17 @@ async function cargarDonaciones() {
       return;
     }
     grid.innerHTML = data.map(d => {
-      const iconName = DONATION_ICONS[d.platform.toLowerCase()] || 'link';
+      const isBinance = d.platform.toLowerCase() === 'binance';
+      const iconName = isBinance ? 'bitcoin' : 'wallet';
       const label = d.label || capitalize(d.platform);
-      const displayUrl = d.url.length > 40 ? d.url.slice(0, 40) + '…' : d.url;
+      const displayValue = isBinance ? `ID: ${d.url}` : d.url;
+      const href = isBinance ? 'https://www.binance.com/' : d.url;
       return `
-        <a class="social-link-c" href="${d.url}" target="_blank" rel="noopener noreferrer">
+        <a class="social-link-c" href="${href}" target="_blank" rel="noopener noreferrer">
           <div class="social-link-c-icon">${ic(iconName, 18)}</div>
           <div class="social-link-c-body">
             <span class="social-link-c-name">${escapeHtml(label)}</span>
-            <span class="social-link-c-handle">${escapeHtml(displayUrl)}</span>
+            <span class="social-link-c-handle">${escapeHtml(displayValue)}</span>
           </div>
         </a>
       `;
@@ -1289,7 +1274,6 @@ inyectarHeader();
 inyectarDrawer();
 inyectarAuthModal();
 
-// Si volvemos del admin, limpiar caché para ver cambios frescos
 if (document.referrer && document.referrer.includes('admin')) {
   cache.clear();
 }
