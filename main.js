@@ -167,6 +167,30 @@ function traducirError(msg) {
   return msg || 'Ocurrió un error';
 }
 
+/* ---------- ICONOS SVG PARA REDES ---------- */
+function socialIconSvg(platform, size = 20) {
+  const icons = {
+    instagram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
+    facebook: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>`,
+    youtube: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>`,
+    tiktok: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>`,
+    twitter: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>`,
+    whatsapp: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+    telegram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+    discord: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    link: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  };
+  return icons[platform] || icons.link;
+}
+
+function donationIconSvg(platform, size = 20) {
+  const icons = {
+    paypal: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h5a5 5 0 0 0 0-10H7l-2 10z"/><path d="M10 3h5a5 5 0 0 1 0 10h-3"/><path d="M12 7h5a5 5 0 0 1 0 10h-2"/></svg>`,
+    binance: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L5 9l7 7 7-7-7-7z"/><path d="M5 15l7 7 7-7"/></svg>`,
+  };
+  return icons[platform] || socialIconSvg('link', size);
+}
+
 /* ---------- TEMA ---------- */
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
@@ -515,13 +539,14 @@ async function cargarUltimoBlogHome() {
   if (!cont) return;
   try {
     const { data, error } = await withTimeout(
-      db.from('blog_posts').select('id, title, content, created_at')
+      db.from('blog_posts').select('id, title, content, created_at, cover_url')
         .eq('published', true).order('created_at', { ascending: false }).limit(1).maybeSingle(),
       8000
     );
     if (error || !data) return;
     const excerpt = (data.content || '').replace(/<[^>]+>/g, '').slice(0, 160);
     const fecha = new Date(data.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+
     cont.innerHTML = `
       <section class="section">
         <div class="container">
@@ -529,10 +554,11 @@ async function cargarUltimoBlogHome() {
             <div><h2 class="section-title">Del blog</h2><p class="section-sub">Lo último que escribí</p></div>
             <a href="blog.html" class="section-link">Ver todo ${ic('arrow-right', 14)}</a>
           </div>
-          <a class="blog-item-c" href="post.html?id=${data.id}">
+          <a class="blog-item-c ${data.cover_url ? 'has-cover' : ''}" href="post.html?id=${data.id}">
             <div class="blog-item-c-date">${fecha}</div>
             <h3>${escapeHtml(data.title)}</h3>
             <p>${escapeHtml(excerpt)}${excerpt.length >= 160 ? '…' : ''}</p>
+            ${data.cover_url ? `<img class="blog-item-c-cover" src="${data.cover_url}" alt="" loading="lazy" />` : ''}
           </a>
         </div>
       </section>
@@ -613,7 +639,7 @@ async function cargarBlog(limite = null) {
   const list = document.getElementById('blogList');
   if (!list) return;
   try {
-    let q = db.from('blog_posts').select('id, title, content, created_at')
+    let q = db.from('blog_posts').select('id, title, content, created_at, cover_url')
       .eq('published', true).order('created_at', { ascending: false });
     if (limite) q = q.limit(limite);
     const { data, error } = await withTimeout(q, 10000);
@@ -625,10 +651,11 @@ async function cargarBlog(limite = null) {
       const excerpt = (p.content || '').replace(/<[^>]+>/g, '').slice(0, 180);
       const fecha = new Date(p.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
       return `
-        <a class="blog-item-c" href="post.html?id=${p.id}">
+        <a class="blog-item-c ${p.cover_url ? 'has-cover' : ''}" href="post.html?id=${p.id}">
           <div class="blog-item-c-date">${fecha}</div>
           <h3>${escapeHtml(p.title)}</h3>
           <p>${escapeHtml(excerpt)}${excerpt.length >= 180 ? '…' : ''}</p>
+          ${p.cover_url ? `<img class="blog-item-c-cover" src="${p.cover_url}" alt="" loading="lazy" />` : ''}
         </a>
       `;
     }).join('');
@@ -752,12 +779,6 @@ async function prepararFormComentario(postId) {
 }
 
 /* ---------- REDES ---------- */
-const SOCIAL_ICONS = {
-  instagram: 'instagram', twitter: 'twitter', x: 'twitter', tiktok: 'music',
-  youtube: 'youtube', facebook: 'facebook', discord: 'message-circle',
-  whatsapp: 'message-circle', telegram: 'send',
-};
-
 async function cargarRedes() {
   const grid = document.getElementById('socialGrid');
   if (!grid) return;
@@ -771,11 +792,11 @@ async function cargarRedes() {
       return;
     }
     grid.innerHTML = data.map(s => {
-      const iconName = SOCIAL_ICONS[s.platform.toLowerCase()] || 'link';
+      const platform = s.platform.toLowerCase();
       const handle = (s.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/').slice(0, 2).join('/');
       return `
         <a class="social-link-c" href="${s.url}" target="_blank" rel="noopener noreferrer">
-          <div class="social-link-c-icon">${ic(iconName, 18)}</div>
+          <div class="social-link-c-icon">${socialIconSvg(platform, 20)}</div>
           <div class="social-link-c-body">
             <span class="social-link-c-name">${escapeHtml(capitalize(s.platform))}</span>
             <span class="social-link-c-handle">${escapeHtml(handle)}</span>
@@ -783,7 +804,6 @@ async function cargarRedes() {
         </a>
       `;
     }).join('');
-    if (window.lucide) lucide.createIcons();
   } catch (e) {
     grid.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
   }
@@ -806,13 +826,12 @@ async function cargarDonaciones() {
     }
     grid.innerHTML = data.map(d => {
       const isBinance = d.platform.toLowerCase() === 'binance';
-      const iconName = isBinance ? 'bitcoin' : 'wallet';
       const label = d.label || capitalize(d.platform);
       const displayValue = isBinance ? `ID: ${d.url}` : d.url;
       const href = isBinance ? 'https://www.binance.com/' : d.url;
       return `
         <a class="social-link-c" href="${href}" target="_blank" rel="noopener noreferrer">
-          <div class="social-link-c-icon">${ic(iconName, 18)}</div>
+          <div class="social-link-c-icon">${donationIconSvg(d.platform.toLowerCase(), 20)}</div>
           <div class="social-link-c-body">
             <span class="social-link-c-name">${escapeHtml(label)}</span>
             <span class="social-link-c-handle">${escapeHtml(displayValue)}</span>
@@ -820,7 +839,6 @@ async function cargarDonaciones() {
         </a>
       `;
     }).join('');
-    if (window.lucide) lucide.createIcons();
   } catch (e) {
     grid.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
   }
