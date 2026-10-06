@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Donaciones — Azael Colina</title>
+  <meta name="description" content="Apoya mi trabajo como escritor con una donación." />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="header-mount"></div>
+
+  <main class="page-main">
+    <section class="page-head-c">
+      <div class="container">
+        <h1 class="page-title-c">Donaciones</h1>
+        <p class="page-sub-c">Apoya mi trabajo como escritor</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <div style="max-width:640px;margin:0 auto;text-align:center;">
+          <p style="font-family:var(--font-serif);font-size:17px;line-height:1.75;color:var(--text-secondary);margin-bottom:32px;">
+            Cada historia que escribo es gratis para leer. Si te gusta lo que hago y quieres apoyarme para que siga publicando, puedes hacer una donación por cualquiera de estos medios. ¡Gracias por leer!
+          </p>
+
+          <div class="social-grid-c" id="donationsGrid">
+            <div class="empty-c" style="grid-column:1/-1;">
+              <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+              <div class="empty-title">Cargando…</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer-c">
+    <div class="container">
+      <div class="footer-brand">Azael Colina</div>
+      <p>© <span id="year"></span> — Un rincón para leer</p>
+    </div>
+  </footer>
+
+  <div id="auth-mount"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://azael-escritor.vercel.app/sitemap.xml

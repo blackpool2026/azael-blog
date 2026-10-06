@@ -57,6 +57,17 @@ function toast(msg, type = 'info') {
   }, 2500);
 }
 
+function limpiarCachePublica() {
+  try {
+    const keys = [];
+    for (let i = 0; i < sessionStorage.length; i++) {
+      const k = sessionStorage.key(i);
+      if (k && k.startsWith('azael-cache:')) keys.push(k);
+    }
+    keys.forEach(k => sessionStorage.removeItem(k));
+  } catch {}
+}
+
 function salirAlSitio() {
   const ref = document.referrer || '';
   if (ref && !ref.includes('admin.html')) {
@@ -151,7 +162,6 @@ function mostrarModalSinPermisos() {
       </div>
     `;
     document.body.appendChild(modal);
-
     document.getElementById('deniedBack').addEventListener('click', () => {
       location.href = 'index.html';
     });
@@ -159,7 +169,6 @@ function mostrarModalSinPermisos() {
       await db.auth.signOut();
       location.href = 'index.html';
     });
-
     if (window.lucide) lucide.createIcons();
   }
   modal.hidden = false;
@@ -342,6 +351,7 @@ document.getElementById('storyForm').addEventListener('submit', async (e) => {
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   currentStory = data;
   toast('Historia guardada', 'ok');
+  limpiarCachePublica();
   document.getElementById('storyViewTitle').textContent = 'Editar historia';
   document.getElementById('storyDeleteBtn').hidden = false;
   document.getElementById('chaptersSection').hidden = false;
@@ -357,6 +367,7 @@ document.getElementById('storyDeleteBtn').addEventListener('click', async () => 
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Historia eliminada', 'ok');
+  limpiarCachePublica();
   showView('viewDashboard');
   cargarDashboard();
 });
@@ -461,6 +472,7 @@ document.getElementById('chapterForm').addEventListener('submit', async (e) => {
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Capítulo guardado', 'ok');
+  limpiarCachePublica();
   localStorage.removeItem(DRAFT_KEY + ':chapter:' + (currentChapter?.id || 'new'));
   setTimeout(() => { showView('viewStory'); cargarCapitulosAdmin(currentStory.id); }, 400);
 });
@@ -473,6 +485,7 @@ document.getElementById('chapterDeleteBtn').addEventListener('click', async () =
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Capítulo eliminado', 'ok');
+  limpiarCachePublica();
   showView('viewStory');
   cargarCapitulosAdmin(currentStory.id);
 });
@@ -608,6 +621,7 @@ document.getElementById('postForm').addEventListener('submit', async (e) => {
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast(currentPost ? 'Entrada actualizada' : 'Entrada publicada', 'ok');
+  limpiarCachePublica();
   setTimeout(() => { showView('viewDashboard'); cargarDashboard(); }, 400);
 });
 
@@ -619,6 +633,7 @@ document.getElementById('postDeleteBtn').addEventListener('click', async () => {
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Entrada eliminada', 'ok');
+  limpiarCachePublica();
   showView('viewDashboard');
   cargarDashboard();
 });
@@ -669,10 +684,11 @@ async function eliminarRed(id) {
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Red eliminada', 'ok');
+  limpiarCachePublica();
   cargarRedesAdmin();
 }
 
-document.querySelectorAll('.admin-net-btn').forEach(btn => {
+document.querySelectorAll('#redesAddPanel .admin-net-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     const platform = btn.dataset.platform;
     const url = prompt(`Pega el enlace de tu perfil de ${platform}:\nEj: https://instagram.com/tuusuario`);
@@ -700,7 +716,102 @@ async function agregarRed(platform, url) {
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Red añadida', 'ok');
+  limpiarCachePublica();
   cargarRedesAdmin();
+}
+
+/* ---------- DONACIONES ADMIN ---------- */
+const DONATION_ICONS = {
+  paypal: 'wallet',
+  binance: 'bitcoin',
+  bitcoin: 'bitcoin',
+  zelle: 'credit-card',
+  pago_movil: 'smartphone',
+  patreon: 'heart',
+  kofi: 'coffee',
+  cafecito: 'coffee',
+  otro: 'link',
+};
+
+async function abrirDonacionesView() {
+  showView('viewDonaciones');
+  await cargarDonacionesAdmin();
+}
+
+async function cargarDonacionesAdmin() {
+  const list = document.getElementById('donationsListAdmin');
+  showLoading();
+  const { data, error } = await db.from('donations')
+    .select('id, platform, url, label, display_order')
+    .order('display_order', { ascending: true });
+  hideLoading();
+
+  if (error) { list.innerHTML = emptyState('alert-circle', 'Error', error.message); return; }
+  if (!data?.length) {
+    list.innerHTML = emptyState('heart-handshake', 'Sin métodos', 'Añade uno desde abajo.');
+    return;
+  }
+
+  list.innerHTML = data.map(d => `
+    <div class="admin-net-item">
+      <div class="admin-net-item-icon">${ic(DONATION_ICONS[d.platform] || 'link', 20)}</div>
+      <div class="admin-net-item-body">
+        <div class="admin-net-item-platform">${escapeHtml(d.label || d.platform)}</div>
+        <div class="admin-net-item-url">${escapeHtml(d.url)}</div>
+      </div>
+      <button class="admin-item-action" data-don-del="${d.id}" title="Eliminar">${ic('trash-2', 16)}</button>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('[data-don-del]').forEach(btn => {
+    btn.addEventListener('click', () => eliminarDonacion(btn.dataset.donDel));
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+async function eliminarDonacion(id) {
+  if (!confirm('¿Eliminar este método de donación?')) return;
+  showLoading();
+  const { error } = await db.from('donations').delete().eq('id', id);
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Método eliminado', 'ok');
+  limpiarCachePublica();
+  cargarDonacionesAdmin();
+}
+
+document.querySelectorAll('#donationsAddPanel .admin-net-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const platform = btn.dataset.platform;
+    const label = prompt(`Nombre visible (ej: "PayPal", "Binance", "Pago Móvil"):`, platform);
+    if (label === null) return;
+    const url = prompt(`Pega el enlace o datos de ${platform}:`, '');
+    if (!url) return;
+
+    const isUrl = /^https?:\/\//.test(url);
+    agregarDonacion(platform, isUrl ? url : `https://wa.me/?text=${encodeURIComponent(url)}`, label);
+  });
+});
+
+async function agregarDonacion(platform, url, label) {
+  showLoading();
+  const { data: maxRow } = await db.from('donations')
+    .select('display_order').eq('user_id', session.user.id)
+    .order('display_order', { ascending: false }).limit(1).maybeSingle();
+  const nextOrder = (maxRow?.display_order || 0) + 1;
+
+  const { error } = await db.from('donations').insert({
+    user_id: session.user.id,
+    platform,
+    url,
+    label: label || platform,
+    display_order: nextOrder,
+  });
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Método añadido', 'ok');
+  limpiarCachePublica();
+  cargarDonacionesAdmin();
 }
 
 /* ---------- BIOGRAFÍA ---------- */
@@ -745,6 +856,7 @@ document.getElementById('bioAvatarInput').addEventListener('change', async (e) =
     const preview = document.getElementById('bioAvatarPreview');
     preview.innerHTML = `<img src="${pub.publicUrl}" alt="" />`;
     toast('Foto actualizada', 'ok');
+    limpiarCachePublica();
   } catch (err) { toast('Error: ' + err.message, 'error'); }
   hideLoading();
 });
@@ -758,6 +870,7 @@ document.getElementById('bioSaveBtn').addEventListener('click', async () => {
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Biografía guardada', 'ok');
+  limpiarCachePublica();
 });
 
 /* ---------- BOTONES NAV ---------- */
@@ -765,6 +878,7 @@ document.getElementById('btnNewStory').addEventListener('click', () => abrirStor
 document.getElementById('btnNewPost').addEventListener('click', () => abrirPostForm(null));
 document.getElementById('btnRedes').addEventListener('click', () => abrirRedesView());
 document.getElementById('btnBio').addEventListener('click', () => abrirBioView());
+document.getElementById('btnDonaciones').addEventListener('click', () => abrirDonacionesView());
 document.getElementById('btnNewChapter').addEventListener('click', () => {
   if (!currentStory) return;
   db.from('chapters').select('chapter_order').eq('story_id', currentStory.id).order('chapter_order', { ascending: false }).limit(1).then(({ data }) => {
@@ -779,6 +893,7 @@ document.getElementById('backFromChapter').addEventListener('click', () => { sho
 document.getElementById('backFromPost').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromRedes').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromBio').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromDonaciones').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 
 /* ---------- HELPERS ---------- */
 function escapeHtml(str) {
@@ -807,7 +922,6 @@ function emptyState(iconName, title, sub) {
 (async () => {
   initTheme();
 
-  // Ocultar contenido hasta verificar permisos
   const headerMount = document.getElementById('header-mount');
   const pageMain = document.querySelector('.page-main');
   if (headerMount) headerMount.style.visibility = 'hidden';

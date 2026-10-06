@@ -1,5 +1,5 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO Y CORREGIDO
+   AZAEL BLOG — main.js COMPLETO
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -19,19 +19,29 @@ function withTimeout(promise, ms = 8000) {
   ]);
 }
 
-/* ---------- CACHÉ ---------- */
+/* ---------- CACHÉ (30 segundos) ---------- */
 const cache = {
   get(k) {
     try {
       const item = sessionStorage.getItem('azael-cache:' + k);
       if (!item) return null;
       const { data, ts } = JSON.parse(item);
-      if (Date.now() - ts > 5 * 60 * 1000) return null;
+      if (Date.now() - ts > 30 * 1000) return null;
       return data;
     } catch { return null; }
   },
   set(k, d) {
     try { sessionStorage.setItem('azael-cache:' + k, JSON.stringify({ data: d, ts: Date.now() })); } catch {}
+  },
+  clear() {
+    try {
+      const keys = [];
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && key.startsWith('azael-cache:')) keys.push(key);
+      }
+      keys.forEach(k => sessionStorage.removeItem(k));
+    } catch {}
   },
 };
 
@@ -112,7 +122,6 @@ function ic(name, size = 18) {
 }
 const icon = ic;
 
-/* ---------- PAG ACTIVA (FIXED para cleanUrls de Vercel) ---------- */
 function pagActiva() {
   let p = (location.pathname.split('/').pop() || 'index').toLowerCase();
   if (p === '' || p === '/') p = 'index';
@@ -169,17 +178,25 @@ function initTheme() {
 
 /* ---------- NAV ---------- */
 const NAV_ITEMS = [
-  { href: 'index.html',     label: 'Inicio',    icon: 'home' },
-  { href: 'historias.html', label: 'Historias', icon: 'book-open' },
-  { href: 'generos.html',   label: 'Géneros',   icon: 'layout-grid' },
-  { href: 'blog.html',      label: 'Blog',      icon: 'feather' },
-  { href: 'redes.html',     label: 'Redes',     icon: 'share-2' },
+  { href: 'index.html',       label: 'Inicio',      icon: 'home' },
+  { href: 'historias.html',   label: 'Historias',   icon: 'book-open' },
+  { href: 'generos.html',     label: 'Géneros',     icon: 'layout-grid' },
+  { href: 'blog.html',        label: 'Blog',        icon: 'feather' },
+  { href: 'redes.html',       label: 'Redes',       icon: 'share-2' },
+  { href: 'donaciones.html',  label: 'Donaciones',  icon: 'heart-handshake' },
 ];
 
 const PAGE_TITLES = {
-  'index.html': 'Inicio', 'historias.html': 'Historias', 'generos.html': 'Géneros',
-  'blog.html': 'Blog', 'post.html': 'Entrada', 'redes.html': 'Redes',
-  'biografia.html': 'Biografía', 'historia.html': 'Historia', 'capitulo.html': 'Leyendo',
+  'index.html': 'Inicio',
+  'historias.html': 'Historias',
+  'generos.html': 'Géneros',
+  'blog.html': 'Blog',
+  'post.html': 'Entrada',
+  'redes.html': 'Redes',
+  'biografia.html': 'Biografía',
+  'historia.html': 'Historia',
+  'capitulo.html': 'Leyendo',
+  'donaciones.html': 'Donaciones',
 };
 
 /* ---------- HEADER ---------- */
@@ -187,7 +204,7 @@ function inyectarHeader() {
   const mount = document.getElementById('header-mount');
   if (!mount) return;
   const path = pagActiva();
-  const title = PAGE_TITLES[path] || 'Azael Blog';
+  const title = PAGE_TITLES[path] || 'Azael Colina';
 
   mount.innerHTML = `
     <header class="app-header">
@@ -229,7 +246,7 @@ function inyectarDrawer() {
         <a href="index.html" class="drawer-brand">
           <span class="drawer-brand-mark">A</span>
           <span class="drawer-brand-text">
-            <span class="drawer-brand-name">Azael Blog</span>
+            <span class="drawer-brand-name">Azael Colina</span>
             <span class="drawer-brand-sub">Un rincón para leer</span>
           </span>
         </a>
@@ -287,7 +304,6 @@ function inyectarAuthModal() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
 
-        <!-- VISTA LOGIN -->
         <div id="loginView">
           <h2 class="modal-title-c">Iniciar sesión</h2>
           <p class="modal-sub-c">Accede con tu cuenta para seguir leyendo y comentar.</p>
@@ -300,7 +316,6 @@ function inyectarAuthModal() {
           <p class="auth-switch-c">¿No tienes cuenta? <button type="button" id="goRegister">Crear cuenta</button></p>
         </div>
 
-        <!-- VISTA REGISTRO -->
         <div id="registerView" hidden>
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
@@ -338,7 +353,6 @@ function inyectarAuthModal() {
     registerView.hidden = false;
   }
 
-  // Exponer globalmente para otros botones
   window.__showLoginView = showLoginView;
   window.__showRegisterView = showRegisterView;
 
@@ -365,6 +379,7 @@ function inyectarAuthModal() {
     showToast('Sesión iniciada', 'ok');
     authModal.hidden = true;
     loginForm.reset();
+    cache.clear();
     setTimeout(() => location.reload(), 500);
   });
 
@@ -389,6 +404,7 @@ function inyectarAuthModal() {
     showToast('Cuenta creada. ¡Bienvenido!', 'ok');
     authModal.hidden = true;
     registerForm.reset();
+    cache.clear();
     setTimeout(() => location.reload(), 500);
   });
 
@@ -637,7 +653,7 @@ async function cargarPost() {
       render404(cont, 'Entrada no encontrada', 'Puede que haya sido eliminada o el enlace sea incorrecto.');
       return;
     }
-    document.title = `${data.title} — Azael Blog`;
+    document.title = `${data.title} — Azael Colina`;
     const ht = document.querySelector('.header-title');
     if (ht) ht.textContent = data.title;
     const fecha = new Date(data.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -773,6 +789,58 @@ async function cargarRedes() {
   }
 }
 
+/* ---------- DONACIONES ---------- */
+const DONATION_ICONS = {
+  paypal: 'wallet',
+  binance: 'bitcoin',
+  bitcoin: 'bitcoin',
+  zelle: 'credit-card',
+  mercantil: 'building-2',
+  bancamiga: 'building-2',
+  bdv: 'building-2',
+  pago_movil: 'smartphone',
+  patreon: 'heart',
+  kofi: 'coffee',
+  cafecito: 'coffee',
+  telegram: 'send',
+  whatsapp: 'message-circle',
+  otro: 'link',
+};
+
+async function cargarDonaciones() {
+  const grid = document.getElementById('donationsGrid');
+  if (!grid) return;
+  try {
+    const { data, error } = await withTimeout(
+      db.from('donations')
+        .select('id, platform, url, label, display_order')
+        .order('display_order', { ascending: true }),
+      8000
+    );
+    if (error || !data?.length) {
+      grid.innerHTML = emptyState('heart-handshake', 'Aún no hay formas de donar', 'Pronto añadiré opciones. ¡Gracias por tu interés!');
+      return;
+    }
+    grid.innerHTML = data.map(d => {
+      const iconName = DONATION_ICONS[d.platform.toLowerCase()] || 'link';
+      const label = d.label || capitalize(d.platform);
+      const displayUrl = d.url.length > 40 ? d.url.slice(0, 40) + '…' : d.url;
+      return `
+        <a class="social-link-c" href="${d.url}" target="_blank" rel="noopener noreferrer">
+          <div class="social-link-c-icon">${ic(iconName, 18)}</div>
+          <div class="social-link-c-body">
+            <span class="social-link-c-name">${escapeHtml(label)}</span>
+            <span class="social-link-c-handle">${escapeHtml(displayUrl)}</span>
+          </div>
+        </a>
+      `;
+    }).join('');
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    grid.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
+  }
+}
+
 /* ---------- BIOGRAFÍA ---------- */
 async function cargarBiografia() {
   const cont = document.getElementById('bioCard');
@@ -854,7 +922,7 @@ async function cargarHistoriaDetalle() {
 }
 
 function renderStory({ story, chapters, logged }, cont) {
-  document.title = `${story.title} — Azael Blog`;
+  document.title = `${story.title} — Azael Colina`;
   const ht = document.querySelector('.header-title');
   if (ht) ht.textContent = story.title;
 
@@ -988,7 +1056,7 @@ async function cargarCapitulo() {
     const requiresAuth = chapter.is_premium || beyondFree;
     const blocked = requiresAuth && !logged;
 
-    document.title = `${chapter.title} — ${story?.title || 'Azael Blog'}`;
+    document.title = `${chapter.title} — ${story?.title || 'Azael Colina'}`;
     const ht = document.querySelector('.header-title');
     if (ht) ht.textContent = chapter.title;
 
@@ -1221,6 +1289,11 @@ inyectarHeader();
 inyectarDrawer();
 inyectarAuthModal();
 
+// Si volvemos del admin, limpiar caché para ver cambios frescos
+if (document.referrer && document.referrer.includes('admin')) {
+  cache.clear();
+}
+
 const yearEl = document.getElementById('year');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
@@ -1242,6 +1315,8 @@ if (path === 'index.html' || path === '') {
   cargarPost();
 } else if (path === 'redes.html') {
   cargarRedes();
+} else if (path === 'donaciones.html') {
+  cargarDonaciones();
 } else if (path === 'biografia.html') {
   cargarBiografia();
 } else if (path === 'historia.html') {

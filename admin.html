@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Panel — Azael Blog</title>
+  <title>Panel — Azael Colina</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
@@ -54,6 +55,10 @@
           <button class="btn btn-ghost" id="btnBio">
             <i data-lucide="user" style="width:16px;height:16px;"></i>
             Biografía
+          </button>
+          <button class="btn btn-ghost" id="btnDonaciones">
+            <i data-lucide="heart-handshake" style="width:16px;height:16px;"></i>
+            Donaciones
           </button>
         </div>
 
@@ -368,7 +373,7 @@
             <div class="admin-fields">
               <label class="admin-field">
                 <span>Nombre de autor</span>
-                <input type="text" id="bioUsername" maxlength="60" placeholder="Azael" />
+                <input type="text" id="bioUsername" maxlength="60" placeholder="Azael Colina" />
               </label>
 
               <label class="admin-field">
@@ -388,11 +393,41 @@
       </div>
     </section>
 
+    <!-- DONACIONES -->
+    <section class="admin-view" id="viewDonaciones" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromDonaciones">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Donaciones</h1>
+          <p class="page-sub-c">Añade formas para que tus lectores te apoyen</p>
+        </div>
+
+        <div id="donationsListAdmin"></div>
+
+        <div class="admin-net-add" id="donationsAddPanel">
+          <p style="width:100%;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-tertiary);font-weight:700;margin-bottom:8px;">Añadir método</p>
+          <button class="admin-net-btn" data-platform="paypal" title="PayPal"><i data-lucide="wallet"></i></button>
+          <button class="admin-net-btn" data-platform="binance" title="Binance"><i data-lucide="bitcoin"></i></button>
+          <button class="admin-net-btn" data-platform="bitcoin" title="Bitcoin"><i data-lucide="bitcoin"></i></button>
+          <button class="admin-net-btn" data-platform="zelle" title="Zelle"><i data-lucide="credit-card"></i></button>
+          <button class="admin-net-btn" data-platform="pago_movil" title="Pago Móvil"><i data-lucide="smartphone"></i></button>
+          <button class="admin-net-btn" data-platform="patreon" title="Patreon"><i data-lucide="heart"></i></button>
+          <button class="admin-net-btn" data-platform="kofi" title="Ko-fi"><i data-lucide="coffee"></i></button>
+          <button class="admin-net-btn" data-platform="cafecito" title="Cafecito"><i data-lucide="coffee"></i></button>
+          <button class="admin-net-btn" data-platform="otro" title="Otro"><i data-lucide="link"></i></button>
+        </div>
+      </div>
+    </section>
+
   </main>
 
   <footer class="site-footer-c">
     <div class="container">
-      <div class="footer-brand">Azael Blog · Panel</div>
+      <div class="footer-brand">Azael Colina · Panel</div>
       <p>© <span id="year"></span></p>
     </div>
   </footer>
@@ -401,7 +436,6 @@
   <div id="toast-mount"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>eruda.init();</script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="admin.js"></script>
 </body>
