@@ -2373,3 +2373,115 @@ body.drawer-open .drawer { transform: translateX(0); }
   .chapter-nav { grid-template-columns: 1fr; }
   .chapter-nav-btn:nth-child(2) { grid-column: auto; order: 0; }
 }
+/* ============================================
+   MODAL SIN PERMISOS (blur intenso)
+   ============================================ */
+
+.denied-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9500;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(30px) saturate(140%) brightness(0.5);
+  -webkit-backdrop-filter: blur(30px) saturate(140%) brightness(0.5);
+  animation: fadeIn .3s ease;
+}
+
+[data-theme="light"] .denied-overlay {
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(30px) saturate(160%) brightness(1.05);
+  -webkit-backdrop-filter: blur(30px) saturate(160%) brightness(1.05);
+}
+
+.denied-overlay[hidden] { display: none; }
+
+.denied-modal {
+  position: relative;
+  width: 100%;
+  max-width: 400px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 40px 28px 32px;
+  text-align: center;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7);
+  animation: slideUp .35s cubic-bezier(.2, .8, .2, 1);
+  overflow: hidden;
+}
+
+.denied-modal::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 340px;
+  height: 340px;
+  background: radial-gradient(circle, var(--accent-glow), transparent 70%);
+  filter: blur(50px);
+  pointer-events: none;
+  opacity: 0.55;
+}
+
+.denied-icon {
+  width: 76px;
+  height: 76px;
+  margin: 0 auto 20px;
+  display: grid;
+  place-items: center;
+  background: var(--accent-soft);
+  border: 1px solid rgba(229, 9, 20, 0.3);
+  border-radius: 50%;
+  color: var(--accent-color);
+  box-shadow: 0 0 50px var(--accent-glow);
+  position: relative;
+  z-index: 1;
+}
+
+.denied-icon svg {
+  width: 36px;
+  height: 36px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+}
+
+.denied-title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 10px;
+  color: var(--text-primary);
+  position: relative;
+  z-index: 1;
+}
+
+.denied-msg {
+  font-size: 14.5px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 26px;
+  position: relative;
+  z-index: 1;
+  max-width: 320px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.denied-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+
+.denied-actions .btn {
+  padding: 10px 18px;
+  font-size: 13.5px;
+}
