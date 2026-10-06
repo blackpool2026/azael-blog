@@ -20,7 +20,7 @@ function withTimeout(promise, ms = 8000) {
   ]);
 }
 
-/* ---------- CACHÉ (30 segundos) ---------- */
+/* ---------- CACHÉ ---------- */
 const cache = {
   get(k) {
     try {
@@ -46,7 +46,7 @@ const cache = {
   },
 };
 
-/* ---------- LOADING ---------- */
+/* ---------- LOADING / TOAST ---------- */
 function ensureLoadingOverlay() {
   if (document.getElementById('globalLoading')) return;
   const el = document.createElement('div');
@@ -65,7 +65,6 @@ function hideLoading() {
   if (el) el.hidden = true;
 }
 
-/* ---------- TOAST ---------- */
 function showToast(msg, type = 'info', duration = 2500) {
   let mount = document.getElementById('toast-mount');
   if (!mount) {
@@ -97,7 +96,7 @@ function render404(cont, titulo = 'Contenido no encontrado', msg = 'El enlace qu
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- PREFERENCIAS DE LECTURA ---------- */
+/* ---------- PREFERENCIAS ---------- */
 const READER_PREFS = { fontFamily: 'serif', fontSize: 18, lineHeight: 1.8, theme: 'oled' };
 
 function loadReaderPrefs() {
@@ -150,9 +149,7 @@ function tiempoRelativo(fecha) {
 
 /* ---------- HISTORIAL DE LECTURA ---------- */
 function getReadHistory() {
-  try {
-    return JSON.parse(localStorage.getItem(READ_HISTORY_KEY) || '{}');
-  } catch { return {}; }
+  try { return JSON.parse(localStorage.getItem(READ_HISTORY_KEY) || '{}'); } catch { return {}; }
 }
 
 function marcarComoLeido(chapterId) {
@@ -168,13 +165,9 @@ function marcarComoLeido(chapterId) {
   } catch {}
 }
 
-function getUltimaLectura(chapterId) {
-  const h = getReadHistory();
-  return h[chapterId] || null;
-}
-
 function textoUltimaLectura(chapterId) {
-  const ts = getUltimaLectura(chapterId);
+  const h = getReadHistory();
+  const ts = h[chapterId];
   if (!ts) return null;
   const diff = (Date.now() - ts) / 1000;
   if (diff < 60) return 'Leído ahora';
@@ -204,7 +197,7 @@ function traducirError(msg) {
   return msg || 'Ocurrió un error';
 }
 
-/* ---------- ICONOS SVG PARA REDES ---------- */
+/* ---------- ICONOS SVG ---------- */
 function socialIconSvg(platform, size = 20) {
   const icons = {
     instagram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
@@ -233,9 +226,7 @@ function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   localStorage.setItem(THEME_KEY, t);
 }
-function initTheme() {
-  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
-}
+function initTheme() { applyTheme(localStorage.getItem(THEME_KEY) || 'dark'); }
 
 /* ---------- NAV ---------- */
 const NAV_ITEMS = [
@@ -248,15 +239,9 @@ const NAV_ITEMS = [
 ];
 
 const PAGE_TITLES = {
-  'index.html': 'Inicio',
-  'historias.html': 'Historias',
-  'generos.html': 'Géneros',
-  'blog.html': 'Blog',
-  'post.html': 'Entrada',
-  'redes.html': 'Redes',
-  'biografia.html': 'Biografía',
-  'historia.html': 'Historia',
-  'capitulo.html': 'Leyendo',
+  'index.html': 'Inicio', 'historias.html': 'Historias', 'generos.html': 'Géneros',
+  'blog.html': 'Blog', 'post.html': 'Entrada', 'redes.html': 'Redes',
+  'biografia.html': 'Biografía', 'historia.html': 'Historia', 'capitulo.html': 'Leyendo',
   'donaciones.html': 'Donaciones',
 };
 
@@ -405,21 +390,14 @@ function inyectarAuthModal() {
   const loginError = document.getElementById('loginError');
   const registerError = document.getElementById('registerError');
 
-  function showLoginView() {
-    loginView.hidden = false;
-    registerView.hidden = true;
-  }
-  function showRegisterView() {
-    loginView.hidden = true;
-    registerView.hidden = false;
-  }
+  function showLoginView() { loginView.hidden = false; registerView.hidden = true; }
+  function showRegisterView() { loginView.hidden = true; registerView.hidden = false; }
 
   window.__showLoginView = showLoginView;
   window.__showRegisterView = showRegisterView;
 
   document.getElementById('authClose').addEventListener('click', () => authModal.hidden = true);
   authModal.addEventListener('click', (e) => { if (e.target === authModal) authModal.hidden = true; });
-
   document.getElementById('goRegister').addEventListener('click', showRegisterView);
   document.getElementById('goLogin').addEventListener('click', showLoginView);
 
@@ -432,11 +410,7 @@ function inyectarAuthModal() {
       password: document.getElementById('loginPassword').value,
     });
     hideLoading();
-    if (error) {
-      loginError.textContent = traducirError(error.message);
-      loginError.hidden = false;
-      return;
-    }
+    if (error) { loginError.textContent = traducirError(error.message); loginError.hidden = false; return; }
     showToast('Sesión iniciada', 'ok');
     authModal.hidden = true;
     loginForm.reset();
@@ -448,20 +422,15 @@ function inyectarAuthModal() {
     e.preventDefault();
     registerError.hidden = true;
     showLoading();
+    const username = document.getElementById('registerUsername').value.trim();
+    const email = document.getElementById('registerEmail').value.trim();
+    const password = document.getElementById('registerPassword').value;
     const { error } = await db.auth.signUp({
-      email: document.getElementById('registerEmail').value.trim(),
-      password: document.getElementById('registerPassword').value,
-      options: { data: {
-        username: document.getElementById('registerUsername').value.trim(),
-        newsletter: true,
-      }},
+      email, password,
+      options: { data: { username, newsletter: true } },
     });
     hideLoading();
-    if (error) {
-      registerError.textContent = traducirError(error.message);
-      registerError.hidden = false;
-      return;
-    }
+    if (error) { registerError.textContent = traducirError(error.message); registerError.hidden = false; return; }
     showToast('Cuenta creada. ¡Bienvenido!', 'ok');
     authModal.hidden = true;
     registerForm.reset();
@@ -477,49 +446,111 @@ function inyectarAuthModal() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- HERO ---------- */
+/* ---------- HERO CON CARRUSEL ---------- */
 async function cargarHero() {
   const cont = document.getElementById('heroMount');
   if (!cont) return;
   try {
-    const cached = cache.get('hero');
-    if (cached) { renderHero(cached, cont); return; }
+    // Traer TODAS las historias publicadas
     const { data, error } = await withTimeout(
-      db.from('stories').select('id, title, synopsis, cover_url, genre, status')
-        .eq('is_published', true).eq('is_featured', true).maybeSingle(),
+      db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured')
+        .eq('is_published', true)
+        .order('is_featured', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10),
       8000
     );
-    if (error || !data) { renderHero(null, cont); return; }
-    cache.set('hero', data);
-    renderHero(data, cont);
-  } catch (e) { renderHero(null, cont); }
-}
+    if (error || !data?.length) {
+      cont.innerHTML = `
+        <section class="hero-simple container">
+          <p class="hero-eyebrow">Un rincón para leer</p>
+          <h1 class="hero-title-c">Historias que se quedan.</h1>
+          <p style="color:var(--text-secondary);font-size:16px;max-width:560px;">Relatos, capítulos nuevos y un espacio tranquilo para perderse entre líneas.</p>
+        </section>
+      `;
+      return;
+    }
 
-function renderHero(data, cont) {
-  if (!data) {
+    // Si solo hay 1 historia, no hacemos carrusel
+    if (data.length === 1) {
+      renderHeroSlide(data[0], cont, true);
+      return;
+    }
+
+    // Carrusel
     cont.innerHTML = `
-      <section class="hero-simple container">
-        <p class="hero-eyebrow">Un rincón para leer</p>
-        <h1 class="hero-title-c">Historias que se quedan.</h1>
-        <p style="color:var(--text-secondary);font-size:16px;max-width:560px;">Relatos, capítulos nuevos y un espacio tranquilo para perderse entre líneas.</p>
+      <section class="hero-cinematic hero-carousel">
+        <div class="hero-carousel-track" id="heroTrack">
+          ${data.map((s, i) => renderHeroSlideHTML(s, i === 0)).join('')}
+        </div>
+        <button class="hero-nav hero-nav-prev" id="heroPrev" aria-label="Anterior">
+          ${ic('chevron-left', 22)}
+        </button>
+        <button class="hero-nav hero-nav-next" id="heroNext" aria-label="Siguiente">
+          ${ic('chevron-right', 22)}
+        </button>
+        <div class="hero-dots" id="heroDots">
+          ${data.map((_, i) => `<button class="hero-dot ${i === 0 ? 'active' : ''}" data-slide="${i}" aria-label="Ir a la slide ${i + 1}"></button>`).join('')}
+        </div>
       </section>
     `;
-    return;
+
+    if (window.lucide) lucide.createIcons();
+
+    // Lógica del carrusel
+    let currentSlide = 0;
+    const track = document.getElementById('heroTrack');
+    const slides = track.querySelectorAll('.hero-slide');
+    const dots = document.querySelectorAll('.hero-dot');
+
+    function goToSlide(idx) {
+      if (idx < 0) idx = slides.length - 1;
+      if (idx >= slides.length) idx = 0;
+      currentSlide = idx;
+      track.style.transform = `translateX(-${idx * 100}%)`;
+      dots.forEach((d, i) => d.classList.toggle('active', i === idx));
+    }
+
+    document.getElementById('heroPrev').addEventListener('click', () => goToSlide(currentSlide - 1));
+    document.getElementById('heroNext').addEventListener('click', () => goToSlide(currentSlide + 1));
+    dots.forEach(d => d.addEventListener('click', () => goToSlide(parseInt(d.dataset.slide))));
+
+    // Auto-avance cada 7 segundos
+    let autoTimer = setInterval(() => goToSlide(currentSlide + 1), 7000);
+
+    // Pausar al tocar
+    track.addEventListener('touchstart', () => clearInterval(autoTimer));
+    track.addEventListener('mouseenter', () => clearInterval(autoTimer));
+
+  } catch (e) { 
+    console.warn('Hero error:', e);
   }
-  cont.innerHTML = `
-    <section class="hero-cinematic">
+}
+
+function renderHeroSlideHTML(s, isFirst = false) {
+  const isFeatured = !!s.is_featured;
+  return `
+    <div class="hero-slide">
       <div class="hero-bg">
-        ${data.cover_url ? `<img src="${data.cover_url}" alt="" />` : ''}
+        ${s.cover_url ? `<img src="${s.cover_url}" alt="" ${isFirst ? '' : 'loading="lazy"'} />` : ''}
       </div>
       <div class="hero-content container">
-        <span class="hero-tag">Historia destacada</span>
-        <h1 class="hero-title-c">${escapeHtml(data.title)}</h1>
-        ${data.synopsis ? `<p class="hero-synopsis">${escapeHtml(data.synopsis)}</p>` : ''}
+        ${isFeatured ? '<span class="hero-tag">Historia destacada</span>' : '<span class="hero-tag hero-tag-alt">Historia</span>'}
+        <h1 class="hero-title-c">${escapeHtml(s.title)}</h1>
+        ${s.synopsis ? `<p class="hero-synopsis">${escapeHtml(s.synopsis)}</p>` : ''}
         <div class="hero-actions-c">
-          <a href="historia.html?id=${data.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>
+          <a href="historia.html?id=${s.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>
           <a href="historias.html" class="btn btn-ghost">Ver todas</a>
         </div>
       </div>
+    </div>
+  `;
+}
+
+function renderHeroSlide(s, cont, isFirst) {
+  cont.innerHTML = `
+    <section class="hero-cinematic">
+      ${renderHeroSlideHTML(s, isFirst)}
     </section>
   `;
   if (window.lucide) lucide.createIcons();
@@ -570,7 +601,7 @@ async function cargarNovedades() {
   } catch (e) { console.warn('Novedades timeout:', e); }
 }
 
-/* ---------- ÚLTIMO DEL BLOG (home) ---------- */
+/* ---------- ÚLTIMO DEL BLOG ---------- */
 async function cargarUltimoBlogHome() {
   const cont = document.getElementById('ultimoBlogMount');
   if (!cont) return;
@@ -589,10 +620,7 @@ async function cargarUltimoBlogHome() {
       <section class="section">
         <div class="container">
           <div class="section-head">
-            <div>
-              <h2 class="section-title">Del blog</h2>
-              <p class="section-sub">Lo último que escribí</p>
-            </div>
+            <div><h2 class="section-title">Del blog</h2><p class="section-sub">Lo último que escribí</p></div>
             <a href="blog.html" class="section-link">Ver todo ${ic('arrow-right', 14)}</a>
           </div>
           <a class="blog-preview-c${hasCover ? ' has-cover' : ''}" href="post.html?id=${data.id}">
@@ -764,22 +792,51 @@ async function cargarComentarios(postId) {
       8000
     );
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
-    list.innerHTML = data.map(c => {
-      const p = map[c.user_id] || {};
-      const fecha = new Date(c.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-      return `
-        <div class="comment-c">
-          <div class="comment-head-c">
-            <div class="comment-author-c">${escapeHtml(p.username || 'Lector')}${p.is_author ? '<span class="comment-badge-c">Autor</span>' : ''}</div>
-            <span class="comment-date-c">${fecha}</span>
-          </div>
-          <div class="comment-body-c">${escapeHtml(c.content)}</div>
-        </div>
-      `;
-    }).join('');
+    list.innerHTML = data.map(c => renderComment(c, map)).join('');
+    activarVerMas();
   } catch (e) {
     list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
   }
+}
+
+function renderComment(c, perfilesMap) {
+  const p = perfilesMap[c.user_id] || {};
+  const fecha = tiempoRelativo(c.created_at);
+  const autor = escapeHtml(p.username || 'Lector');
+  const badge = p.is_author ? '<span class="comment-badge-c">Autor</span>' : '';
+  const texto = escapeHtml(c.content);
+
+  return `
+    <div class="comment-c comment-c-new">
+      <div class="comment-head-c comment-head-c-new">
+        <div class="comment-author-c">
+          ${autor} ${badge}
+        </div>
+        <span class="comment-date-c">${fecha}</span>
+      </div>
+      <div class="comment-body-wrap">
+        <div class="comment-body-c comment-body-clamped">${texto}</div>
+        <button class="comment-vermas" hidden>Ver más</button>
+      </div>
+    </div>
+  `;
+}
+
+function activarVerMas() {
+  document.querySelectorAll('.comment-body-wrap').forEach(wrap => {
+    const body = wrap.querySelector('.comment-body-c');
+    const btn = wrap.querySelector('.comment-vermas');
+    if (!body || !btn) return;
+    // Detectar si ocupa más de 4 líneas (aprox 4 * 22px = 88px)
+    const h = body.scrollHeight;
+    if (h > 88) {
+      btn.hidden = false;
+      btn.addEventListener('click', () => {
+        body.classList.remove('comment-body-clamped');
+        btn.remove();
+      });
+    }
+  });
 }
 
 async function prepararFormComentario(postId) {
@@ -819,6 +876,73 @@ async function prepararFormComentario(postId) {
     showToast('Comentario publicado', 'ok');
     document.getElementById('commentText').value = '';
     await cargarComentarios(postId);
+  });
+}
+
+/* ---------- COMENTARIOS EN CAPÍTULOS ---------- */
+async function cargarComentariosCapitulo(chapterId) {
+  const list = document.getElementById('chapterCommentsList');
+  const count = document.getElementById('chapterCommentsCount');
+  if (!list) return;
+  try {
+    const { data, error } = await withTimeout(
+      db.from('comments').select('id, content, created_at, user_id')
+        .eq('chapter_id', chapterId).order('created_at', { ascending: true }),
+      8000
+    );
+    if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
+    if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
+    if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
+    const ids = [...new Set(data.map(c => c.user_id))];
+    const { data: perfiles } = await withTimeout(
+      db.from('profiles').select('id, username, is_author').in('id', ids),
+      8000
+    );
+    const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
+    list.innerHTML = data.map(c => renderComment(c, map)).join('');
+    activarVerMas();
+  } catch (e) {
+    list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
+  }
+}
+
+async function prepararFormComentarioCapitulo(chapterId) {
+  const mount = document.getElementById('chapterCommentFormMount');
+  if (!mount) return;
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    mount.innerHTML = `
+      <div class="comment-login-prompt-c">
+        <p>Inicia sesión para comentar.</p>
+        <button class="btn btn-primary" id="chapterCommentLoginBtn">Iniciar sesión</button>
+      </div>
+    `;
+    document.getElementById('chapterCommentLoginBtn')?.addEventListener('click', () => {
+      document.getElementById('authModal').hidden = false;
+      window.__showLoginView?.();
+    });
+    return;
+  }
+  mount.innerHTML = `
+    <form class="comment-form-c" id="chapterCommentForm">
+      <textarea id="chapterCommentText" placeholder="Escribe tu comentario…" required maxlength="2000"></textarea>
+      <div class="comment-form-foot">
+        <span style="font-size:12px;color:var(--text-tertiary);">Máx. 2000 caracteres</span>
+        <button type="submit" class="btn btn-primary">Publicar</button>
+      </div>
+    </form>
+  `;
+  document.getElementById('chapterCommentForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const content = document.getElementById('chapterCommentText').value.trim();
+    if (!content) return;
+    showLoading();
+    const { error } = await db.from('comments').insert({ chapter_id: chapterId, user_id: session.user.id, content });
+    hideLoading();
+    if (error) { showToast('No se pudo publicar el comentario', 'error'); return; }
+    showToast('Comentario publicado', 'ok');
+    document.getElementById('chapterCommentText').value = '';
+    await cargarComentariosCapitulo(chapterId);
   });
 }
 
@@ -983,7 +1107,7 @@ function renderStory({ story, chapters, logged }, cont) {
         if (ultimaLectura) {
           metaHtml = `
             <span class="chapter-row-read">${ic('check-circle', 12)} ${ultimaLectura}</span>
-            ${c.reading_time ? `<span>${c.reading_time} min</span>` : ''}
+            <span>${tiempoRelativo(c.created_at)}</span>
           `;
         } else {
           metaHtml = `
@@ -1157,8 +1281,6 @@ async function cargarCapitulo() {
     const idx = siblings.findIndex(c => c.id === chapter.id);
     const prev = idx > 0 ? siblings[idx - 1] : null;
     const next = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null;
-    const wordCount = (chapter.content || '').replace(/<[^>]+>/g, ' ').trim().split(/\s+/).filter(Boolean).length;
-    const readingTime = chapter.reading_time || Math.max(1, Math.round(wordCount / 200));
 
     cont.innerHTML = `
       <div class="chapter-shell">
@@ -1166,8 +1288,7 @@ async function cargarCapitulo() {
           <a href="historia.html?id=${story?.id || ''}" class="chapter-story-link">${ic('arrow-left', 14)} ${escapeHtml(story?.title || '')}</a>
           <h1 class="chapter-title-c">Capítulo ${num} · ${escapeHtml(chapter.title)}</h1>
           <div class="chapter-meta-c">
-            <span>${ic('clock', 14)} ${readingTime} min</span>
-            <span>${ic('type', 14)} ${wordCount.toLocaleString('es-ES')} palabras</span>
+            ${chapter.reading_time ? `<span>${ic('clock', 14)} ${chapter.reading_time} min</span>` : ''}
           </div>
         </div>
         <div class="chapter-body" id="chapterBody">${chapter.content || '<p>Sin contenido.</p>'}</div>
@@ -1177,6 +1298,15 @@ async function cargarCapitulo() {
           <a class="chapter-nav-btn" href="historia.html?id=${story?.id || ''}" style="align-items:center;text-align:center;"><span class="chapter-nav-label">${ic('list', 12)} Índice</span><span class="chapter-nav-title">Ver capítulos</span></a>
           ${next ? `<a class="chapter-nav-btn next" href="capitulo.html?id=${next.id}"><span class="chapter-nav-label">Siguiente ${ic('arrow-right', 12)}</span><span class="chapter-nav-title">${escapeHtml(next.title)}</span></a>` : `<div class="chapter-nav-btn next disabled"></div>`}
         </nav>
+
+        <section class="chapter-comments-section">
+          <div class="chapter-comments-head">
+            <h2 class="chapter-comments-title">Comentarios</h2>
+            <p class="chapter-comments-count" id="chapterCommentsCount">0 comentarios</p>
+          </div>
+          <div id="chapterCommentFormMount"></div>
+          <div class="comments-list" id="chapterCommentsList"></div>
+        </section>
       </div>
     `;
 
@@ -1208,6 +1338,11 @@ async function cargarCapitulo() {
       update();
     }
     setTimeout(() => restaurarPosicionLectura(chapter.id), 800);
+
+    // Cargar comentarios del capítulo
+    await cargarComentariosCapitulo(chapter.id);
+    await prepararFormComentarioCapitulo(chapter.id);
+
   } catch (err) {
     console.error('Error capítulo:', err);
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.');
