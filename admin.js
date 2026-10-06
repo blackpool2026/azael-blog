@@ -68,6 +68,52 @@ function limpiarCachePublica() {
   } catch {}
 }
 
+/* ---------- MODAL INPUT PERSONALIZADO ---------- */
+function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
+  return new Promise((resolve) => {
+    const modal = document.createElement('div');
+    modal.className = 'custom-input-overlay';
+    modal.innerHTML = `
+      <div class="custom-input-modal">
+        <div class="custom-input-icon">${ic(iconName, 26)}</div>
+        <h3 class="custom-input-title">${escapeHtml(title)}</h3>
+        ${desc ? `<p class="custom-input-desc">${escapeHtml(desc)}</p>` : ''}
+        <div class="custom-input-field">
+          <label for="customInputField">${escapeHtml(label)}</label>
+          <input type="${type}" id="customInputField" placeholder="${escapeHtml(placeholder || '')}" value="${escapeHtml(value)}" autocomplete="off" />
+          ${hint ? `<p class="custom-input-hint">${escapeHtml(hint)}</p>` : ''}
+        </div>
+        <div class="custom-input-actions">
+          <button class="btn btn-ghost" id="customInputCancel">Cancelar</button>
+          <button class="btn btn-primary" id="customInputOk">Aceptar</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    if (window.lucide) lucide.createIcons();
+
+    const input = modal.querySelector('#customInputField');
+    const okBtn = modal.querySelector('#customInputOk');
+    const cancelBtn = modal.querySelector('#customInputCancel');
+
+    setTimeout(() => input.focus(), 100);
+
+    function close(value) {
+      modal.remove();
+      resolve(value);
+    }
+
+    okBtn.addEventListener('click', () => close(input.value.trim()));
+    cancelBtn.addEventListener('click', () => close(null));
+    modal.addEventListener('click', (e) => { if (e.target === modal) close(null); });
+
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') { e.preventDefault(); close(input.value.trim()); }
+      if (e.key === 'Escape') close(null);
+    });
+  });
+}
+
 function salirAlSitio() {
   const ref = document.referrer || '';
   if (ref && !ref.includes('admin.html')) {
@@ -689,9 +735,23 @@ async function eliminarRed(id) {
 }
 
 document.querySelectorAll('#redesAddPanel .admin-net-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const platform = btn.dataset.platform;
-    const url = prompt(`Pega el enlace de tu perfil de ${platform}:\nEj: https://instagram.com/tuusuario`);
+    const labels = {
+      instagram: 'Instagram', facebook: 'Facebook', youtube: 'YouTube',
+      tiktok: 'TikTok', twitter: 'Twitter / X', whatsapp: 'WhatsApp', telegram: 'Telegram'
+    };
+    const platformName = labels[platform] || platform;
+
+    const url = await abrirInputModal({
+      title: `Añadir ${platformName}`,
+      desc: `Pega el enlace de tu perfil de ${platformName}.`,
+      label: 'Enlace del perfil',
+      placeholder: `https://${platform}.com/tuusuario`,
+      hint: 'Debe empezar con https://',
+      iconName: platform === 'instagram' ? 'instagram' : platform === 'facebook' ? 'facebook' : platform === 'youtube' ? 'youtube' : 'link',
+    });
+
     if (!url) return;
     if (!/^https?:\/\//.test(url)) {
       toast('El enlace debe empezar con https://', 'error');
@@ -724,13 +784,6 @@ async function agregarRed(platform, url) {
 const DONATION_ICONS = {
   paypal: 'wallet',
   binance: 'bitcoin',
-  bitcoin: 'bitcoin',
-  zelle: 'credit-card',
-  pago_movil: 'smartphone',
-  patreon: 'heart',
-  kofi: 'coffee',
-  cafecito: 'coffee',
-  otro: 'link',
 };
 
 async function abrirDonacionesView() {
@@ -757,7 +810,7 @@ async function cargarDonacionesAdmin() {
       <div class="admin-net-item-icon">${ic(DONATION_ICONS[d.platform] || 'link', 20)}</div>
       <div class="admin-net-item-body">
         <div class="admin-net-item-platform">${escapeHtml(d.label || d.platform)}</div>
-        <div class="admin-net-item-url">${escapeHtml(d.url)}</div>
+        <div class="admin-net-item-url">${escapeHtml(d.platform === 'binance' ? 'ID: ' + d.url : d.url)}</div>
       </div>
       <button class="admin-item-action" data-don-del="${d.id}" title="Eliminar">${ic('trash-2', 16)}</button>
     </div>
@@ -781,15 +834,46 @@ async function eliminarDonacion(id) {
 }
 
 document.querySelectorAll('#donationsAddPanel .admin-net-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', async () => {
     const platform = btn.dataset.platform;
-    const label = prompt(`Nombre visible (ej: "PayPal", "Binance", "Pago Móvil"):`, platform);
+    const isBinance = platform === 'binance';
+    const platformName = isBinance ? 'Binance' : 'PayPal';
+
+    const label = await abrirInputModal({
+      title: `Añadir ${platformName}`,
+      desc: 'Nombre que verán tus lectores.',
+      label: 'Nombre visible',
+      placeholder: platformName,
+      iconName: isBinance ? 'bitcoin' : 'wallet',
+      value: platformName,
+    });
     if (label === null) return;
-    const url = prompt(`Pega el enlace o datos de ${platform}:`, '');
+
+    const url = await abrirInputModal({
+      title: `Datos de ${platformName}`,
+      desc: isBinance
+        ? 'Pega tu número de Binance (ID).'
+        : 'Pega el enlace de tu cuenta de PayPal.',
+      label: isBinance ? 'ID de Binance' : 'Enlace de PayPal',
+      placeholder: isBinance ? 'Ej: 1257168234' : 'https://paypal.me/tuusuario',
+      hint: isBinance ? 'Solo números' : 'Debe empezar con https://',
+      iconName: isBinance ? 'bitcoin' : 'wallet',
+    });
     if (!url) return;
 
-    const isUrl = /^https?:\/\//.test(url);
-    agregarDonacion(platform, isUrl ? url : `https://wa.me/?text=${encodeURIComponent(url)}`, label);
+    if (isBinance) {
+      if (!/^\d+$/.test(url.replace(/\s/g, ''))) {
+        toast('El ID de Binance debe ser solo números', 'error');
+        return;
+      }
+      agregarDonacion('binance', url.trim(), label || 'Binance');
+    } else {
+      if (!/^https?:\/\//.test(url)) {
+        toast('El enlace de PayPal debe empezar con https://', 'error');
+        return;
+      }
+      agregarDonacion('paypal', url, label || 'PayPal');
+    }
   });
 });
 
