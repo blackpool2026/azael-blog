@@ -3,8 +3,68 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Azael Blog — Un rincón para leer</title>
-  <meta name="description" content="Historias, relatos y un rincón para leer." />
+  <title>Azael Colina — Historias, relatos y un rincón para leer</title>
+
+  <!-- SEO básico -->
+  <meta name="description" content="Relatos, capítulos nuevos y un espacio tranquilo para perderse entre líneas. Historias escritas por Azael Colina." />
+  <meta name="keywords" content="Azael Colina, historias, relatos, escritor venezolano, libros, novelas, blog literario" />
+  <meta name="author" content="Azael Colina" />
+  <meta name="robots" content="index, follow" />
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://azael-escritor.vercel.app/" />
+
+  <!-- Open Graph (WhatsApp, Facebook, LinkedIn) -->
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Azael Colina" />
+  <meta property="og:title" content="Azael Colina — Historias, relatos y un rincón para leer" />
+  <meta property="og:description" content="Relatos, capítulos nuevos y un espacio tranquilo para perderse entre líneas." />
+  <meta property="og:url" content="https://azael-escritor.vercel.app/" />
+  <meta property="og:image" content="https://azael-escritor.vercel.app/og-image.jpg" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:locale" content="es_VE" />
+
+  <!-- Twitter Cards -->
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Azael Colina — Historias, relatos y un rincón para leer" />
+  <meta name="twitter:description" content="Relatos, capítulos nuevos y un espacio tranquilo para perderse entre líneas." />
+  <meta name="twitter:image" content="https://azael-escritor.vercel.app/og-image.jpg" />
+
+  <!-- Schema.org Person -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "Person",
+    "name": "Azael Colina",
+    "alternateName": "Azael Henrique Colina",
+    "url": "https://azael-escritor.vercel.app",
+    "jobTitle": "Escritor",
+    "description": "Escritor venezolano de historias, relatos y novelas.",
+    "sameAs": [
+      "https://instagram.com/Azaelenrcolina",
+      "https://tiktok.com/@escritorso"
+    ]
+  }
+  </script>
+
+  <!-- Schema.org Website -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "name": "Azael Colina",
+    "url": "https://azael-escritor.vercel.app",
+    "description": "Historias, relatos y un rincón para leer.",
+    "inLanguage": "es"
+  }
+  </script>
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="favicon.svg" />
+  <meta name="theme-color" content="#0a0a0c" />
+
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
@@ -16,8 +76,8 @@
 
   <main class="page-main">
     <div id="heroMount"></div>
-
     <div id="novedadesMount"></div>
+    <div id="ultimoBlogMount"></div>
 
     <section class="section">
       <div class="container">
@@ -40,16 +100,12 @@
 
   <footer class="site-footer-c">
     <div class="container">
-      <div class="footer-brand">Azael Blog</div>
+      <div class="footer-brand">Azael Colina</div>
       <p>© <span id="year"></span> — Un rincón para leer</p>
     </div>
   </footer>
 
   <div id="auth-mount"></div>
-
-  <!-- 👇👇👇 ESTAS 2 LÍNEAS SON NUEVAS 👇👇👇 -->
-  <script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-  <!-- 👆👆👆 FIN DE LAS LÍNEAS NUEVAS 👆👆👆 -->
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
