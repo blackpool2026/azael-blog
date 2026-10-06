@@ -132,6 +132,40 @@ function inyectarAuthModal() {
   });
 }
 
+/* ---------- MODAL SIN PERMISOS ---------- */
+function mostrarModalSinPermisos() {
+  let modal = document.getElementById('deniedModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'deniedModal';
+    modal.className = 'denied-overlay';
+    modal.innerHTML = `
+      <div class="denied-modal">
+        <div class="denied-icon">${ic('shield-off', 36)}</div>
+        <h2 class="denied-title">Acceso restringido</h2>
+        <p class="denied-msg">Esta cuenta no tiene permisos de autor para acceder al panel de escritor.</p>
+        <div class="denied-actions">
+          <button class="btn btn-primary" id="deniedBack">${ic('home', 16)} Volver al sitio</button>
+          <button class="btn btn-ghost" id="deniedLogout">${ic('log-out', 16)} Cerrar sesión</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    document.getElementById('deniedBack').addEventListener('click', () => {
+      location.href = 'index.html';
+    });
+    document.getElementById('deniedLogout').addEventListener('click', async () => {
+      await db.auth.signOut();
+      location.href = 'index.html';
+    });
+
+    if (window.lucide) lucide.createIcons();
+  }
+  modal.hidden = false;
+  if (window.lucide) lucide.createIcons();
+}
+
 function showView(id) {
   document.querySelectorAll('.admin-view').forEach(v => v.hidden = true);
   document.getElementById(id)?.removeAttribute('hidden');
@@ -142,14 +176,20 @@ function showView(id) {
 async function verificarAutor() {
   const { data: { session: s } } = await db.auth.getSession();
   session = s;
-  if (!session) { document.getElementById('authModal').hidden = false; return false; }
-  const { data: profile } = await db.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
-  currentProfile = profile;
-  if (!profile?.is_author) {
-    alert('Esta cuenta no tiene permisos de autor.');
-    location.replace('index.html');
+
+  if (!session) {
+    document.getElementById('authModal').hidden = false;
     return false;
   }
+
+  const { data: profile } = await db.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  currentProfile = profile;
+
+  if (!profile?.is_author) {
+    mostrarModalSinPermisos();
+    return false;
+  }
+
   return true;
 }
 
@@ -700,7 +740,6 @@ document.getElementById('bioAvatarInput').addEventListener('change', async (e) =
     const { error: upErr } = await db.storage.from('media').upload(filename, file);
     if (upErr) throw upErr;
     const { data: pub } = db.storage.from('media').getPublicUrl(filename);
-    // Guardar en el perfil
     const { error } = await db.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', session.user.id);
     if (error) throw error;
     const preview = document.getElementById('bioAvatarPreview');
@@ -767,12 +806,26 @@ function emptyState(iconName, title, sub) {
 /* ---------- INIT ---------- */
 (async () => {
   initTheme();
+
+  // Ocultar contenido hasta verificar permisos
+  const headerMount = document.getElementById('header-mount');
+  const pageMain = document.querySelector('.page-main');
+  if (headerMount) headerMount.style.visibility = 'hidden';
+  if (pageMain) pageMain.style.visibility = 'hidden';
+
   inyectarHeader();
   inyectarAuthModal();
   initEditor('editorToolbar', 'chapterEditor', 'edCounter');
   initEditor('postToolbar', 'postEditor', 'postCounter');
+
   const ok = await verificarAutor();
-  if (ok) await cargarDashboard();
+
+  if (ok) {
+    if (headerMount) headerMount.style.visibility = 'visible';
+    if (pageMain) pageMain.style.visibility = 'visible';
+    await cargarDashboard();
+  }
+
   const yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
   if (window.lucide) lucide.createIcons();
