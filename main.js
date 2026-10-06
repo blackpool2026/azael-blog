@@ -10,6 +10,7 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const THEME_KEY = 'azael-theme-v2';
 const PREMIUM_FREE_LIMIT = 5;
+const READ_HISTORY_KEY = 'azael-read-history';
 
 /* ---------- TIMEOUT ---------- */
 function withTimeout(promise, ms = 8000) {
@@ -145,6 +146,42 @@ function tiempoRelativo(fecha) {
   if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
   if (diff < 604800) return `hace ${Math.floor(diff / 86400)} d`;
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+/* ---------- HISTORIAL DE LECTURA ---------- */
+function getReadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(READ_HISTORY_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function marcarComoLeido(chapterId) {
+  try {
+    const h = getReadHistory();
+    h[chapterId] = Date.now();
+    const keys = Object.keys(h);
+    if (keys.length > 100) {
+      const sorted = keys.sort((a, b) => h[a] - h[b]);
+      sorted.slice(0, keys.length - 100).forEach(k => delete h[k]);
+    }
+    localStorage.setItem(READ_HISTORY_KEY, JSON.stringify(h));
+  } catch {}
+}
+
+function getUltimaLectura(chapterId) {
+  const h = getReadHistory();
+  return h[chapterId] || null;
+}
+
+function textoUltimaLectura(chapterId) {
+  const ts = getUltimaLectura(chapterId);
+  if (!ts) return null;
+  const diff = (Date.now() - ts) / 1000;
+  if (diff < 60) return 'Leído ahora';
+  if (diff < 3600) return `Leído hace ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `Leído hace ${Math.floor(diff / 3600)} h`;
+  if (diff < 604800) return `Leído hace ${Math.floor(diff / 86400)} d`;
+  return `Leído el ${new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
 }
 
 function emptyState(iconName, title, sub) {
@@ -533,7 +570,7 @@ async function cargarNovedades() {
   } catch (e) { console.warn('Novedades timeout:', e); }
 }
 
-/* ---------- ÚLTIMO DEL BLOG ---------- */
+/* ---------- ÚLTIMO DEL BLOG (home) ---------- */
 async function cargarUltimoBlogHome() {
   const cont = document.getElementById('ultimoBlogMount');
   if (!cont) return;
@@ -544,21 +581,28 @@ async function cargarUltimoBlogHome() {
       8000
     );
     if (error || !data) return;
-    const excerpt = (data.content || '').replace(/<[^>]+>/g, '').slice(0, 160);
+    const excerpt = (data.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 180);
     const fecha = new Date(data.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
+    const hasCover = !!data.cover_url;
 
     cont.innerHTML = `
       <section class="section">
         <div class="container">
           <div class="section-head">
-            <div><h2 class="section-title">Del blog</h2><p class="section-sub">Lo último que escribí</p></div>
+            <div>
+              <h2 class="section-title">Del blog</h2>
+              <p class="section-sub">Lo último que escribí</p>
+            </div>
             <a href="blog.html" class="section-link">Ver todo ${ic('arrow-right', 14)}</a>
           </div>
-          <a class="blog-item-c ${data.cover_url ? 'has-cover' : ''}" href="post.html?id=${data.id}">
-            <div class="blog-item-c-date">${fecha}</div>
-            <h3>${escapeHtml(data.title)}</h3>
-            <p>${escapeHtml(excerpt)}${excerpt.length >= 160 ? '…' : ''}</p>
-            ${data.cover_url ? `<img class="blog-item-c-cover" src="${data.cover_url}" alt="" loading="lazy" />` : ''}
+          <a class="blog-preview-c${hasCover ? ' has-cover' : ''}" href="post.html?id=${data.id}">
+            <div class="blog-preview-c-body">
+              <div class="blog-preview-c-date">${fecha}</div>
+              <h3 class="blog-preview-c-title">${escapeHtml(data.title)}</h3>
+              <p class="blog-preview-c-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 180 ? '…' : ''}</p>
+              <span class="blog-preview-c-more">Leer más ${ic('arrow-right', 14)}</span>
+            </div>
+            ${hasCover ? `<div class="blog-preview-c-cover"><img src="${data.cover_url}" alt="" loading="lazy" onerror="this.closest('.blog-preview-c').classList.remove('has-cover'); this.closest('.blog-preview-c-cover').remove();" /></div>` : ''}
           </a>
         </div>
       </section>
@@ -655,7 +699,7 @@ async function cargarBlog(limite = null) {
           <div class="blog-item-c-date">${fecha}</div>
           <h3>${escapeHtml(p.title)}</h3>
           <p>${escapeHtml(excerpt)}${excerpt.length >= 180 ? '…' : ''}</p>
-          ${p.cover_url ? `<img class="blog-item-c-cover" src="${p.cover_url}" alt="" loading="lazy" />` : ''}
+          ${p.cover_url ? `<img class="blog-item-c-cover" src="${p.cover_url}" alt="" loading="lazy" onerror="this.remove(); this.parentElement.classList.remove('has-cover');" />` : ''}
         </a>
       `;
     }).join('');
@@ -688,7 +732,7 @@ async function cargarPost() {
       <div class="container">
         <h1 class="reader-title-c">${escapeHtml(data.title)}</h1>
         <p class="reader-meta-c">${fecha}</p>
-        ${data.cover_url ? `<img src="${data.cover_url}" style="max-width:100%;border-radius:14px;margin-bottom:28px;" />` : ''}
+        ${data.cover_url ? `<img src="${data.cover_url}" style="max-width:100%;border-radius:14px;margin-bottom:28px;" onerror="this.remove();" />` : ''}
         <div class="reader-body-c">${data.content || ''}</div>
       </div>
     `;
@@ -933,14 +977,28 @@ function renderStory({ story, chapters, logged }, cont) {
     ? chapters.map((c, i) => {
         const locked = c.is_premium && !logged;
         const num = c.chapter_order || (i + 1);
+        const ultimaLectura = textoUltimaLectura(c.id);
+
+        let metaHtml;
+        if (ultimaLectura) {
+          metaHtml = `
+            <span class="chapter-row-read">${ic('check-circle', 12)} ${ultimaLectura}</span>
+            ${c.reading_time ? `<span>${c.reading_time} min</span>` : ''}
+          `;
+        } else {
+          metaHtml = `
+            <span>${tiempoRelativo(c.created_at)}</span>
+            ${c.reading_time ? `<span>${c.reading_time} min</span>` : ''}
+          `;
+        }
+
         return `
           <a class="chapter-row" href="capitulo.html?id=${c.id}${locked ? '&locked=1' : ''}">
             <div class="chapter-row-num">${String(num).padStart(2, '0')}</div>
             <div class="chapter-row-body">
               <div class="chapter-row-title">${escapeHtml(c.title)}</div>
               <div class="chapter-row-meta">
-                <span>${tiempoRelativo(c.created_at)}</span>
-                ${c.reading_time ? `<span>${c.reading_time} min</span>` : ''}
+                ${metaHtml}
                 ${c.is_premium ? '<span style="color:var(--accent-color);font-weight:600;">Premium</span>' : ''}
               </div>
             </div>
@@ -1092,6 +1150,9 @@ async function cargarCapitulo() {
       if (window.lucide) lucide.createIcons();
       return;
     }
+
+    // Marcar como leído
+    marcarComoLeido(chapter.id);
 
     const idx = siblings.findIndex(c => c.id === chapter.id);
     const prev = idx > 0 ? siblings[idx - 1] : null;
