@@ -451,7 +451,6 @@ async function cargarHero() {
   const cont = document.getElementById('heroMount');
   if (!cont) return;
   try {
-    // Traer TODAS las historias publicadas
     const { data, error } = await withTimeout(
       db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured')
         .eq('is_published', true)
@@ -471,13 +470,11 @@ async function cargarHero() {
       return;
     }
 
-    // Si solo hay 1 historia, no hacemos carrusel
     if (data.length === 1) {
       renderHeroSlide(data[0], cont, true);
       return;
     }
 
-    // Carrusel
     cont.innerHTML = `
       <section class="hero-cinematic hero-carousel">
         <div class="hero-carousel-track" id="heroTrack">
@@ -497,7 +494,6 @@ async function cargarHero() {
 
     if (window.lucide) lucide.createIcons();
 
-    // Lógica del carrusel
     let currentSlide = 0;
     const track = document.getElementById('heroTrack');
     const slides = track.querySelectorAll('.hero-slide');
@@ -515,10 +511,7 @@ async function cargarHero() {
     document.getElementById('heroNext').addEventListener('click', () => goToSlide(currentSlide + 1));
     dots.forEach(d => d.addEventListener('click', () => goToSlide(parseInt(d.dataset.slide))));
 
-    // Auto-avance cada 7 segundos
     let autoTimer = setInterval(() => goToSlide(currentSlide + 1), 7000);
-
-    // Pausar al tocar
     track.addEventListener('touchstart', () => clearInterval(autoTimer));
     track.addEventListener('mouseenter', () => clearInterval(autoTimer));
 
@@ -778,41 +771,55 @@ async function cargarComentarios(postId) {
   const count = document.getElementById('commentsCount');
   if (!list) return;
   try {
-    const { data, error } = await withTimeout(
-      db.from('comments').select('id, content, created_at, user_id')
-        .eq('post_id', postId).order('created_at', { ascending: true }),
-      8000
-    );
+    const [{ data, error }, { data: { session } }] = await Promise.all([
+      withTimeout(
+        db.from('comments').select('id, content, created_at, user_id')
+          .eq('post_id', postId).order('created_at', { ascending: true }),
+        8000
+      ),
+      db.auth.getSession(),
+    ]);
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
+    const myId = session?.user?.id || null;
     if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
+
     const ids = [...new Set(data.map(c => c.user_id))];
     const { data: perfiles } = await withTimeout(
       db.from('profiles').select('id, username, is_author').in('id', ids),
       8000
     );
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
-    list.innerHTML = data.map(c => renderComment(c, map)).join('');
+    list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
     activarVerMas();
+    activarBorradoComentarios(postId, 'post');
   } catch (e) {
     list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
   }
 }
 
-function renderComment(c, perfilesMap) {
+function renderComment(c, perfilesMap, sessionUserId = null) {
   const p = perfilesMap[c.user_id] || {};
   const fecha = tiempoRelativo(c.created_at);
   const autor = escapeHtml(p.username || 'Lector');
   const badge = p.is_author ? '<span class="comment-badge-c">Autor</span>' : '';
   const texto = escapeHtml(c.content);
+  const esMio = sessionUserId && c.user_id === sessionUserId;
 
   return `
-    <div class="comment-c comment-c-new">
+    <div class="comment-c comment-c-new" data-comment-id="${c.id}">
       <div class="comment-head-c comment-head-c-new">
         <div class="comment-author-c">
           ${autor} ${badge}
         </div>
-        <span class="comment-date-c">${fecha}</span>
+        <div class="comment-actions-c">
+          <span class="comment-date-c">${fecha}</span>
+          ${esMio ? `
+            <button class="comment-delete-btn" data-delete-comment="${c.id}" title="Eliminar comentario" aria-label="Eliminar comentario">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+          ` : ''}
+        </div>
       </div>
       <div class="comment-body-wrap">
         <div class="comment-body-c comment-body-clamped">${texto}</div>
@@ -827,7 +834,6 @@ function activarVerMas() {
     const body = wrap.querySelector('.comment-body-c');
     const btn = wrap.querySelector('.comment-vermas');
     if (!body || !btn) return;
-    // Detectar si ocupa más de 4 líneas (aprox 4 * 22px = 88px)
     const h = body.scrollHeight;
     if (h > 88) {
       btn.hidden = false;
@@ -836,6 +842,30 @@ function activarVerMas() {
         btn.remove();
       });
     }
+  });
+}
+
+function activarBorradoComentarios(parentId, tipo) {
+  document.querySelectorAll('[data-delete-comment]').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const commentId = btn.dataset.deleteComment;
+      if (!confirm('¿Eliminar este comentario?')) return;
+
+      showLoading();
+      const { error } = await db.from('comments').delete().eq('id', commentId);
+      hideLoading();
+
+      if (error) {
+        showToast('No se pudo eliminar: ' + error.message, 'error');
+        return;
+      }
+      showToast('Comentario eliminado', 'ok');
+
+      if (tipo === 'post') await cargarComentarios(parentId);
+      else await cargarComentariosCapitulo(parentId);
+    });
   });
 }
 
@@ -885,22 +915,28 @@ async function cargarComentariosCapitulo(chapterId) {
   const count = document.getElementById('chapterCommentsCount');
   if (!list) return;
   try {
-    const { data, error } = await withTimeout(
-      db.from('comments').select('id, content, created_at, user_id')
-        .eq('chapter_id', chapterId).order('created_at', { ascending: true }),
-      8000
-    );
+    const [{ data, error }, { data: { session } }] = await Promise.all([
+      withTimeout(
+        db.from('comments').select('id, content, created_at, user_id')
+          .eq('chapter_id', chapterId).order('created_at', { ascending: true }),
+        8000
+      ),
+      db.auth.getSession(),
+    ]);
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
+    const myId = session?.user?.id || null;
     if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
+
     const ids = [...new Set(data.map(c => c.user_id))];
     const { data: perfiles } = await withTimeout(
       db.from('profiles').select('id, username, is_author').in('id', ids),
       8000
     );
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
-    list.innerHTML = data.map(c => renderComment(c, map)).join('');
+    list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
     activarVerMas();
+    activarBorradoComentarios(chapterId, 'chapter');
   } catch (e) {
     list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
   }
@@ -1275,7 +1311,6 @@ async function cargarCapitulo() {
       return;
     }
 
-    // Marcar como leído
     marcarComoLeido(chapter.id);
 
     const idx = siblings.findIndex(c => c.id === chapter.id);
@@ -1339,7 +1374,6 @@ async function cargarCapitulo() {
     }
     setTimeout(() => restaurarPosicionLectura(chapter.id), 800);
 
-    // Cargar comentarios del capítulo
     await cargarComentariosCapitulo(chapter.id);
     await prepararFormComentarioCapitulo(chapter.id);
 
@@ -1393,7 +1427,7 @@ function abrirReaderSettings() {
             <button data-value="sepia" class="rs-seg-btn">Sepia</button>
           </div>
         </div>
-        <button class="btn btn-ghost btn-block" id="rsFullscreen" style="margin-top:8px;">${ic('maximize-2')} Pantalla completa</button>
+        <button class="btn btn-block" id="rsFullscreen">${ic('book-open', 18)} Modo lectura</button>
       </div>
     `;
     document.body.appendChild(modal);
@@ -1420,8 +1454,8 @@ function abrirReaderSettings() {
       saveReaderPrefs(); applyReaderPrefs(); actualizarReaderUI();
     });
     modal.querySelector('#rsFullscreen').addEventListener('click', () => {
-      if (!document.fullscreenElement) document.documentElement.requestFullscreen?.();
-      else document.exitFullscreen?.();
+      modal.hidden = true;
+      toggleFocusMode();
     });
   }
   modal.hidden = false;
@@ -1438,6 +1472,49 @@ function actualizarReaderUI() {
     seg.querySelectorAll('.rs-seg-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.value === String(READER_PREFS[pref]));
     });
+  });
+}
+
+/* ---------- MODO ENFOQUE ---------- */
+function toggleFocusMode() {
+  const isActive = document.body.classList.contains('focus-mode');
+  if (isActive) {
+    document.body.classList.remove('focus-mode');
+    document.body.classList.remove('focus-exit-ready');
+    if (document.fullscreenElement) document.exitFullscreen?.();
+  } else {
+    document.body.classList.add('focus-mode');
+    document.documentElement.requestFullscreen?.().catch(() => {});
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      document.body.classList.add('focus-exit-ready');
+    }, 300);
+  }
+}
+
+function initFocusModeExit() {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && document.body.classList.contains('focus-mode')) {
+      toggleFocusMode();
+    }
+  });
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement && document.body.classList.contains('focus-mode')) {
+      document.body.classList.remove('focus-mode');
+      document.body.classList.remove('focus-exit-ready');
+    }
+  });
+  // Click en botón "Salir"
+  document.addEventListener('click', (e) => {
+    if (!document.body.classList.contains('focus-mode')) return;
+    const rect = {
+      right: window.innerWidth - 20,
+      bottom: window.innerHeight - 20
+    };
+    const size = 90;
+    if (e.clientX > rect.right - size && e.clientY > rect.bottom - size) {
+      toggleFocusMode();
+    }
   });
 }
 
@@ -1487,6 +1564,7 @@ loadReaderPrefs();
 inyectarHeader();
 inyectarDrawer();
 inyectarAuthModal();
+initFocusModeExit();
 
 if (document.referrer && document.referrer.includes('admin')) {
   cache.clear();
