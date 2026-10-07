@@ -1700,3 +1700,55 @@ if (path === 'index.html' || path === '') {
 
 if (window.lucide) lucide.createIcons();
 window.addEventListener('load', () => { if (window.lucide) lucide.createIcons(); });
+
+/* ============================================
+   PWA — Service Worker + Botón Instalar
+   ============================================ */
+
+// 1. Registrar el Service Worker
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((reg) => console.log('[PWA] Service Worker registrado:', reg.scope))
+      .catch((err) => console.warn('[PWA] Error al registrar SW:', err));
+  });
+}
+
+// 2. Capturar el evento de instalación de Chrome
+let deferredPrompt = null;
+
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredPrompt = e;
+  mostrarBotonInstalar();
+});
+
+// 3. Mostrar botón "Instalar app"
+function mostrarBotonInstalar() {
+  if (document.getElementById('pwa-install-btn')) return;
+
+  const btn = document.createElement('button');
+  btn.id = 'pwa-install-btn';
+  btn.innerHTML = '📲 Instalar app';
+  btn.className = 'pwa-install-btn';
+  btn.setAttribute('aria-label', 'Instalar aplicación');
+
+  btn.addEventListener('click', async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    console.log('[PWA] Resultado:', outcome);
+    deferredPrompt = null;
+    btn.remove();
+  });
+
+  document.body.appendChild(btn);
+}
+
+// 4. Ocultar el botón si ya está instalada
+window.addEventListener('appinstalled', () => {
+  console.log('[PWA] App instalada');
+  deferredPrompt = null;
+  const btn = document.getElementById('pwa-install-btn');
+  if (btn) btn.remove();
+});
