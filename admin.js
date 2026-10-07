@@ -908,7 +908,7 @@ async function cargarEstadisticas() {
   try {
     const { data: stories, error: storiesError } = await db
       .from('stories')
-      .select('id, title')
+      .select('id, title, cover_url, genre, status')
       .order('created_at', { ascending: false });
 
     if (storiesError) throw storiesError;
@@ -919,55 +919,242 @@ async function cargarEstadisticas() {
       return;
     }
 
-    const { data: views, error: viewsError } = await db
-      .from('story_views')
-      .select('story_id');
+    const { data: views } = await db.from('story_views').select('story_id');
+    const { data: likes } = await db.from('likes').select('story_id').is('chapter_id', null);
+    const { data: commentsRaw } = await db.from('comments').select('chapter_id').not('chapter_id', 'is', null);
+    const { data: chapters } = await db.from('chapters').select('id, story_id');
 
-    if (viewsError) throw viewsError;
+    const chapterToStory = {};
+    (chapters || []).forEach(c => { chapterToStory[c.id] = c.story_id; });
 
     const viewsByStory = {};
     (views || []).forEach(v => {
       viewsByStory[v.story_id] = (viewsByStory[v.story_id] || 0) + 1;
     });
 
+    const likesByStory = {};
+    (likes || []).forEach(l => {
+      if (l.story_id) likesByStory[l.story_id] = (likesByStory[l.story_id] || 0) + 1;
+    });
+
+    const commentsByStory = {};
+    (commentsRaw || []).forEach(c => {
+      const sid = chapterToStory[c.chapter_id];
+      if (sid) commentsByStory[sid] = (commentsByStory[sid] || 0) + 1;
+    });
+
     const stats = stories.map(s => ({
       id: s.id,
       title: s.title,
+      cover_url: s.cover_url,
+      genre: s.genre,
       views: viewsByStory[s.id] || 0,
+      likes: likesByStory[s.id] || 0,
+      comments: commentsByStory[s.id] || 0,
     }));
 
     stats.sort((a, b) => b.views - a.views);
 
     const totalViews = stats.reduce((sum, s) => sum + s.views, 0);
+    const totalLikes = stats.reduce((sum, s) => sum + s.likes, 0);
+    const totalComments = stats.reduce((sum, s) => sum + s.comments, 0);
     const maxViews = stats[0]?.views || 0;
 
     document.getElementById('statsTotalViews').textContent = totalViews.toLocaleString('es-ES');
-    document.getElementById('statsTotalStories').textContent = stats.length;
-    document.getElementById('statsTopStory').textContent = stats[0]?.title || '—';
+    document.getElementById('statsTotalLikes').textContent = totalLikes.toLocaleString('es-ES');
+    document.getElementById('statsTotalComments').textContent = totalComments.toLocaleString('es-ES');
 
-    if (!stats.length) {
-      list.innerHTML = emptyState('bar-chart-3', 'Sin datos', 'Aún no hay vistas registradas.');
+    list.innerHTML = stats.map(s => {
+      const percent = maxViews > 0 ? Math.round((s.views / maxViews) * 100) : 0;
+
+      return `
+        <button class="stats-card" data-story-id="${s.id}">
+          <div class="stats-card-cover">
+            ${s.cover_url
+              ? `<img src="${s.cover_url}" alt="" loading="lazy" onerror="this.parentElement.innerHTML='<span>${escapeHtml(s.title.charAt(0))}</span>';" />`
+              : `<span>${escapeHtml(s.title.charAt(0))}</span>`}
+          </div>
+          <div class="stats-card-body">
+            <div class="stats-card-title">${escapeHtml(s.title)}</div>
+            <div class="stats-card-meta">
+              <span>${escapeHtml(s.genre || 'Sin género')}</span>
+              <span>·</span>
+              <span>${escapeHtml(s.status || 'En curso')}</span>
+            </div>
+            <div class="stats-card-bar">
+              <div class="stats-card-bar-fill" style="width: ${percent}%;"></div>
+            </div>
+            <div class="stats-card-numbers">
+              <span class="stats-card-number">${s.views.toLocaleString('es-ES')} vistas</span>
+              <span class="stats-card-number">${s.likes.toLocaleString('es-ES')} likes</span>
+              <span class="stats-card-number">${s.comments.toLocaleString('es-ES')} comentarios</span>
+            </div>
+            <div class="stats-card-percent">${percent}% de la más vista</div>
+          </div>
+          <div class="stats-card-arrow">${ic('chevron-right', 20)}</div>
+        </button>
+      `;
+    }).join('');
+
+    document.querySelectorAll('.stats-card').forEach(card => {
+      card.addEventListener('click', () => abrirStoryStats(card.dataset.storyId));
+    });
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error('Error cargando stats:', err);
+    list.innerHTML = emptyState('alert-circle', 'Error', err.message);
+  }
+
+  hideLoading();
+}
+
+async function abrirStoryStats(storyId) {
+  showView('viewStoryStats');
+  await cargarStoryStats(storyId);
+}
+
+async function cargarStoryStats(storyId) {
+  const header = document.getElementById('storyStatsHeader');
+  const totals = document.getElementById('storyStatsTotals');
+  const chaptersList = document.getElementById('storyStatsChapters');
+  showLoading();
+
+  try {
+    const { data: story, error: storyError } = await db
+      .from('stories')
+      .select('id, title, cover_url, genre, status, synopsis')
+      .eq('id', storyId)
+      .maybeSingle();
+
+    if (storyError || !story) throw new Error('Historia no encontrada');
+
+    const { count: totalViews } = await db
+      .from('story_views')
+      .select('id', { count: 'exact', head: true })
+      .eq('story_id', storyId);
+
+    const { count: bookLikes } = await db
+      .from('likes')
+      .select('id', { count: 'exact', head: true })
+      .eq('story_id', storyId)
+      .is('chapter_id', null);
+
+    const { data: chapters } = await db
+      .from('chapters')
+      .select('id, title, chapter_order')
+      .eq('story_id', storyId)
+      .order('chapter_order', { ascending: true });
+
+    const chapterIds = (chapters || []).map(c => c.id).filter(Boolean);
+
+    const { data: chapterViews } = await db
+      .from('story_views')
+      .select('chapter_id')
+      .eq('story_id', storyId)
+      .not('chapter_id', 'is', null);
+
+    const viewsByChapter = {};
+    (chapterViews || []).forEach(v => {
+      viewsByChapter[v.chapter_id] = (viewsByChapter[v.chapter_id] || 0) + 1;
+    });
+
+    const { data: chapterLikes } = await db
+      .from('likes')
+      .select('chapter_id')
+      .in('chapter_id', chapterIds.length ? chapterIds : ['00000000-0000-0000-0000-000000000000']);
+
+    const likesByChapter = {};
+    (chapterLikes || []).forEach(l => {
+      if (l.chapter_id) likesByChapter[l.chapter_id] = (likesByChapter[l.chapter_id] || 0) + 1;
+    });
+
+    const { data: chapterComments } = await db
+      .from('comments')
+      .select('chapter_id')
+      .in('chapter_id', chapterIds.length ? chapterIds : ['00000000-0000-0000-0000-000000000000']);
+
+    const commentsByChapter = {};
+    (chapterComments || []).forEach(c => {
+      if (c.chapter_id) commentsByChapter[c.chapter_id] = (commentsByChapter[c.chapter_id] || 0) + 1;
+    });
+
+    const totalComments = Object.values(commentsByChapter).reduce((a, b) => a + b, 0);
+
+    header.innerHTML = `
+      <div class="story-stats-header">
+        <div class="story-stats-cover">
+          ${story.cover_url
+            ? `<img src="${story.cover_url}" alt="" onerror="this.parentElement.innerHTML='<span>${escapeHtml(story.title.charAt(0))}</span>';" />`
+            : `<span>${escapeHtml(story.title.charAt(0))}</span>`}
+        </div>
+        <div class="story-stats-info">
+          <div class="story-stats-badges">
+            ${story.genre ? `<span class="badge badge-genre">${escapeHtml(story.genre)}</span>` : ''}
+            <span class="badge badge-status">${escapeHtml(story.status || 'En curso')}</span>
+          </div>
+          <h2 class="story-stats-title">${escapeHtml(story.title)}</h2>
+          ${story.synopsis ? `<p class="story-stats-synopsis">${escapeHtml(story.synopsis)}</p>` : ''}
+        </div>
+      </div>
+    `;
+
+    totals.innerHTML = `
+      <div class="stats-total-card">
+        <div class="stats-total-label">Vistas</div>
+        <div class="stats-total-value">${(totalViews || 0).toLocaleString('es-ES')}</div>
+      </div>
+      <div class="stats-total-card">
+        <div class="stats-total-label">Likes del libro</div>
+        <div class="stats-total-value">${(bookLikes || 0).toLocaleString('es-ES')}</div>
+      </div>
+      <div class="stats-total-card">
+        <div class="stats-total-label">Comentarios</div>
+        <div class="stats-total-value">${totalComments.toLocaleString('es-ES')}</div>
+      </div>
+      <div class="stats-total-card">
+        <div class="stats-total-label">Capítulos</div>
+        <div class="stats-total-value">${(chapters || []).length}</div>
+      </div>
+    `;
+
+    if (!chapters?.length) {
+      chaptersList.innerHTML = emptyState('book-open', 'Sin capítulos', 'Esta historia aún no tiene capítulos.');
       hideLoading();
       return;
     }
 
-    list.innerHTML = stats.map(s => {
-      const percent = maxViews > 0 ? Math.round((s.views / maxViews) * 100) : 0;
-      const percentOfTotal = totalViews > 0 ? Math.round((s.views / totalViews) * 100) : 0;
+    const maxChapterViews = Math.max(...chapters.map(c => viewsByChapter[c.id] || 0), 1);
+
+    chaptersList.innerHTML = chapters.map((c, i) => {
+      const views = viewsByChapter[c.id] || 0;
+      const likes = likesByChapter[c.id] || 0;
+      const comments = commentsByChapter[c.id] || 0;
+      const percent = Math.round((views / maxChapterViews) * 100);
+      const num = c.chapter_order || (i + 1);
 
       return `
-        <div class="stats-item">
-          <div class="stats-item-head">
-            <div class="stats-item-title">${escapeHtml(s.title)}</div>
-            <div class="stats-item-count">${s.views.toLocaleString('es-ES')} vistas</div>
-          </div>
-          <div class="stats-item-bar">
-            <div class="stats-item-bar-fill" style="width: ${percent}%;"></div>
-          </div>
-          <div class="stats-item-meta">
-            <span>${percent}% relativo a la más vista</span>
-            <span>·</span>
-            <span>${percentOfTotal}% del total</span>
+        <div class="stats-chapter-item">
+          <div class="stats-chapter-num">${String(num).padStart(2, '0')}</div>
+          <div class="stats-chapter-body">
+            <div class="stats-chapter-title">${escapeHtml(c.title)}</div>
+            <div class="stats-chapter-bar">
+              <div class="stats-chapter-bar-fill" style="width: ${percent}%;"></div>
+            </div>
+            <div class="stats-chapter-metrics">
+              <span class="stats-metric">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                ${views.toLocaleString('es-ES')}
+              </span>
+              <span class="stats-metric">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/></svg>
+                ${likes.toLocaleString('es-ES')}
+              </span>
+              <span class="stats-metric">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                ${comments.toLocaleString('es-ES')}
+              </span>
+            </div>
           </div>
         </div>
       `;
@@ -975,8 +1162,8 @@ async function cargarEstadisticas() {
 
     if (window.lucide) lucide.createIcons();
   } catch (err) {
-    console.error('Error cargando stats:', err);
-    list.innerHTML = emptyState('alert-circle', 'Error', err.message);
+    console.error('Error cargando story stats:', err);
+    header.innerHTML = emptyState('alert-circle', 'Error', err.message);
   }
 
   hideLoading();
@@ -1064,6 +1251,7 @@ document.getElementById('backFromRedes').addEventListener('click', () => { showV
 document.getElementById('backFromBio').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromDonaciones').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromStats').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromStoryStats').addEventListener('click', () => { showView('viewStats'); });
 
 /* ---------- HELPERS ---------- */
 function escapeHtml(str) {
