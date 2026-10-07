@@ -991,6 +991,97 @@ async function prepararFormComentarioCapitulo(chapterId) {
   });
 }
 
+/* ---------- LIKES ---------- */
+async function cargarLikeBoton(tipo, id) {
+  const rowId = tipo === 'story' ? 'storyLikeRow' : 'chapterLikeRow';
+  const row = document.getElementById(rowId);
+  if (!row) return;
+
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const userId = session?.user?.id || null;
+
+    let query = db.from('likes').select('id', { count: 'exact', head: true });
+    if (tipo === 'story') {
+      query = query.eq('story_id', id).is('chapter_id', null);
+    } else {
+      query = query.eq('chapter_id', id);
+    }
+
+    const { count: totalLikes } = await query;
+
+    let dioLike = false;
+    if (userId) {
+      let q2 = db.from('likes').select('id');
+      if (tipo === 'story') {
+        q2 = q2.eq('story_id', id).is('chapter_id', null).eq('user_id', userId);
+      } else {
+        q2 = q2.eq('chapter_id', id).eq('user_id', userId);
+      }
+      const { data: myLike } = await q2.maybeSingle();
+      dioLike = !!myLike;
+    }
+
+    row.innerHTML = `
+      <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="${dioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+        </svg>
+        <span class="like-count">${(totalLikes || 0).toLocaleString('es-ES')}</span>
+      </button>
+    `;
+
+    row.querySelector('.like-btn')?.addEventListener('click', async () => {
+      const { data: { session: s2 } } = await db.auth.getSession();
+      if (!s2?.user) {
+        showToast('Inicia sesión para dar like', 'info');
+        document.getElementById('authModal').hidden = false;
+        window.__showLoginView?.();
+        return;
+      }
+      await toggleLike(tipo, id);
+    });
+  } catch (e) {
+    console.warn('Error cargando likes:', e);
+  }
+}
+
+async function toggleLike(tipo, id) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.user) return;
+
+  const userId = session.user.id;
+
+  try {
+    let q = db.from('likes').select('id');
+    if (tipo === 'story') {
+      q = q.eq('story_id', id).is('chapter_id', null).eq('user_id', userId);
+    } else {
+      q = q.eq('chapter_id', id).eq('user_id', userId);
+    }
+
+    const { data: existing } = await q.maybeSingle();
+
+    if (existing) {
+      const { error } = await db.from('likes').delete().eq('id', existing.id);
+      if (error) throw error;
+      showToast('Like quitado', 'info');
+    } else {
+      const insert = { user_id: userId };
+      if (tipo === 'story') insert.story_id = id;
+      else insert.chapter_id = id;
+      const { error } = await db.from('likes').insert(insert);
+      if (error) throw error;
+      showToast('¡Gracias por el like!', 'ok');
+    }
+
+    await cargarLikeBoton(tipo, id);
+  } catch (e) {
+    console.error('Error toggle like:', e);
+    showToast('No se pudo actualizar el like', 'error');
+  }
+}
+
 async function cargarRedes() {
   const grid = document.getElementById('socialGrid');
   if (!grid) return;
@@ -1193,6 +1284,7 @@ function renderStory({ story, chapters, logged }, cont) {
             <span class="badge badge-status">${escapeHtml(story.status || 'En curso')}</span>
           </div>
           <h1 class="story-h1">${escapeHtml(story.title)}</h1>
+          <div class="like-row" id="storyLikeRow" style="margin-top:8px;"></div>
           ${story.synopsis ? `<p class="story-synopsis-c">${escapeHtml(story.synopsis)}</p>` : ''}
           <div class="story-stats">
             <div class="story-stats-item">
@@ -1222,6 +1314,7 @@ function renderStory({ story, chapters, logged }, cont) {
     <div id="charsMount"></div>
   `;
   if (window.lucide) lucide.createIcons();
+  cargarLikeBoton('story', story.id);
 }
 
 function renderCharacters(chars) {
@@ -1331,6 +1424,7 @@ async function cargarCapitulo() {
           <div class="chapter-meta-c">
             ${chapter.reading_time ? `<span>${ic('clock', 14)} ${chapter.reading_time} min</span>` : ''}
           </div>
+          <div class="like-row" id="chapterLikeRow" style="margin-top:16px;"></div>
         </div>
         <div class="chapter-body" id="chapterBody">${chapter.content || '<p>Sin contenido.</p>'}</div>
         ${chapter.author_note ? `<div class="chapter-note"><span class="chapter-note-label">Nota del autor</span>${escapeHtml(chapter.author_note)}</div>` : ''}
@@ -1382,6 +1476,7 @@ async function cargarCapitulo() {
 
     await cargarComentariosCapitulo(chapter.id);
     await prepararFormComentarioCapitulo(chapter.id);
+    cargarLikeBoton('chapter', chapter.id);
 
   } catch (err) {
     console.error('Error capítulo:', err);
