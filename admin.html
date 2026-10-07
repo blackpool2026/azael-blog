@@ -447,7 +447,7 @@
 
         <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
           <h1 class="page-title-c">Estadísticas</h1>
-          <p class="page-sub-c">Vistas por historia</p>
+          <p class="page-sub-c">Rendimiento de tus historias</p>
         </div>
 
         <div class="stats-totals">
@@ -456,28 +456,52 @@
             <div class="stats-total-value" id="statsTotalViews">—</div>
           </div>
           <div class="stats-total-card">
-            <div class="stats-total-label">Historias</div>
-            <div class="stats-total-value" id="statsTotalStories">—</div>
+            <div class="stats-total-label">Likes totales</div>
+            <div class="stats-total-value" id="statsTotalLikes">—</div>
           </div>
           <div class="stats-total-card">
-            <div class="stats-total-label">Más vista</div>
-            <div class="stats-total-value" id="statsTopStory" style="font-size:14px;">—</div>
+            <div class="stats-total-label">Comentarios</div>
+            <div class="stats-total-value" id="statsTotalComments">—</div>
           </div>
         </div>
 
         <div class="section">
           <div class="section-head">
             <div>
-              <h2 class="section-title">Vistas por historia</h2>
-              <p class="section-sub">Ordenadas de mayor a menor</p>
+              <h2 class="section-title">Historias</h2>
+              <p class="section-sub">Toca una para ver el detalle</p>
             </div>
           </div>
-          <div class="stats-list" id="statsList">
+          <div class="stats-grid" id="statsList">
             <div class="empty-c">
               <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
               <div class="empty-title">Cargando…</div>
             </div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- DETALLE DE ESTADÍSTICAS DE HISTORIA -->
+    <section class="admin-view" id="viewStoryStats" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromStoryStats">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver a estadísticas
+        </button>
+
+        <div id="storyStatsHeader"></div>
+
+        <div class="stats-totals" id="storyStatsTotals"></div>
+
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Capítulos</h2>
+              <p class="section-sub">Vistas · Likes · Comentarios</p>
+            </div>
+          </div>
+          <div class="stats-list" id="storyStatsChapters"></div>
         </div>
       </div>
     </section>
