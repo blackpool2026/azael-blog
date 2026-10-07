@@ -12,7 +12,6 @@ const THEME_KEY = 'azael-theme-v2';
 const PREMIUM_FREE_LIMIT = 5;
 const READ_HISTORY_KEY = 'azael-read-history';
 
-/* ---------- TIMEOUT ---------- */
 function withTimeout(promise, ms = 8000) {
   return Promise.race([
     promise,
@@ -20,7 +19,6 @@ function withTimeout(promise, ms = 8000) {
   ]);
 }
 
-/* ---------- CACHÉ ---------- */
 const cache = {
   get(k) {
     try {
@@ -46,7 +44,6 @@ const cache = {
   },
 };
 
-/* ---------- LOADING / TOAST ---------- */
 function ensureLoadingOverlay() {
   if (document.getElementById('globalLoading')) return;
   const el = document.createElement('div');
@@ -83,7 +80,6 @@ function showToast(msg, type = 'info', duration = 2500) {
   }, duration);
 }
 
-/* ---------- 404 ---------- */
 function render404(cont, titulo = 'Contenido no encontrado', msg = 'El enlace que buscas no existe o fue eliminado.') {
   cont.innerHTML = `
     <div class="container" style="padding:80px 20px;text-align:center;">
@@ -96,7 +92,6 @@ function render404(cont, titulo = 'Contenido no encontrado', msg = 'El enlace qu
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- PREFERENCIAS ---------- */
 const READER_PREFS = { fontFamily: 'serif', fontSize: 18, lineHeight: 1.8, theme: 'oled' };
 
 function loadReaderPrefs() {
@@ -116,7 +111,6 @@ function applyReaderPrefs() {
   document.body.dataset.readerTheme = READER_PREFS.theme;
 }
 
-/* ---------- HELPERS ---------- */
 function ic(name, size = 18) {
   return `<i data-lucide="${name}" style="width:${size}px;height:${size}px;display:inline-block;"></i>`;
 }
@@ -147,7 +141,6 @@ function tiempoRelativo(fecha) {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
-/* ---------- HISTORIAL DE LECTURA ---------- */
 function getReadHistory() {
   try { return JSON.parse(localStorage.getItem(READ_HISTORY_KEY) || '{}'); } catch { return {}; }
 }
@@ -177,6 +170,36 @@ function textoUltimaLectura(chapterId) {
   return `Leído el ${new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
 }
 
+/* ---------- REGISTRAR VISTA ---------- */
+function getSessionId() {
+  try {
+    let id = localStorage.getItem('azael-session-id');
+    if (!id) {
+      id = 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10);
+      localStorage.setItem('azael-session-id', id);
+    }
+    return id;
+  } catch {
+    return 'sess_anon_' + Math.random().toString(36).slice(2, 10);
+  }
+}
+
+async function registrarVista(storyId, chapterId = null) {
+  try {
+    const key = `azael-viewed:${chapterId || storyId}`;
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+
+    await db.from('story_views').insert({
+      story_id: storyId,
+      chapter_id: chapterId,
+      session_id: getSessionId(),
+    });
+  } catch (e) {
+    console.warn('No se pudo registrar la vista:', e);
+  }
+}
+
 function emptyState(iconName, title, sub) {
   return `
     <div class="empty-c">
@@ -197,7 +220,6 @@ function traducirError(msg) {
   return msg || 'Ocurrió un error';
 }
 
-/* ---------- ICONOS SVG ---------- */
 function socialIconSvg(platform, size = 20) {
   const icons = {
     instagram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
@@ -221,14 +243,12 @@ function donationIconSvg(platform, size = 20) {
   return icons[platform] || socialIconSvg('link', size);
 }
 
-/* ---------- TEMA ---------- */
 function applyTheme(t) {
   document.documentElement.setAttribute('data-theme', t);
   localStorage.setItem(THEME_KEY, t);
 }
 function initTheme() { applyTheme(localStorage.getItem(THEME_KEY) || 'dark'); }
 
-/* ---------- NAV ---------- */
 const NAV_ITEMS = [
   { href: 'index.html',       label: 'Inicio',      icon: 'home' },
   { href: 'historias.html',   label: 'Historias',   icon: 'book-open' },
@@ -245,7 +265,6 @@ const PAGE_TITLES = {
   'donaciones.html': 'Donaciones',
 };
 
-/* ---------- HEADER ---------- */
 function inyectarHeader() {
   const mount = document.getElementById('header-mount');
   if (!mount) return;
@@ -280,7 +299,6 @@ function inyectarHeader() {
   });
 }
 
-/* ---------- DRAWER ---------- */
 function inyectarDrawer() {
   if (document.getElementById('drawer')) return;
   const path = pagActiva();
@@ -338,7 +356,6 @@ function inyectarDrawer() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- MODAL AUTH ---------- */
 function inyectarAuthModal() {
   const mount = document.getElementById('auth-mount');
   if (!mount) return;
@@ -446,7 +463,6 @@ function inyectarAuthModal() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- HERO CON CARRUSEL ---------- */
 async function cargarHero() {
   const cont = document.getElementById('heroMount');
   if (!cont) return;
@@ -549,7 +565,6 @@ function renderHeroSlide(s, cont, isFirst) {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- NOVEDADES ---------- */
 async function cargarNovedades() {
   const cont = document.getElementById('novedadesMount');
   if (!cont) return;
@@ -594,7 +609,6 @@ async function cargarNovedades() {
   } catch (e) { console.warn('Novedades timeout:', e); }
 }
 
-/* ---------- ÚLTIMO DEL BLOG ---------- */
 async function cargarUltimoBlogHome() {
   const cont = document.getElementById('ultimoBlogMount');
   if (!cont) return;
@@ -632,7 +646,6 @@ async function cargarUltimoBlogHome() {
   } catch (e) { console.warn('Último blog timeout:', e); }
 }
 
-/* ---------- HISTORIAS ---------- */
 async function cargarHistorias({ limite = null, excluirDestacada = false, genero = null, busqueda = null } = {}) {
   const grid = document.getElementById('storiesGrid');
   if (!grid) return;
@@ -671,7 +684,6 @@ function renderStories(data, grid) {
   `).join('');
 }
 
-/* ---------- GÉNEROS ---------- */
 const GENEROS = [
   { slug: 'romance',   label: 'Romance',         icon: 'heart' },
   { slug: 'terror',    label: 'Terror',          icon: 'skull' },
@@ -699,7 +711,6 @@ function cargarGeneros() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- BLOG ---------- */
 async function cargarBlog(limite = null) {
   const list = document.getElementById('blogList');
   if (!list) return;
@@ -730,7 +741,6 @@ async function cargarBlog(limite = null) {
   }
 }
 
-/* ---------- POST ---------- */
 async function cargarPost() {
   const cont = document.getElementById('postContent');
   if (!cont) return;
@@ -909,7 +919,6 @@ async function prepararFormComentario(postId) {
   });
 }
 
-/* ---------- COMENTARIOS EN CAPÍTULOS ---------- */
 async function cargarComentariosCapitulo(chapterId) {
   const list = document.getElementById('chapterCommentsList');
   const count = document.getElementById('chapterCommentsCount');
@@ -982,7 +991,6 @@ async function prepararFormComentarioCapitulo(chapterId) {
   });
 }
 
-/* ---------- REDES ---------- */
 async function cargarRedes() {
   const grid = document.getElementById('socialGrid');
   if (!grid) return;
@@ -1013,7 +1021,6 @@ async function cargarRedes() {
   }
 }
 
-/* ---------- DONACIONES ---------- */
 async function cargarDonaciones() {
   const grid = document.getElementById('donationsGrid');
   if (!grid) return;
@@ -1048,7 +1055,6 @@ async function cargarDonaciones() {
   }
 }
 
-/* ---------- BIOGRAFÍA ---------- */
 async function cargarBiografia() {
   const cont = document.getElementById('bioCard');
   if (!cont) return;
@@ -1078,7 +1084,6 @@ async function cargarBiografia() {
   }
 }
 
-/* ---------- HISTORIA DETALLE ---------- */
 async function cargarHistoriaDetalle() {
   const cont = document.getElementById('storyDetail');
   if (!cont) return;
@@ -1120,6 +1125,7 @@ async function cargarHistoriaDetalle() {
 
     cache.set('story:' + id, { story, chapters, logged });
     renderStory({ story, chapters, logged }, cont);
+    registrarVista(story.id, null);
   } catch (err) {
     console.error('Error historia:', err);
     if (!cont.innerHTML.includes('story-header')) {
@@ -1240,7 +1246,6 @@ function renderCharacters(chars) {
   `;
 }
 
-/* ---------- CAPÍTULO ---------- */
 async function cargarCapitulo() {
   const cont = document.getElementById('chapterContent');
   if (!cont) return;
@@ -1312,6 +1317,7 @@ async function cargarCapitulo() {
     }
 
     marcarComoLeido(chapter.id);
+    registrarVista(chapter.story_id, chapter.id);
 
     const idx = siblings.findIndex(c => c.id === chapter.id);
     const prev = idx > 0 ? siblings[idx - 1] : null;
@@ -1383,7 +1389,6 @@ async function cargarCapitulo() {
   }
 }
 
-/* ---------- AJUSTES DE LECTURA ---------- */
 function abrirReaderSettings() {
   let modal = document.getElementById('readerSettingsModal');
   if (!modal) {
@@ -1475,7 +1480,6 @@ function actualizarReaderUI() {
   });
 }
 
-/* ---------- MODO ENFOQUE ---------- */
 function toggleFocusMode() {
   const isActive = document.body.classList.contains('focus-mode');
   if (isActive) {
@@ -1504,7 +1508,6 @@ function initFocusModeExit() {
       document.body.classList.remove('focus-exit-ready');
     }
   });
-  // Click en botón "Salir"
   document.addEventListener('click', (e) => {
     if (!document.body.classList.contains('focus-mode')) return;
     const rect = {
@@ -1518,7 +1521,6 @@ function initFocusModeExit() {
   });
 }
 
-/* ---------- POSICIÓN DE LECTURA ---------- */
 function saveReadingPosition(chapterId, storyId) {
   const scrollTop = window.scrollY;
   const docHeight = document.documentElement.scrollHeight - window.innerHeight;
