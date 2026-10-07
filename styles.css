@@ -3683,3 +3683,82 @@ body.focus-mode.focus-exit-ready::after {
   .chapter-nav { grid-template-columns: 1fr; }
   .chapter-nav-btn:nth-child(2) { grid-column: auto; order: 0; }
 }
+/* ============================================
+   PWA — Botón "Instalar app"
+   ============================================ */
+
+.pwa-install-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9998;
+
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+
+  padding: 12px 20px;
+  border: none;
+  border-radius: 50px;
+
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+
+  color: #0a0a0c;
+  background: #e50914;
+
+  box-shadow: 0 8px 24px rgba(229, 9, 20, 0.35),
+              0 2px 8px rgba(0, 0, 0, 0.4);
+
+  cursor: pointer;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  animation: pwaSlideIn 0.4s ease-out;
+}
+
+.pwa-install-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(229, 9, 20, 0.5),
+              0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.pwa-install-btn:active {
+  transform: translateY(0);
+}
+
+/* Ajuste para móvil */
+@media (max-width: 600px) {
+  .pwa-install-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 10px 16px;
+    font-size: 13px;
+  }
+}
+
+/* Ajuste cuando el usuario está en modo claro */
+[data-theme="light"] .pwa-install-btn {
+  color: #ffffff;
+  background: #0a0a0c;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35),
+              0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+[data-theme="light"] .pwa-install-btn:hover {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.45),
+              0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+/* Animación de entrada */
+@keyframes pwaSlideIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
