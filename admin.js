@@ -68,7 +68,6 @@ function limpiarCachePublica() {
   } catch {}
 }
 
-/* ---------- MODAL INPUT PERSONALIZADO ---------- */
 function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
   return new Promise((resolve) => {
     const modal = document.createElement('div');
@@ -851,9 +850,7 @@ document.querySelectorAll('#donationsAddPanel .admin-net-btn').forEach(btn => {
 
     const url = await abrirInputModal({
       title: `Datos de ${platformName}`,
-      desc: isBinance
-        ? 'Pega tu número de Binance (ID).'
-        : 'Pega el enlace de tu cuenta de PayPal.',
+      desc: isBinance ? 'Pega tu número de Binance (ID).' : 'Pega el enlace de tu cuenta de PayPal.',
       label: isBinance ? 'ID de Binance' : 'Enlace de PayPal',
       placeholder: isBinance ? 'Ej: 1257168234' : 'https://paypal.me/tuusuario',
       hint: isBinance ? 'Solo números' : 'Debe empezar con https://',
@@ -896,6 +893,93 @@ async function agregarDonacion(platform, url, label) {
   toast('Método añadido', 'ok');
   limpiarCachePublica();
   cargarDonacionesAdmin();
+}
+
+/* ---------- ESTADÍSTICAS ---------- */
+async function abrirStatsView() {
+  showView('viewStats');
+  await cargarEstadisticas();
+}
+
+async function cargarEstadisticas() {
+  const list = document.getElementById('statsList');
+  showLoading();
+
+  try {
+    const { data: stories, error: storiesError } = await db
+      .from('stories')
+      .select('id, title')
+      .order('created_at', { ascending: false });
+
+    if (storiesError) throw storiesError;
+
+    if (!stories?.length) {
+      hideLoading();
+      list.innerHTML = emptyState('book', 'Sin historias', 'Publica una historia para ver estadísticas.');
+      return;
+    }
+
+    const { data: views, error: viewsError } = await db
+      .from('story_views')
+      .select('story_id');
+
+    if (viewsError) throw viewsError;
+
+    const viewsByStory = {};
+    (views || []).forEach(v => {
+      viewsByStory[v.story_id] = (viewsByStory[v.story_id] || 0) + 1;
+    });
+
+    const stats = stories.map(s => ({
+      id: s.id,
+      title: s.title,
+      views: viewsByStory[s.id] || 0,
+    }));
+
+    stats.sort((a, b) => b.views - a.views);
+
+    const totalViews = stats.reduce((sum, s) => sum + s.views, 0);
+    const maxViews = stats[0]?.views || 0;
+
+    document.getElementById('statsTotalViews').textContent = totalViews.toLocaleString('es-ES');
+    document.getElementById('statsTotalStories').textContent = stats.length;
+    document.getElementById('statsTopStory').textContent = stats[0]?.title || '—';
+
+    if (!stats.length) {
+      list.innerHTML = emptyState('bar-chart-3', 'Sin datos', 'Aún no hay vistas registradas.');
+      hideLoading();
+      return;
+    }
+
+    list.innerHTML = stats.map(s => {
+      const percent = maxViews > 0 ? Math.round((s.views / maxViews) * 100) : 0;
+      const percentOfTotal = totalViews > 0 ? Math.round((s.views / totalViews) * 100) : 0;
+
+      return `
+        <div class="stats-item">
+          <div class="stats-item-head">
+            <div class="stats-item-title">${escapeHtml(s.title)}</div>
+            <div class="stats-item-count">${s.views.toLocaleString('es-ES')} vistas</div>
+          </div>
+          <div class="stats-item-bar">
+            <div class="stats-item-bar-fill" style="width: ${percent}%;"></div>
+          </div>
+          <div class="stats-item-meta">
+            <span>${percent}% relativo a la más vista</span>
+            <span>·</span>
+            <span>${percentOfTotal}% del total</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error('Error cargando stats:', err);
+    list.innerHTML = emptyState('alert-circle', 'Error', err.message);
+  }
+
+  hideLoading();
 }
 
 /* ---------- BIOGRAFÍA ---------- */
@@ -963,6 +1047,7 @@ document.getElementById('btnNewPost').addEventListener('click', () => abrirPostF
 document.getElementById('btnRedes').addEventListener('click', () => abrirRedesView());
 document.getElementById('btnBio').addEventListener('click', () => abrirBioView());
 document.getElementById('btnDonaciones').addEventListener('click', () => abrirDonacionesView());
+document.getElementById('btnStats').addEventListener('click', () => abrirStatsView());
 document.getElementById('btnNewChapter').addEventListener('click', () => {
   if (!currentStory) return;
   db.from('chapters').select('chapter_order').eq('story_id', currentStory.id).order('chapter_order', { ascending: false }).limit(1).then(({ data }) => {
@@ -978,6 +1063,7 @@ document.getElementById('backFromPost').addEventListener('click', () => { showVi
 document.getElementById('backFromRedes').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromBio').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromDonaciones').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromStats').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 
 /* ---------- HELPERS ---------- */
 function escapeHtml(str) {
