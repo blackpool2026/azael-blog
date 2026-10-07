@@ -60,6 +60,10 @@
             <i data-lucide="heart-handshake" style="width:16px;height:16px;"></i>
             Donaciones
           </button>
+          <button class="btn btn-ghost" id="btnStats">
+            <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
+            Estadísticas
+          </button>
         </div>
 
         <section class="section">
@@ -429,6 +433,51 @@
           <button class="admin-net-btn" data-platform="binance" title="Binance">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L5 9l7 7 7-7-7-7z"/><path d="M5 15l7 7 7-7"/></svg>
           </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ESTADÍSTICAS -->
+    <section class="admin-view" id="viewStats" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromStats">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Estadísticas</h1>
+          <p class="page-sub-c">Vistas por historia</p>
+        </div>
+
+        <div class="stats-totals">
+          <div class="stats-total-card">
+            <div class="stats-total-label">Vistas totales</div>
+            <div class="stats-total-value" id="statsTotalViews">—</div>
+          </div>
+          <div class="stats-total-card">
+            <div class="stats-total-label">Historias</div>
+            <div class="stats-total-value" id="statsTotalStories">—</div>
+          </div>
+          <div class="stats-total-card">
+            <div class="stats-total-label">Más vista</div>
+            <div class="stats-total-value" id="statsTopStory" style="font-size:14px;">—</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Vistas por historia</h2>
+              <p class="section-sub">Ordenadas de mayor a menor</p>
+            </div>
+          </div>
+          <div class="stats-list" id="statsList">
+            <div class="empty-c">
+              <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+              <div class="empty-title">Cargando…</div>
+            </div>
+          </div>
         </div>
       </div>
     </section>
