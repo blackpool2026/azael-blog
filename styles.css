@@ -1,5 +1,7 @@
 /* ============================================
    AZAEL BLOG — Design System + Fixes
+   Con mejoras: botón ajustes visible, likes
+   privados, anti-copia, responsive PC
    ============================================ */
 
 :root {
@@ -213,6 +215,39 @@ body::after {
 }
 
 .icon-action svg { width: 18px; height: 18px; }
+
+/* ============ BOTÓN AJUSTES DE LECTURA DESTACADO ============ */
+.reader-settings-btn-visible {
+  background: var(--accent-soft) !important;
+  border-color: var(--accent-color) !important;
+  color: var(--accent-color) !important;
+  position: relative;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.reader-settings-btn-visible:hover {
+  background: var(--accent-color) !important;
+  color: #ffffff !important;
+  transform: scale(1.05);
+}
+
+.reader-settings-btn-visible::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-color);
+  border-radius: 50%;
+  border: 2px solid var(--bg-main);
+  animation: pulseDot 2s ease-in-out infinite;
+}
+
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.2); }
+}
 
 /* ============ DRAWER ============ */
 .drawer-backdrop {
@@ -3075,7 +3110,7 @@ body.drawer-open .drawer { transform: translateX(0); }
   height: 18px;
 }
 
-/* ============ MODO ENFOQUE ============ */
+/* ============ MODO ENFOQUE (sin fullscreen nativo) ============ */
 body.focus-mode {
   overflow-x: hidden;
 }
@@ -3552,7 +3587,7 @@ body.focus-mode.focus-exit-ready::after {
   .stats-chapter-metrics { font-size: 11px; gap: 10px; }
 }
 
-/* ============ BOTÓN DE LIKE ============ */
+/* ============ BOTÓN DE LIKE SIN CONTADOR PÚBLICO ============ */
 .like-row {
   display: flex;
   align-items: center;
@@ -3607,6 +3642,21 @@ body.focus-mode.focus-exit-ready::after {
   font-variant-numeric: tabular-nums;
   min-width: 20px;
   text-align: left;
+}
+
+.like-label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+/* ============ ANTI-COPIA (opcional refuerzo visual) ============ */
+.chapter-body {
+  -webkit-touch-callout: none;
+}
+
+.chapter-body ::selection {
+  background: var(--accent-soft);
+  color: var(--accent-color);
 }
 
 /* ============ RESPONSIVE ============ */
@@ -3683,6 +3733,94 @@ body.focus-mode.focus-exit-ready::after {
   .chapter-nav { grid-template-columns: 1fr; }
   .chapter-nav-btn:nth-child(2) { grid-column: auto; order: 0; }
 }
+
+/* ============ ADAPTACIÓN PARA PC (PANTALLAS GRANDES) ============ */
+@media (min-width: 1024px) {
+  .container {
+    max-width: 1320px;
+    padding: 0 40px;
+  }
+
+  .stories-grid-c {
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 32px 24px;
+  }
+
+  .book-cover {
+    width: 180px;
+    height: 270px;
+  }
+  .story-card-c {
+    width: 180px;
+  }
+
+  .hero-cinematic {
+    min-height: 78vh;
+  }
+  .hero-content {
+    padding: 100px 0 60px;
+  }
+
+  .story-header {
+    grid-template-columns: 240px 1fr;
+    gap: 48px;
+  }
+
+  .chapter-shell {
+    max-width: 780px;
+    padding: 60px 40px 120px;
+  }
+
+  .genres-grid-c {
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+  }
+
+  .blog-list-c {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  .bio-card-c {
+    grid-template-columns: 260px 1fr;
+    gap: 48px;
+    padding: 56px;
+  }
+
+  .social-grid-c {
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+  }
+
+  .comment-body-c {
+    max-width: 800px;
+  }
+
+  .admin-view .container {
+    max-width: 1200px;
+  }
+}
+
+@media (min-width: 1440px) {
+  .container {
+    max-width: 1400px;
+  }
+
+  .hero-title-c {
+    font-size: clamp(48px, 5vw, 80px);
+  }
+
+  .page-title-c {
+    font-size: clamp(38px, 4vw, 52px);
+  }
+}
+
+@media (min-width: 1024px) and (hover: hover) {
+  .book-cover:hover {
+    transform: translateY(-10px) rotateY(-8deg) scale(1.05);
+  }
+}
+
 /* ============================================
    PWA — Botón "Instalar app"
    ============================================ */
@@ -3728,7 +3866,6 @@ body.focus-mode.focus-exit-ready::after {
   transform: translateY(0);
 }
 
-/* Ajuste para móvil */
 @media (max-width: 600px) {
   .pwa-install-btn {
     bottom: 16px;
@@ -3738,7 +3875,6 @@ body.focus-mode.focus-exit-ready::after {
   }
 }
 
-/* Ajuste cuando el usuario está en modo claro */
 [data-theme="light"] .pwa-install-btn {
   color: #ffffff;
   background: #0a0a0c;
@@ -3751,7 +3887,6 @@ body.focus-mode.focus-exit-ready::after {
               0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
-/* Animación de entrada */
 @keyframes pwaSlideIn {
   from {
     opacity: 0;
