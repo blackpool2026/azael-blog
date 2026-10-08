@@ -1,5 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
+   Sin cálculo de reading_time
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -421,7 +422,7 @@ document.getElementById('storyDeleteBtn').addEventListener('click', async () => 
 async function cargarCapitulosAdmin(storyId) {
   const list = document.getElementById('chaptersList');
   const { data } = await db.from('chapters')
-    .select('id, title, chapter_order, is_premium, reading_time, created_at')
+    .select('id, title, chapter_order, is_premium, created_at')
     .eq('story_id', storyId).order('chapter_order', { ascending: true });
   if (!data?.length) {
     list.innerHTML = emptyState('book-open', 'Sin capítulos', 'Añade tu primer capítulo.');
@@ -433,7 +434,6 @@ async function cargarCapitulosAdmin(storyId) {
       <div class="admin-chapter-body">
         <div class="admin-chapter-title">${escapeHtml(c.title)}</div>
         <div class="admin-chapter-meta">
-          ${c.reading_time ? `${c.reading_time} min` : ''}
           ${c.is_premium ? '<span class="admin-badge admin-badge-accent">Premium</span>' : ''}
         </div>
       </div>
@@ -497,7 +497,6 @@ function abrirChapterForm(id = null) {
 document.getElementById('chapterForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const content = document.getElementById('chapterEditor').innerHTML;
-  const words = contarPalabras(content);
   const payload = {
     story_id: currentStory.id,
     title: document.getElementById('chapterTitle').value.trim(),
@@ -505,7 +504,6 @@ document.getElementById('chapterForm').addEventListener('submit', async (e) => {
     author_note: document.getElementById('chapterNote').value.trim(),
     chapter_order: parseInt(document.getElementById('chapterOrder').value, 10) || 1,
     is_premium: document.getElementById('chapterPremium').checked,
-    reading_time: Math.max(1, Math.round(words / 200)),
   };
   showLoading();
   let error;
