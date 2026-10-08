@@ -1,5 +1,7 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
+   Con mejoras: modo enfoque, anti-copia, likes
+   privados, botón ajustes visible, home completo
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -531,7 +533,7 @@ async function cargarHero() {
     track.addEventListener('touchstart', () => clearInterval(autoTimer));
     track.addEventListener('mouseenter', () => clearInterval(autoTimer));
 
-  } catch (e) { 
+  } catch (e) {
     console.warn('Hero error:', e);
   }
 }
@@ -1001,15 +1003,6 @@ async function cargarLikeBoton(tipo, id) {
     const { data: { session } } = await db.auth.getSession();
     const userId = session?.user?.id || null;
 
-    let query = db.from('likes').select('id', { count: 'exact', head: true });
-    if (tipo === 'story') {
-      query = query.eq('story_id', id).is('chapter_id', null);
-    } else {
-      query = query.eq('chapter_id', id);
-    }
-
-    const { count: totalLikes } = await query;
-
     let dioLike = false;
     if (userId) {
       let q2 = db.from('likes').select('id');
@@ -1022,19 +1015,21 @@ async function cargarLikeBoton(tipo, id) {
       dioLike = !!myLike;
     }
 
+    // NOTA: el contador de likes ya NO se muestra al público.
+    // El número real se ve únicamente en el panel de administración.
     row.innerHTML = `
-      <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}">
+      <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}" title="${dioLike ? 'Quitar me gusta' : 'Me gusta'}" aria-label="${dioLike ? 'Quitar me gusta' : 'Me gusta'}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="${dioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
         </svg>
-        <span class="like-count">${(totalLikes || 0).toLocaleString('es-ES')}</span>
+        <span class="like-label">${dioLike ? 'Te gusta' : 'Me gusta'}</span>
       </button>
     `;
 
     row.querySelector('.like-btn')?.addEventListener('click', async () => {
       const { data: { session: s2 } } = await db.auth.getSession();
       if (!s2?.user) {
-        showToast('Inicia sesión para dar like', 'info');
+        showToast('Inicia sesión para dar me gusta', 'info');
         document.getElementById('authModal').hidden = false;
         window.__showLoginView?.();
         return;
@@ -1065,20 +1060,20 @@ async function toggleLike(tipo, id) {
     if (existing) {
       const { error } = await db.from('likes').delete().eq('id', existing.id);
       if (error) throw error;
-      showToast('Like quitado', 'info');
+      showToast('Me gusta quitado', 'info');
     } else {
       const insert = { user_id: userId };
       if (tipo === 'story') insert.story_id = id;
       else insert.chapter_id = id;
       const { error } = await db.from('likes').insert(insert);
       if (error) throw error;
-      showToast('¡Gracias por el like!', 'ok');
+      showToast('¡Gracias por el me gusta!', 'ok');
     }
 
     await cargarLikeBoton(tipo, id);
   } catch (e) {
     console.error('Error toggle like:', e);
-    showToast('No se pudo actualizar el like', 'error');
+    showToast('No se pudo actualizar el me gusta', 'error');
   }
 }
 
@@ -1448,13 +1443,18 @@ async function cargarCapitulo() {
     applyReaderPrefs();
     if (window.lucide) lucide.createIcons();
 
+    // Anti-copia en el cuerpo del capítulo
+    aplicarProteccionCapitulo();
+
+    // Botón de ajustes de lectura VISIBLE
     const actions = document.querySelector('.header-actions');
     if (actions && !document.getElementById('readerSettingsBtn')) {
       const btn = document.createElement('button');
-      btn.className = 'icon-action';
+      btn.className = 'icon-action reader-settings-btn-visible';
       btn.id = 'readerSettingsBtn';
       btn.setAttribute('aria-label', 'Ajustes de lectura');
-      btn.innerHTML = ic('type', 18);
+      btn.title = 'Ajustes de lectura';
+      btn.innerHTML = '<strong style="font-family:Georgia,serif;font-size:15px;letter-spacing:-0.5px;">Aa</strong>';
       btn.addEventListener('click', abrirReaderSettings);
       actions.insertBefore(btn, actions.firstChild);
       if (window.lucide) lucide.createIcons();
@@ -1482,6 +1482,46 @@ async function cargarCapitulo() {
     console.error('Error capítulo:', err);
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.');
   }
+}
+
+/* ---------- PROTECCIÓN ANTI-COPIA ---------- */
+function activarAntiCopia(chapterBodyEl) {
+  if (!chapterBodyEl) return;
+
+  // Bloquear click derecho
+  chapterBodyEl.addEventListener('contextmenu', (e) => e.preventDefault());
+
+  // Bloquear copiar/cortar
+  chapterBodyEl.addEventListener('copy', (e) => {
+    e.preventDefault();
+    showToast('El contenido está protegido. Copiar no está permitido.', 'info');
+  });
+  chapterBodyEl.addEventListener('cut', (e) => e.preventDefault());
+
+  // Bloquear combinaciones de teclado (Ctrl+C, Ctrl+X, Ctrl+A, Ctrl+U, Ctrl+S, F12)
+  chapterBodyEl.addEventListener('keydown', (e) => {
+    const key = (e.key || '').toLowerCase();
+    const ctrl = e.ctrlKey || e.metaKey;
+    if ((ctrl && ['c', 'x', 'a', 'u', 's'].includes(key)) || key === 'f12') {
+      e.preventDefault();
+      if (ctrl && ['c', 'x'].includes(key)) {
+        showToast('El contenido está protegido.', 'info');
+      }
+    }
+  });
+
+  // Bloquear drag (arrastrar texto seleccionado)
+  chapterBodyEl.addEventListener('dragstart', (e) => e.preventDefault());
+
+  // CSS adicional (evitar selección visual)
+  chapterBodyEl.style.userSelect = 'none';
+  chapterBodyEl.style.webkitUserSelect = 'none';
+  chapterBodyEl.style.webkitTouchCallout = 'none';
+}
+
+function aplicarProteccionCapitulo() {
+  const body = document.getElementById('chapterBody');
+  if (body) activarAntiCopia(body);
 }
 
 function abrirReaderSettings() {
@@ -1575,15 +1615,14 @@ function actualizarReaderUI() {
   });
 }
 
+/* ---------- MODO ENFOQUE (sin fullscreen nativo) ---------- */
 function toggleFocusMode() {
   const isActive = document.body.classList.contains('focus-mode');
   if (isActive) {
     document.body.classList.remove('focus-mode');
     document.body.classList.remove('focus-exit-ready');
-    if (document.fullscreenElement) document.exitFullscreen?.();
   } else {
     document.body.classList.add('focus-mode');
-    document.documentElement.requestFullscreen?.().catch(() => {});
     window.scrollTo({ top: 0, behavior: 'smooth' });
     setTimeout(() => {
       document.body.classList.add('focus-exit-ready');
@@ -1595,12 +1634,6 @@ function initFocusModeExit() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && document.body.classList.contains('focus-mode')) {
       toggleFocusMode();
-    }
-  });
-  document.addEventListener('fullscreenchange', () => {
-    if (!document.fullscreenElement && document.body.classList.contains('focus-mode')) {
-      document.body.classList.remove('focus-mode');
-      document.body.classList.remove('focus-exit-ready');
     }
   });
   document.addEventListener('click', (e) => {
@@ -1677,7 +1710,8 @@ if (path === 'index.html' || path === '') {
   cargarHero();
   cargarNovedades();
   cargarUltimoBlogHome();
-  cargarHistorias({ limite: 12, excluirDestacada: true });
+  // CAMBIO: sin límite, la destacada también aparece en el grid
+  cargarHistorias({ excluirDestacada: false });
 } else if (path === 'historias.html') {
   cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') });
 } else if (path === 'generos.html') {
@@ -1705,7 +1739,6 @@ window.addEventListener('load', () => { if (window.lucide) lucide.createIcons();
    PWA — Service Worker + Botón Instalar
    ============================================ */
 
-// 1. Registrar el Service Worker
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
@@ -1714,7 +1747,6 @@ if ('serviceWorker' in navigator) {
   });
 }
 
-// 2. Capturar el evento de instalación de Chrome
 let deferredPrompt = null;
 
 window.addEventListener('beforeinstallprompt', (e) => {
@@ -1723,7 +1755,6 @@ window.addEventListener('beforeinstallprompt', (e) => {
   mostrarBotonInstalar();
 });
 
-// 3. Mostrar botón "Instalar app"
 function mostrarBotonInstalar() {
   if (document.getElementById('pwa-install-btn')) return;
 
@@ -1745,7 +1776,6 @@ function mostrarBotonInstalar() {
   document.body.appendChild(btn);
 }
 
-// 4. Ocultar el botón si ya está instalada
 window.addEventListener('appinstalled', () => {
   console.log('[PWA] App instalada');
   deferredPrompt = null;
