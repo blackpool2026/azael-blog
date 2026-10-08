@@ -1,7 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Con mejoras: modo enfoque, anti-copia, likes
-   privados, botón ajustes visible, home completo
+   Cambios: sin tiempo de lectura, fix pantalla roja
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -172,7 +171,6 @@ function textoUltimaLectura(chapterId) {
   return `Leído el ${new Date(ts).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
 }
 
-/* ---------- REGISTRAR VISTA ---------- */
 function getSessionId() {
   try {
     let id = localStorage.getItem('azael-session-id');
@@ -572,7 +570,7 @@ async function cargarNovedades() {
   if (!cont) return;
   try {
     const { data, error } = await withTimeout(
-      db.from('chapters').select('id, title, chapter_order, created_at, reading_time, story_id, stories(id, title, cover_url)')
+      db.from('chapters').select('id, title, chapter_order, created_at, story_id, stories(id, title, cover_url)')
         .order('created_at', { ascending: false }).limit(10),
       8000
     );
@@ -596,7 +594,6 @@ async function cargarNovedades() {
                     <div class="chapter-card-story">${escapeHtml(story.title || 'Historia')}</div>
                     <div class="chapter-card-title">Cap. ${c.chapter_order || '?'} · ${escapeHtml(c.title)}</div>
                     <div class="chapter-card-meta">
-                      ${c.reading_time ? `<span>${c.reading_time} min</span>` : ''}
                       <span>${tiempoRelativo(c.created_at)}</span>
                     </div>
                   </div>
@@ -1015,8 +1012,6 @@ async function cargarLikeBoton(tipo, id) {
       dioLike = !!myLike;
     }
 
-    // NOTA: el contador de likes ya NO se muestra al público.
-    // El número real se ve únicamente en el panel de administración.
     row.innerHTML = `
       <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}" title="${dioLike ? 'Quitar me gusta' : 'Me gusta'}" aria-label="${dioLike ? 'Quitar me gusta' : 'Me gusta'}">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="${dioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1183,7 +1178,7 @@ async function cargarHistoriaDetalle() {
     const [storyRes, chaptersRes, sessionRes] = await withTimeout(
       Promise.all([
         db.from('stories').select('*').eq('id', id).maybeSingle(),
-        db.from('chapters').select('id, title, chapter_order, created_at, is_premium, reading_time').eq('story_id', id).order('chapter_order', { ascending: true }),
+        db.from('chapters').select('id, title, chapter_order, created_at, is_premium').eq('story_id', id).order('chapter_order', { ascending: true }),
         db.auth.getSession(),
       ]),
       10000
@@ -1240,7 +1235,6 @@ function renderStory({ story, chapters, logged }, cont) {
         } else {
           metaHtml = `
             <span>${tiempoRelativo(c.created_at)}</span>
-            ${c.reading_time ? `<span>${c.reading_time} min</span>` : ''}
           `;
         }
 
@@ -1344,7 +1338,7 @@ async function cargarCapitulo() {
 
     const [chapterRes, sessionRes] = await withTimeout(
       Promise.all([
-        db.from('chapters').select('id, title, content, author_note, chapter_order, story_id, is_premium, reading_time, created_at').eq('id', id).maybeSingle(),
+        db.from('chapters').select('id, title, content, author_note, chapter_order, story_id, is_premium, created_at').eq('id', id).maybeSingle(),
         db.auth.getSession(),
       ]),
       10000
@@ -1416,9 +1410,6 @@ async function cargarCapitulo() {
         <div class="chapter-head">
           <a href="historia.html?id=${story?.id || ''}" class="chapter-story-link">${ic('arrow-left', 14)} ${escapeHtml(story?.title || '')}</a>
           <h1 class="chapter-title-c">Capítulo ${num} · ${escapeHtml(chapter.title)}</h1>
-          <div class="chapter-meta-c">
-            ${chapter.reading_time ? `<span>${ic('clock', 14)} ${chapter.reading_time} min</span>` : ''}
-          </div>
           <div class="like-row" id="chapterLikeRow" style="margin-top:16px;"></div>
         </div>
         <div class="chapter-body" id="chapterBody">${chapter.content || '<p>Sin contenido.</p>'}</div>
@@ -1443,10 +1434,8 @@ async function cargarCapitulo() {
     applyReaderPrefs();
     if (window.lucide) lucide.createIcons();
 
-    // Anti-copia en el cuerpo del capítulo
     aplicarProteccionCapitulo();
 
-    // Botón de ajustes de lectura VISIBLE
     const actions = document.querySelector('.header-actions');
     if (actions && !document.getElementById('readerSettingsBtn')) {
       const btn = document.createElement('button');
@@ -1488,17 +1477,14 @@ async function cargarCapitulo() {
 function activarAntiCopia(chapterBodyEl) {
   if (!chapterBodyEl) return;
 
-  // Bloquear click derecho
   chapterBodyEl.addEventListener('contextmenu', (e) => e.preventDefault());
 
-  // Bloquear copiar/cortar
   chapterBodyEl.addEventListener('copy', (e) => {
     e.preventDefault();
     showToast('El contenido está protegido. Copiar no está permitido.', 'info');
   });
   chapterBodyEl.addEventListener('cut', (e) => e.preventDefault());
 
-  // Bloquear combinaciones de teclado (Ctrl+C, Ctrl+X, Ctrl+A, Ctrl+U, Ctrl+S, F12)
   chapterBodyEl.addEventListener('keydown', (e) => {
     const key = (e.key || '').toLowerCase();
     const ctrl = e.ctrlKey || e.metaKey;
@@ -1510,10 +1496,8 @@ function activarAntiCopia(chapterBodyEl) {
     }
   });
 
-  // Bloquear drag (arrastrar texto seleccionado)
   chapterBodyEl.addEventListener('dragstart', (e) => e.preventDefault());
 
-  // CSS adicional (evitar selección visual)
   chapterBodyEl.style.userSelect = 'none';
   chapterBodyEl.style.webkitUserSelect = 'none';
   chapterBodyEl.style.webkitTouchCallout = 'none';
@@ -1615,35 +1599,35 @@ function actualizarReaderUI() {
   });
 }
 
-/* ---------- MODO ENFOQUE (sin fullscreen nativo) ---------- */
+/* ---------- MODO ENFOQUE ---------- */
 function toggleFocusMode() {
   const isActive = document.body.classList.contains('focus-mode');
   if (isActive) {
     document.body.classList.remove('focus-mode');
-    document.body.classList.remove('focus-exit-ready');
+    const btn = document.getElementById('focusExitBtn');
+    if (btn) btn.remove();
   } else {
     document.body.classList.add('focus-mode');
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    setTimeout(() => {
-      document.body.classList.add('focus-exit-ready');
-    }, 300);
+    crearBotonSalir();
   }
+}
+
+function crearBotonSalir() {
+  if (document.getElementById('focusExitBtn')) return;
+  const btn = document.createElement('button');
+  btn.id = 'focusExitBtn';
+  btn.className = 'focus-exit-btn';
+  btn.innerHTML = '✕ Salir';
+  btn.setAttribute('aria-label', 'Salir del modo lectura');
+  btn.addEventListener('click', toggleFocusMode);
+  document.body.appendChild(btn);
+  requestAnimationFrame(() => btn.classList.add('visible'));
 }
 
 function initFocusModeExit() {
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape' && document.body.classList.contains('focus-mode')) {
-      toggleFocusMode();
-    }
-  });
-  document.addEventListener('click', (e) => {
-    if (!document.body.classList.contains('focus-mode')) return;
-    const rect = {
-      right: window.innerWidth - 20,
-      bottom: window.innerHeight - 20
-    };
-    const size = 90;
-    if (e.clientX > rect.right - size && e.clientY > rect.bottom - size) {
       toggleFocusMode();
     }
   });
@@ -1710,7 +1694,6 @@ if (path === 'index.html' || path === '') {
   cargarHero();
   cargarNovedades();
   cargarUltimoBlogHome();
-  // CAMBIO: sin límite, la destacada también aparece en el grid
   cargarHistorias({ excluirDestacada: false });
 } else if (path === 'historias.html') {
   cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') });
