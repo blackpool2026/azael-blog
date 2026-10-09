@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Roles mejorados + canvas drag&drop
+   Con roles mejorados, canvas drag&drop y conectores
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -23,7 +23,7 @@ let currentTreeStory = null;
 let currentCharacter = null;
 let currentCharacterImageUrl = null;
 
-// Lista de roles predefinidos (para detectar si un rol guardado es "personalizado")
+// Lista de roles predefinidos
 const PREDEFINED_ROLES = [
   'Protagonista','Coprotagonista','Deuteragonista',
   'Antagonista','Villano','Rival','Traidor',
@@ -1586,6 +1586,7 @@ document.getElementById('characterDeleteBtn')?.addEventListener('click', async (
 let canvasState = {
   storyId: null,
   nodes: [],
+  edges: [],
   zoom: 1,
   panX: 0,
   panY: 0,
@@ -1618,6 +1619,11 @@ async function abrirCanvasArbol(storyId) {
     .eq('story_id', storyId)
     .order('created_at', { ascending: true });
 
+  const { data: edges } = await db
+    .from('character_edges')
+    .select('*')
+    .eq('story_id', storyId);
+
   hideLoading();
 
   canvasState.storyId = storyId;
@@ -1626,10 +1632,13 @@ async function abrirCanvasArbol(storyId) {
     x: Number(n.x) || 400,
     y: Number(n.y) || 200,
   }));
+  canvasState.edges = edges || [];
   canvasState.zoom = 1;
   canvasState.panX = 0;
   canvasState.panY = 0;
   canvasState.dirtyNodes.clear();
+
+  desactivarModoConectar();
 
   document.getElementById('canvasBookTitle').textContent = story.title;
   document.getElementById('canvasCharCount').textContent =
@@ -1637,6 +1646,7 @@ async function abrirCanvasArbol(storyId) {
 
   showView('viewArbolCanvas');
   renderizarCanvas();
+  dibujarEdges();
   updateZoomLabel();
   if (window.lucide) lucide.createIcons();
 }
@@ -1680,12 +1690,20 @@ function renderizarCanvas() {
       const id = el.dataset.nodeId;
       abrirCharacterForm(id);
     });
+    el.addEventListener('click', (e) => {
+      if (connectState.active) {
+        e.stopPropagation();
+        const node = canvasState.nodes.find(n => n.id === el.dataset.nodeId);
+        if (node) handleNodeClickForConnect(node);
+      }
+    });
   });
 }
 
 /* ---------- DRAG DE NODOS ---------- */
 function iniciarDragNode(e) {
   if (e.target.closest('button')) return;
+  if (connectState.active) return;
 
   const el = e.currentTarget;
   const id = el.dataset.nodeId;
@@ -1730,6 +1748,8 @@ function moverDragNode(e) {
   el.style.top = newY + 'px';
 
   canvasState.dirtyNodes.add(node.id);
+
+  if (canvasState.edges.length) dibujarEdges();
 }
 
 function terminarDragNode(e) {
@@ -1780,6 +1800,7 @@ async function guardarPosiciones() {
 /* ---------- PAN DEL LIENZO ---------- */
 function iniciarPanCanvas(e) {
   if (e.target.closest('.canvas-node')) return;
+  if (connectState.active) return;
   if (e.button !== undefined && e.button !== 0) return;
 
   canvasState.isPanning = true;
@@ -1839,12 +1860,418 @@ function resetearVista() {
   updateZoomLabel();
 }
 
+/* ============================================
+   CONECTORES — FASE 4A
+   ============================================ */
+
+const RELATION_TYPES = {
+  familia:   { label: 'Familia',   emoji: '🏠', color: '#9c27b0', style: 'solid',  defaultLabel: 'familia de' },
+  amor:      { label: 'Amor',      emoji: '❤️', color: '#e91e63', style: 'solid',  defaultLabel: 'pareja de' },
+  amistad:   { label: 'Amistad',   emoji: '🤝', color: '#4caf50', style: 'solid',  defaultLabel: 'amigo de' },
+  conflicto: { label: 'Conflicto', emoji: '⚔️', color: '#e50914', style: 'dashed', defaultLabel: 'enemigo de' },
+  trabajo:   { label: 'Trabajo',   emoji: '💼', color: '#2196f3', style: 'solid',  defaultLabel: 'colega de' },
+  mentor:    { label: 'Mentor',    emoji: '🎓', color: '#ff9800', style: 'solid',  defaultLabel: 'mentor de' },
+  rival:     { label: 'Rival',     emoji: '🥊', color: '#ff5722', style: 'dashed', defaultLabel: 'rival de' },
+  conocido:  { label: 'Conocido',  emoji: '👋', color: '#9e9e9e', style: 'dotted', defaultLabel: 'conoce a' },
+  otro:      { label: 'Otro',      emoji: '🔗', color: '#6a6a78', style: 'solid',  defaultLabel: '' },
+};
+
+let connectState = {
+  active: false,
+  fromNode: null,
+};
+
+function activarModoConectar() {
+  if (canvasState.nodes.length < 2) {
+    toast('Necesitas al menos 2 personajes para conectar', 'info');
+    return;
+  }
+  connectState.active = true;
+  connectState.fromNode = null;
+
+  document.getElementById('canvasHintDefault').hidden = true;
+  document.getElementById('canvasHintConnect').hidden = false;
+  document.getElementById('canvasHintConnectText').textContent = 'Selecciona el primer personaje';
+  document.getElementById('canvasConnectBtn').classList.add('active');
+  document.getElementById('arbolCanvasViewport')?.classList.add('connect-mode');
+
+  toast('Modo conectar activado. Toca el primer personaje.', 'info');
+}
+
+function desactivarModoConectar() {
+  connectState.active = false;
+  connectState.fromNode = null;
+
+  document.getElementById('canvasHintDefault').hidden = false;
+  document.getElementById('canvasHintConnect').hidden = true;
+  document.getElementById('canvasConnectBtn')?.classList.remove('active');
+  document.getElementById('arbolCanvasViewport')?.classList.remove('connect-mode');
+
+  document.querySelectorAll('.canvas-node.selecting-from, .canvas-node.selecting-to').forEach(el => {
+    el.classList.remove('selecting-from', 'selecting-to');
+  });
+}
+
+function handleNodeClickForConnect(node) {
+  if (!connectState.active) return;
+
+  if (!connectState.fromNode) {
+    connectState.fromNode = node;
+    document.getElementById('canvasHintConnectText').textContent = `Desde: ${node.name}. Toca el segundo personaje.`;
+
+    const el = document.querySelector(`.canvas-node[data-node-id="${node.id}"]`);
+    if (el) el.classList.add('selecting-from');
+
+    document.querySelectorAll('.canvas-node').forEach(other => {
+      if (other.dataset.nodeId !== node.id) other.classList.add('selecting-to');
+    });
+  } else {
+    if (connectState.fromNode.id === node.id) {
+      toast('No puedes conectar un personaje consigo mismo', 'error');
+      return;
+    }
+
+    const fromNode = connectState.fromNode;
+
+    document.querySelectorAll('.canvas-node.selecting-from, .canvas-node.selecting-to').forEach(el => {
+      el.classList.remove('selecting-from', 'selecting-to');
+    });
+
+    abrirModalConexion(fromNode, node);
+
+    connectState.fromNode = null;
+    document.getElementById('canvasHintConnectText').textContent = 'Selecciona el primer personaje';
+  }
+}
+
+async function abrirModalConexion(fromNode, toNode) {
+  const existing = canvasState.edges.find(e =>
+    (e.from_node_id === fromNode.id && e.to_node_id === toNode.id) ||
+    (e.from_node_id === toNode.id && e.to_node_id === fromNode.id)
+  );
+
+  const isEditing = !!existing;
+  const edgeData = existing || {
+    from_node_id: fromNode.id,
+    to_node_id: toNode.id,
+    relation_type: 'otro',
+    relation_label: '',
+    line_color: RELATION_TYPES.otro.color,
+    line_style: RELATION_TYPES.otro.style,
+    line_width: 2,
+    arrow_start: false,
+    arrow_end: false,
+    curve_offset: 0,
+    line_opacity: 1,
+  };
+
+  const modal = document.createElement('div');
+  modal.className = 'custom-input-overlay';
+  modal.id = 'edgeModal';
+  modal.innerHTML = `
+    <div class="custom-input-modal edge-modal">
+      <h3 class="custom-input-title">${isEditing ? 'Editar conexión' : 'Nueva conexión'}</h3>
+      <p class="custom-input-desc" style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
+        <span class="edge-modal-node-preview">
+          <span class="edge-modal-avatar">${fromNode.image_url ? `<img src="${fromNode.image_url}" alt="" />` : escapeHtml(fromNode.emoji || '👤')}</span>
+          <span>${escapeHtml(fromNode.name)}</span>
+        </span>
+        <span style="color:var(--accent-color);">↔</span>
+        <span class="edge-modal-node-preview">
+          <span class="edge-modal-avatar">${toNode.image_url ? `<img src="${toNode.image_url}" alt="" />` : escapeHtml(toNode.emoji || '👤')}</span>
+          <span>${escapeHtml(toNode.name)}</span>
+        </span>
+      </p>
+
+      <div class="custom-input-field">
+        <label>Tipo de relación</label>
+        <select id="edgeTypeSelect">
+          ${Object.entries(RELATION_TYPES).map(([key, t]) => `
+            <option value="${key}" ${edgeData.relation_type === key ? 'selected' : ''}>
+              ${t.emoji} ${t.label}
+            </option>
+          `).join('')}
+        </select>
+      </div>
+
+      <div class="custom-input-field">
+        <label>Etiqueta (texto sobre la línea)</label>
+        <input type="text" id="edgeLabelInput" maxlength="60" placeholder="Ej: padre de, amigo de…" value="${escapeHtml(edgeData.relation_label || '')}" />
+      </div>
+
+      <div class="custom-input-field">
+        <label>Color de la línea</label>
+        <div class="edge-color-picker">
+          <input type="color" id="edgeColorInput" value="${edgeData.line_color || '#e50914'}" />
+          <div class="edge-color-presets">
+            ${Object.entries(RELATION_TYPES).map(([key, t]) => `
+              <button type="button" class="edge-color-preset" data-color="${t.color}" style="background:${t.color};" title="${t.label}"></button>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="custom-input-field">
+        <label>Estilo de línea</label>
+        <div class="edge-style-picker">
+          <button type="button" class="edge-style-btn ${edgeData.line_style === 'solid' ? 'active' : ''}" data-style="solid">
+            <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2"/></svg>
+          </button>
+          <button type="button" class="edge-style-btn ${edgeData.line_style === 'dashed' ? 'active' : ''}" data-style="dashed">
+            <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="6,4"/></svg>
+          </button>
+          <button type="button" class="edge-style-btn ${edgeData.line_style === 'dotted' ? 'active' : ''}" data-style="dotted">
+            <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2,4"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="custom-input-field">
+        <label>Flechas</label>
+        <div class="edge-arrows-picker">
+          <label class="admin-check" style="padding:8px 12px;">
+            <input type="checkbox" id="edgeArrowStart" ${edgeData.arrow_start ? 'checked' : ''} />
+            <span>Al inicio</span>
+          </label>
+          <label class="admin-check" style="padding:8px 12px;">
+            <input type="checkbox" id="edgeArrowEnd" ${edgeData.arrow_end ? 'checked' : ''} />
+            <span>Al final</span>
+          </label>
+        </div>
+      </div>
+
+      <div class="custom-input-actions">
+        ${isEditing ? `<button class="btn btn-ghost" id="edgeDeleteBtn" style="color:#ff6b6b;">Eliminar</button>` : ''}
+        <button class="btn btn-ghost" id="edgeCancelBtn">Cancelar</button>
+        <button class="btn btn-primary" id="edgeSaveBtn">${isEditing ? 'Guardar' : 'Crear conexión'}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const typeSelect = modal.querySelector('#edgeTypeSelect');
+  const labelInput = modal.querySelector('#edgeLabelInput');
+  const colorInput = modal.querySelector('#edgeColorInput');
+  const styleBtns = modal.querySelectorAll('.edge-style-btn');
+  const colorPresets = modal.querySelectorAll('.edge-color-preset');
+  const arrowStart = modal.querySelector('#edgeArrowStart');
+  const arrowEnd = modal.querySelector('#edgeArrowEnd');
+
+  let selectedStyle = edgeData.line_style || 'solid';
+
+  typeSelect.addEventListener('change', () => {
+    const t = RELATION_TYPES[typeSelect.value];
+    if (!t) return;
+    colorInput.value = t.color;
+    selectedStyle = t.style;
+    styleBtns.forEach(b => b.classList.toggle('active', b.dataset.style === t.style));
+    if (!labelInput.value.trim() || labelInput.dataset.auto === '1') {
+      labelInput.value = t.defaultLabel;
+      labelInput.dataset.auto = '1';
+    }
+  });
+
+  labelInput.addEventListener('input', () => {
+    labelInput.dataset.auto = '0';
+  });
+
+  styleBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedStyle = btn.dataset.style;
+      styleBtns.forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+
+  colorPresets.forEach(btn => {
+    btn.addEventListener('click', () => {
+      colorInput.value = btn.dataset.color;
+    });
+  });
+
+  modal.querySelector('#edgeCancelBtn').addEventListener('click', () => modal.remove());
+
+  modal.querySelector('#edgeDeleteBtn')?.addEventListener('click', async () => {
+    if (!confirm('¿Eliminar esta conexión?')) return;
+    await eliminarConexion(existing.id);
+    modal.remove();
+  });
+
+  modal.querySelector('#edgeSaveBtn').addEventListener('click', async () => {
+    const payload = {
+      story_id: canvasState.storyId,
+      user_id: session.user.id,
+      from_node_id: fromNode.id,
+      to_node_id: toNode.id,
+      relation_type: typeSelect.value,
+      relation_label: labelInput.value.trim(),
+      line_color: colorInput.value,
+      line_style: selectedStyle,
+      line_width: 2,
+      arrow_start: arrowStart.checked,
+      arrow_end: arrowEnd.checked,
+      curve_offset: 0,
+      line_opacity: 1,
+      is_custom_style: true,
+    };
+
+    showLoading();
+    let error;
+    if (isEditing) {
+      ({ error } = await db.from('character_edges').update(payload).eq('id', existing.id));
+    } else {
+      ({ error } = await db.from('character_edges').insert(payload));
+    }
+    hideLoading();
+
+    if (error) { toast('Error: ' + error.message, 'error'); return; }
+    toast(isEditing ? 'Conexión actualizada' : 'Conexión creada', 'ok');
+    modal.remove();
+
+    await recargarEdges();
+  });
+}
+
+async function eliminarConexion(edgeId) {
+  showLoading();
+  const { error } = await db.from('character_edges').delete().eq('id', edgeId);
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Conexión eliminada', 'ok');
+  await recargarEdges();
+}
+
+async function recargarEdges() {
+  const { data } = await db
+    .from('character_edges')
+    .select('*')
+    .eq('story_id', canvasState.storyId);
+  canvasState.edges = data || [];
+  dibujarEdges();
+}
+
+function dibujarEdges() {
+  const svg = document.getElementById('arbolCanvasSvg');
+  if (!svg) return;
+
+  const NODE_W = 130;
+  const NODE_H = 130;
+
+  svg.innerHTML = `
+    <defs>
+      <marker id="arrowEnd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
+      </marker>
+      <marker id="arrowStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+        <path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" />
+      </marker>
+    </defs>
+  `;
+
+  canvasState.edges.forEach(edge => {
+    const from = canvasState.nodes.find(n => n.id === edge.from_node_id);
+    const to = canvasState.nodes.find(n => n.id === edge.to_node_id);
+    if (!from || !to) return;
+
+    const fromCX = from.x + NODE_W / 2;
+    const fromCY = from.y + NODE_H / 2;
+    const toCX = to.x + NODE_W / 2;
+    const toCY = to.y + NODE_H / 2;
+
+    const angle = Math.atan2(toCY - fromCY, toCX - fromCX);
+    const radiusX = NODE_W / 2;
+    const radiusY = NODE_H / 2;
+
+    const fromX = fromCX + Math.cos(angle) * radiusX * 0.85;
+    const fromY = fromCY + Math.sin(angle) * radiusY * 0.85;
+    const toX = toCX - Math.cos(angle) * radiusX * 0.85;
+    const toY = toCY - Math.sin(angle) * radiusY * 0.85;
+
+    const color = edge.line_color || '#e50914';
+    const style = edge.line_style || 'solid';
+    const width = edge.line_width || 2;
+    const opacity = edge.line_opacity || 1;
+
+    let dashAttr = '';
+    if (style === 'dashed') dashAttr = 'stroke-dasharray="8,6"';
+    else if (style === 'dotted') dashAttr = 'stroke-dasharray="2,6"';
+
+    const markerStart = edge.arrow_start ? 'marker-start="url(#arrowStart)"' : '';
+    const markerEnd = edge.arrow_end ? 'marker-end="url(#arrowEnd)"' : '';
+
+    svg.insertAdjacentHTML('beforeend', `
+      <line
+        x1="${fromX}" y1="${fromY}"
+        x2="${toX}" y2="${toY}"
+        stroke="${color}"
+        stroke-width="${width}"
+        stroke-opacity="${opacity}"
+        ${dashAttr}
+        ${markerStart}
+        ${markerEnd}
+        stroke-linecap="round"
+        data-edge-id="${edge.id}"
+        class="canvas-edge-line"
+        style="cursor: pointer; pointer-events: stroke;"
+      />
+    `);
+
+    if (edge.relation_label && edge.relation_label.trim()) {
+      const midX = (fromX + toX) / 2;
+      const midY = (fromY + toY) / 2;
+
+      let angleDeg = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
+      if (angleDeg > 90 || angleDeg < -90) angleDeg += 180;
+
+      const labelWidth = edge.relation_label.length * 6.5 + 16;
+      const labelHeight = 20;
+
+      svg.insertAdjacentHTML('beforeend', `
+        <g class="canvas-edge-label-group" data-edge-id="${edge.id}" style="cursor: pointer;">
+          <rect
+            x="${midX - labelWidth / 2}"
+            y="${midY - labelHeight / 2}"
+            width="${labelWidth}"
+            height="${labelHeight}"
+            rx="10"
+            fill="var(--bg-elevated)"
+            stroke="${color}"
+            stroke-width="1.5"
+            opacity="0.95"
+          />
+          <text
+            x="${midX}"
+            y="${midY + 4}"
+            text-anchor="middle"
+            font-family="Inter, sans-serif"
+            font-size="11"
+            font-weight="600"
+            fill="${color}"
+            style="user-select: none; pointer-events: none;"
+          >${escapeHtml(edge.relation_label)}</text>
+        </g>
+      `);
+    }
+  });
+
+  svg.querySelectorAll('.canvas-edge-line, .canvas-edge-label-group').forEach(el => {
+    el.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const edgeId = el.dataset.edgeId;
+      const edge = canvasState.edges.find(ed => ed.id === edgeId);
+      if (!edge) return;
+      const fromNode = canvasState.nodes.find(n => n.id === edge.from_node_id);
+      const toNode = canvasState.nodes.find(n => n.id === edge.to_node_id);
+      if (fromNode && toNode) abrirModalConexion(fromNode, toNode);
+    });
+  });
+}
+
 /* ---------- INIT DEL CANVAS ---------- */
 function initCanvasListeners() {
   const viewport = document.getElementById('arbolCanvasViewport');
   if (viewport) {
     viewport.addEventListener('pointerdown', (e) => {
-      if (!e.target.closest('.canvas-node')) {
+      if (!e.target.closest('.canvas-node') && !connectState.active) {
         iniciarPanCanvas(e);
       }
     });
@@ -1867,6 +2294,19 @@ function initCanvasListeners() {
 
   document.getElementById('btnOpenCanvas')?.addEventListener('click', () => {
     if (currentTreeStory) abrirCanvasArbol(currentTreeStory.id);
+  });
+
+  document.getElementById('canvasConnectBtn')?.addEventListener('click', () => {
+    if (connectState.active) {
+      desactivarModoConectar();
+      toast('Modo conectar desactivado', 'info');
+    } else {
+      activarModoConectar();
+    }
+  });
+
+  document.getElementById('canvasCancelConnect')?.addEventListener('click', () => {
+    desactivarModoConectar();
   });
 }
 
