@@ -608,10 +608,16 @@
               <h2 class="section-title">Personajes</h2>
               <p class="section-sub">Los habitantes de esta historia</p>
             </div>
-            <button class="btn btn-primary" id="btnNewCharacter">
-              <i data-lucide="plus" style="width:14px;height:14px;"></i>
-              Añadir personaje
-            </button>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-ghost" id="btnOpenCanvas">
+                <i data-lucide="network" style="width:14px;height:14px;"></i>
+                Ver lienzo
+              </button>
+              <button class="btn btn-primary" id="btnNewCharacter">
+                <i data-lucide="plus" style="width:14px;height:14px;"></i>
+                Añadir personaje
+              </button>
+            </div>
           </div>
           <div class="characters-admin-list" id="charactersAdminList">
             <div class="empty-c">
@@ -620,6 +626,46 @@
             </div>
           </div>
         </section>
+      </div>
+    </section>
+
+    <!-- ÁRBOLES — CANVAS VISUAL -->
+    <section class="admin-view" id="viewArbolCanvas" hidden>
+      <div class="arbol-canvas-shell">
+        <div class="arbol-canvas-toolbar">
+          <button class="btn btn-ghost btn-sm" id="canvasBackBtn">
+            <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+            Volver
+          </button>
+          <div class="canvas-toolbar-info">
+            <strong id="canvasBookTitle">—</strong>
+            <span id="canvasCharCount">0 personajes</span>
+          </div>
+          <div class="canvas-toolbar-actions">
+            <button class="icon-action" id="canvasZoomOut" title="Alejar">−</button>
+            <span class="canvas-zoom-label" id="canvasZoomLabel">100%</span>
+            <button class="icon-action" id="canvasZoomIn" title="Acercar">+</button>
+            <button class="icon-action" id="canvasResetView" title="Centrar">
+              <i data-lucide="maximize" style="width:16px;height:16px;"></i>
+            </button>
+            <button class="btn btn-primary btn-sm" id="canvasAddChar">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i>
+              Añadir
+            </button>
+          </div>
+        </div>
+
+        <div class="arbol-canvas-viewport" id="arbolCanvasViewport">
+          <div class="arbol-canvas-world" id="arbolCanvasWorld">
+            <svg class="arbol-canvas-svg" id="arbolCanvasSvg" xmlns="http://www.w3.org/2000/svg"></svg>
+            <div class="arbol-canvas-nodes" id="arbolCanvasNodes"></div>
+          </div>
+        </div>
+
+        <div class="arbol-canvas-hint">
+          <i data-lucide="info" style="width:14px;height:14px;"></i>
+          <span>Arrastra los personajes para moverlos. Los cambios se guardan automáticamente.</span>
+        </div>
       </div>
     </section>
 
