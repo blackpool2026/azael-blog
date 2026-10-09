@@ -1,7 +1,6 @@
 /* ============================================
    AZAEL BLOG — Design System + Fixes
-   Con mejoras: botón ajustes visible, likes
-   privados, anti-copia, responsive PC
+   Con fix del modo enfoque y botón salir
    ============================================ */
 
 :root {
@@ -3110,7 +3109,7 @@ body.drawer-open .drawer { transform: translateX(0); }
   height: 18px;
 }
 
-/* ============ MODO ENFOQUE (sin fullscreen nativo) ============ */
+/* ============ MODO ENFOQUE ============ */
 body.focus-mode {
   overflow-x: hidden;
 }
@@ -3125,7 +3124,8 @@ body.focus-mode #auth-mount,
 body.focus-mode #toast-mount,
 body.focus-mode .drawer,
 body.focus-mode .drawer-backdrop,
-body.focus-mode #globalLoading {
+body.focus-mode #globalLoading,
+body.focus-mode .pwa-install-btn {
   display: none !important;
 }
 
@@ -3150,31 +3150,38 @@ body.focus-mode .chapter-story-link {
   letter-spacing: 0.16em;
 }
 
-body.focus-mode::after {
-  content: 'Salir';
+/* Botón de salir del modo enfoque (elemento real, NO pseudo-elemento) */
+.focus-exit-btn {
   position: fixed;
-  bottom: 20px;
-  right: 20px;
+  bottom: 24px;
+  right: 24px;
   z-index: 9700;
-  padding: 14px 24px;
+  padding: 14px 28px;
   background: var(--accent-color);
   color: #ffffff;
   font-family: var(--font-sans);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
+  border: none;
   border-radius: 100px;
   box-shadow: 0 8px 24px var(--accent-glow);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
   opacity: 0;
   transform: translateY(20px);
-  transition: opacity .3s, transform .3s;
-  pointer-events: none;
+  transition: opacity .3s, transform .3s, box-shadow .3s;
 }
 
-body.focus-mode.focus-exit-ready::after {
+.focus-exit-btn.visible {
   opacity: 1;
   transform: translateY(0);
-  pointer-events: auto;
-  cursor: pointer;
+}
+
+.focus-exit-btn:hover {
+  box-shadow: 0 12px 32px var(--accent-glow);
+  transform: translateY(-2px);
 }
 
 @media (max-width: 700px) {
@@ -3186,6 +3193,12 @@ body.focus-mode.focus-exit-ready::after {
   }
   body.focus-mode .chapter-body {
     font-size: 17px;
+  }
+  .focus-exit-btn {
+    bottom: 16px;
+    right: 16px;
+    padding: 12px 22px;
+    font-size: 13px;
   }
 }
 
@@ -3638,18 +3651,12 @@ body.focus-mode.focus-exit-ready::after {
   100% { transform: scale(1); }
 }
 
-.like-count {
-  font-variant-numeric: tabular-nums;
-  min-width: 20px;
-  text-align: left;
-}
-
 .like-label {
   font-size: 13px;
   font-weight: 600;
 }
 
-/* ============ ANTI-COPIA (opcional refuerzo visual) ============ */
+/* ============ ANTI-COPIA (refuerzo visual) ============ */
 .chapter-body {
   -webkit-touch-callout: none;
 }
@@ -3734,7 +3741,7 @@ body.focus-mode.focus-exit-ready::after {
   .chapter-nav-btn:nth-child(2) { grid-column: auto; order: 0; }
 }
 
-/* ============ ADAPTACIÓN PARA PC (PANTALLAS GRANDES) ============ */
+/* ============ ADAPTACIÓN PARA PC ============ */
 @media (min-width: 1024px) {
   .container {
     max-width: 1320px;
