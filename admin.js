@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Con: ajustes del sitio + árbol de personajes
+   Con: ajustes + árbol + canvas visual (drag&drop)
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -1241,7 +1241,6 @@ async function cargarEstante() {
     return;
   }
 
-  // Contar personajes por historia
   const { data: nodes } = await db
     .from('character_nodes')
     .select('story_id');
@@ -1473,12 +1472,14 @@ document.getElementById('characterForm')?.addEventListener('submit', async (e) =
 
   showLoading();
   let error;
+  const vinoDeCanvas = canvasState.storyId === currentTreeStory.id;
+
   if (currentCharacter) {
     ({ error } = await db.from('character_nodes').update(payload).eq('id', currentCharacter.id));
   } else {
-    // Posición inicial aleatoria dentro del lienzo
-    payload.x = 200 + Math.random() * 400;
-    payload.y = 150 + Math.random() * 300;
+    // Posición inicial cercana al centro del canvas visible
+    payload.x = 300 + Math.random() * 200;
+    payload.y = 200 + Math.random() * 200;
     ({ error } = await db.from('character_nodes').insert(payload));
   }
   hideLoading();
@@ -1488,23 +1489,327 @@ document.getElementById('characterForm')?.addEventListener('submit', async (e) =
   limpiarCachePublica();
 
   setTimeout(() => {
-    showView('viewArbol');
-    cargarPersonajesAdmin(currentTreeStory.id);
+    if (vinoDeCanvas) {
+      abrirCanvasArbol(currentTreeStory.id);
+    } else {
+      showView('viewArbol');
+      cargarPersonajesAdmin(currentTreeStory.id);
+    }
   }, 400);
 });
 
 document.getElementById('characterDeleteBtn')?.addEventListener('click', async () => {
   if (!currentCharacter) return;
   if (!confirm(`¿Eliminar a "${currentCharacter.name}"? Se eliminarán también sus conexiones.`)) return;
+  const vinoDeCanvas = canvasState.storyId === currentTreeStory.id;
   showLoading();
   const { error } = await db.from('character_nodes').delete().eq('id', currentCharacter.id);
   hideLoading();
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Personaje eliminado', 'ok');
   limpiarCachePublica();
-  showView('viewArbol');
-  cargarPersonajesAdmin(currentTreeStory.id);
+
+  if (vinoDeCanvas) {
+    abrirCanvasArbol(currentTreeStory.id);
+  } else {
+    showView('viewArbol');
+    cargarPersonajesAdmin(currentTreeStory.id);
+  }
 });
+
+/* ============================================
+   CANVAS VISUAL (drag & drop)
+   ============================================ */
+
+let canvasState = {
+  storyId: null,
+  nodes: [],
+  zoom: 1,
+  panX: 0,
+  panY: 0,
+  isPanning: false,
+  panStartX: 0,
+  panStartY: 0,
+  draggingNode: null,
+  dragStartPointerX: 0,
+  dragStartPointerY: 0,
+  dragStartNodeX: 0,
+  dragStartNodeY: 0,
+  dirtyNodes: new Set(),
+  saveTimer: null,
+};
+
+async function abrirCanvasArbol(storyId) {
+  showLoading();
+
+  const { data: story } = await db
+    .from('stories')
+    .select('id, title, cover_url')
+    .eq('id', storyId)
+    .maybeSingle();
+
+  if (!story) { hideLoading(); toast('Historia no encontrada', 'error'); return; }
+
+  const { data: nodes } = await db
+    .from('character_nodes')
+    .select('*')
+    .eq('story_id', storyId)
+    .order('created_at', { ascending: true });
+
+  hideLoading();
+
+  canvasState.storyId = storyId;
+  canvasState.nodes = (nodes || []).map(n => ({
+    ...n,
+    x: Number(n.x) || 400,
+    y: Number(n.y) || 200,
+  }));
+  canvasState.zoom = 1;
+  canvasState.panX = 0;
+  canvasState.panY = 0;
+  canvasState.dirtyNodes.clear();
+
+  document.getElementById('canvasBookTitle').textContent = story.title;
+  document.getElementById('canvasCharCount').textContent =
+    `${canvasState.nodes.length} ${canvasState.nodes.length === 1 ? 'personaje' : 'personajes'}`;
+
+  showView('viewArbolCanvas');
+  renderizarCanvas();
+  updateZoomLabel();
+  if (window.lucide) lucide.createIcons();
+}
+
+function renderizarCanvas() {
+  const world = document.getElementById('arbolCanvasWorld');
+  const nodesEl = document.getElementById('arbolCanvasNodes');
+  if (!world || !nodesEl) return;
+
+  world.style.transform = `translate(${canvasState.panX}px, ${canvasState.panY}px) scale(${canvasState.zoom})`;
+
+  if (!canvasState.nodes.length) {
+    nodesEl.innerHTML = `
+      <div class="canvas-empty">
+        <div class="canvas-empty-icon">👤</div>
+        <div class="canvas-empty-title">Sin personajes</div>
+        <div class="canvas-empty-sub">Toca "Añadir" para crear el primero</div>
+      </div>
+    `;
+    return;
+  }
+
+  nodesEl.innerHTML = canvasState.nodes.map(n => {
+    const avatar = n.image_url
+      ? `<img src="${n.image_url}" alt="" draggable="false" />`
+      : `<span>${escapeHtml(n.emoji || '👤')}</span>`;
+    return `
+      <div class="canvas-node"
+           data-node-id="${n.id}"
+           style="left: ${n.x}px; top: ${n.y}px;">
+        <div class="canvas-node-avatar">${avatar}</div>
+        <div class="canvas-node-name">${escapeHtml(n.name)}</div>
+        ${n.role ? `<div class="canvas-node-role">${escapeHtml(n.role)}</div>` : ''}
+      </div>
+    `;
+  }).join('');
+
+  nodesEl.querySelectorAll('.canvas-node').forEach(el => {
+    el.addEventListener('pointerdown', iniciarDragNode);
+    el.addEventListener('dblclick', () => {
+      const id = el.dataset.nodeId;
+      abrirCharacterForm(id);
+    });
+  });
+}
+
+/* ---------- DRAG DE NODOS ---------- */
+function iniciarDragNode(e) {
+  if (e.target.closest('button')) return;
+
+  const el = e.currentTarget;
+  const id = el.dataset.nodeId;
+  const node = canvasState.nodes.find(n => n.id === id);
+  if (!node) return;
+
+  e.preventDefault();
+  e.stopPropagation();
+
+  canvasState.draggingNode = node;
+  canvasState.dragStartPointerX = e.clientX;
+  canvasState.dragStartPointerY = e.clientY;
+  canvasState.dragStartNodeX = node.x;
+  canvasState.dragStartNodeY = node.y;
+
+  el.classList.add('dragging');
+  try { el.setPointerCapture(e.pointerId); } catch {}
+
+  document.addEventListener('pointermove', moverDragNode);
+  document.addEventListener('pointerup', terminarDragNode);
+  document.addEventListener('pointercancel', terminarDragNode);
+}
+
+function moverDragNode(e) {
+  if (!canvasState.draggingNode) return;
+  e.preventDefault();
+
+  const node = canvasState.draggingNode;
+  const el = document.querySelector(`.canvas-node[data-node-id="${node.id}"]`);
+  if (!el) return;
+
+  // Diferencia del puntero respecto al inicio del drag
+  const dx = (e.clientX - canvasState.dragStartPointerX) / canvasState.zoom;
+  const dy = (e.clientY - canvasState.dragStartPointerY) / canvasState.zoom;
+
+  // Nueva posición = posición inicial del nodo + diferencia
+  const newX = Math.max(0, canvasState.dragStartNodeX + dx);
+  const newY = Math.max(0, canvasState.dragStartNodeY + dy);
+
+  node.x = newX;
+  node.y = newY;
+
+  el.style.left = newX + 'px';
+  el.style.top = newY + 'px';
+
+  canvasState.dirtyNodes.add(node.id);
+}
+
+function terminarDragNode(e) {
+  if (!canvasState.draggingNode) return;
+
+  const el = document.querySelector(`.canvas-node[data-node-id="${canvasState.draggingNode.id}"]`);
+  if (el) {
+    el.classList.remove('dragging');
+    try { el.releasePointerCapture(e.pointerId); } catch {}
+  }
+
+  canvasState.draggingNode = null;
+  document.removeEventListener('pointermove', moverDragNode);
+  document.removeEventListener('pointerup', terminarDragNode);
+  document.removeEventListener('pointercancel', terminarDragNode);
+
+  programarGuardarPosiciones();
+}
+
+function programarGuardarPosiciones() {
+  clearTimeout(canvasState.saveTimer);
+  canvasState.saveTimer = setTimeout(guardarPosiciones, 500);
+}
+
+async function guardarPosiciones() {
+  if (!canvasState.dirtyNodes.size) return;
+
+  const ids = [...canvasState.dirtyNodes];
+  canvasState.dirtyNodes.clear();
+
+  try {
+    const updates = ids.map(id => {
+      const n = canvasState.nodes.find(x => x.id === id);
+      if (!n) return null;
+      return db.from('character_nodes')
+        .update({ x: Math.round(n.x), y: Math.round(n.y) })
+        .eq('id', id);
+    }).filter(Boolean);
+
+    await Promise.all(updates);
+    console.log(`[Canvas] ${ids.length} posiciones guardadas`);
+  } catch (e) {
+    console.warn('Error guardando posiciones:', e);
+    toast('No se pudieron guardar las posiciones', 'error');
+  }
+}
+
+/* ---------- PAN DEL LIENZO ---------- */
+function iniciarPanCanvas(e) {
+  if (e.target.closest('.canvas-node')) return;
+  if (e.button !== undefined && e.button !== 0) return;
+
+  canvasState.isPanning = true;
+  canvasState.panStartX = e.clientX - canvasState.panX;
+  canvasState.panStartY = e.clientY - canvasState.panY;
+
+  const viewport = document.getElementById('arbolCanvasViewport');
+  viewport?.classList.add('panning');
+
+  document.addEventListener('pointermove', moverPanCanvas);
+  document.addEventListener('pointerup', terminarPanCanvas);
+  document.addEventListener('pointercancel', terminarPanCanvas);
+}
+
+function moverPanCanvas(e) {
+  if (!canvasState.isPanning) return;
+  canvasState.panX = e.clientX - canvasState.panStartX;
+  canvasState.panY = e.clientY - canvasState.panStartY;
+  aplicarTransformCanvas();
+}
+
+function terminarPanCanvas() {
+  canvasState.isPanning = false;
+  const viewport = document.getElementById('arbolCanvasViewport');
+  viewport?.classList.remove('panning');
+  document.removeEventListener('pointermove', moverPanCanvas);
+  document.removeEventListener('pointerup', terminarPanCanvas);
+  document.removeEventListener('pointercancel', terminarPanCanvas);
+}
+
+function aplicarTransformCanvas() {
+  const world = document.getElementById('arbolCanvasWorld');
+  if (world) {
+    world.style.transform = `translate(${canvasState.panX}px, ${canvasState.panY}px) scale(${canvasState.zoom})`;
+  }
+}
+
+/* ---------- ZOOM ---------- */
+function cambiarZoom(delta) {
+  const nuevo = Math.min(2, Math.max(0.3, canvasState.zoom + delta));
+  if (nuevo === canvasState.zoom) return;
+  canvasState.zoom = nuevo;
+  aplicarTransformCanvas();
+  updateZoomLabel();
+}
+
+function updateZoomLabel() {
+  const label = document.getElementById('canvasZoomLabel');
+  if (label) label.textContent = Math.round(canvasState.zoom * 100) + '%';
+}
+
+function resetearVista() {
+  canvasState.zoom = 1;
+  canvasState.panX = 0;
+  canvasState.panY = 0;
+  aplicarTransformCanvas();
+  updateZoomLabel();
+}
+
+/* ---------- INIT DEL CANVAS ---------- */
+function initCanvasListeners() {
+  const viewport = document.getElementById('arbolCanvasViewport');
+  if (viewport) {
+    viewport.addEventListener('pointerdown', (e) => {
+      if (!e.target.closest('.canvas-node')) {
+        iniciarPanCanvas(e);
+      }
+    });
+    // Prevenir scroll táctil mientras se arrastra
+    viewport.addEventListener('touchmove', (e) => {
+      if (canvasState.draggingNode || canvasState.isPanning) {
+        e.preventDefault();
+      }
+    }, { passive: false });
+  }
+
+  document.getElementById('canvasZoomIn')?.addEventListener('click', () => cambiarZoom(0.15));
+  document.getElementById('canvasZoomOut')?.addEventListener('click', () => cambiarZoom(-0.15));
+  document.getElementById('canvasResetView')?.addEventListener('click', resetearVista);
+
+  document.getElementById('canvasAddChar')?.addEventListener('click', () => abrirCharacterForm(null));
+  document.getElementById('canvasBackBtn')?.addEventListener('click', () => {
+    showView('viewArbol');
+    if (currentTreeStory) cargarPersonajesAdmin(currentTreeStory.id);
+  });
+
+  document.getElementById('btnOpenCanvas')?.addEventListener('click', () => {
+    if (currentTreeStory) abrirCanvasArbol(currentTreeStory.id);
+  });
+}
 
 /* ---------- BIOGRAFÍA ---------- */
 async function abrirBioView() {
@@ -1597,7 +1902,10 @@ document.getElementById('backFromStoryStats').addEventListener('click', () => { 
 document.getElementById('backFromAjustes')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromArboles')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromArbol')?.addEventListener('click', () => { showView('viewArbolesEstante'); cargarEstante(); });
-document.getElementById('backFromCharacterForm')?.addEventListener('click', () => { showView('viewArbol'); if (currentTreeStory) cargarPersonajesAdmin(currentTreeStory.id); });
+document.getElementById('backFromCharacterForm')?.addEventListener('click', () => {
+  showView('viewArbol');
+  if (currentTreeStory) cargarPersonajesAdmin(currentTreeStory.id);
+});
 
 /* ---------- HELPERS ---------- */
 function escapeHtml(str) {
@@ -1635,6 +1943,7 @@ function emptyState(iconName, title, sub) {
   inyectarAuthModal();
   initEditor('editorToolbar', 'chapterEditor', 'edCounter');
   initEditor('postToolbar', 'postEditor', 'postCounter');
+  initCanvasListeners();
 
   const ok = await verificarAutor();
 
