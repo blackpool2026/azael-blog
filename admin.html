@@ -642,6 +642,10 @@
             <span id="canvasCharCount">0 personajes</span>
           </div>
           <div class="canvas-toolbar-actions">
+            <button class="btn btn-ghost btn-sm" id="canvasConnectBtn" title="Conectar personajes">
+              <i data-lucide="link-2" style="width:14px;height:14px;"></i>
+              Conectar
+            </button>
             <button class="icon-action" id="canvasZoomOut" title="Alejar">−</button>
             <span class="canvas-zoom-label" id="canvasZoomLabel">100%</span>
             <button class="icon-action" id="canvasZoomIn" title="Acercar">+</button>
@@ -662,9 +666,15 @@
           </div>
         </div>
 
-        <div class="arbol-canvas-hint">
+        <div class="arbol-canvas-hint" id="canvasHintDefault">
           <i data-lucide="info" style="width:14px;height:14px;"></i>
-          <span>Arrastra los personajes para moverlos. Los cambios se guardan automáticamente.</span>
+          <span>Arrastra los personajes para moverlos. Toca "Conectar" para unir dos personajes.</span>
+        </div>
+
+        <div class="arbol-canvas-hint arbol-canvas-hint-connect" id="canvasHintConnect" hidden>
+          <i data-lucide="link-2" style="width:14px;height:14px;"></i>
+          <span id="canvasHintConnectText">Selecciona el primer personaje</span>
+          <button class="btn btn-ghost btn-sm" id="canvasCancelConnect">Cancelar</button>
         </div>
       </div>
     </section>
