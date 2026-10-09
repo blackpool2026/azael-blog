@@ -715,17 +715,98 @@
                   <span>Rol</span>
                   <select id="characterRole">
                     <option value="">— Selecciona —</option>
-                    <option>Protagonista</option>
-                    <option>Antagonista</option>
-                    <option>Villano</option>
-                    <option>Secundario</option>
-                    <option>Mentor</option>
-                    <option>Aliado</option>
-                    <option>Familia</option>
-                    <option>Amigo</option>
-                    <option>Mascota</option>
-                    <option>Extra</option>
-                    <option>Otro</option>
+                    <optgroup label="Protagonistas">
+                      <option>Protagonista</option>
+                      <option>Coprotagonista</option>
+                      <option>Deuteragonista</option>
+                    </optgroup>
+                    <optgroup label="Antagonistas">
+                      <option>Antagonista</option>
+                      <option>Villano</option>
+                      <option>Rival</option>
+                      <option>Traidor</option>
+                    </optgroup>
+                    <optgroup label="Familia">
+                      <option>Padre</option>
+                      <option>Madre</option>
+                      <option>Hijo</option>
+                      <option>Hija</option>
+                      <option>Hermano</option>
+                      <option>Hermana</option>
+                      <option>Abuelo</option>
+                      <option>Abuela</option>
+                      <option>Tío</option>
+                      <option>Tía</option>
+                      <option>Primo</option>
+                      <option>Prima</option>
+                      <option>Sobrino</option>
+                      <option>Sobrina</option>
+                      <option>Cuñado</option>
+                      <option>Cuñada</option>
+                      <option>Suegro</option>
+                      <option>Suegra</option>
+                      <option>Padrastro</option>
+                      <option>Madrastra</option>
+                      <option>Hijastro</option>
+                      <option>Hijastra</option>
+                      <option>Familia</option>
+                    </optgroup>
+                    <optgroup label="Pareja">
+                      <option>Pareja</option>
+                      <option>Esposo</option>
+                      <option>Esposa</option>
+                      <option>Novio</option>
+                      <option>Novia</option>
+                      <option>Prometido</option>
+                      <option>Prometida</option>
+                      <option>Ex-pareja</option>
+                      <option>Amante</option>
+                      <option>Interés amoroso</option>
+                    </optgroup>
+                    <optgroup label="Social">
+                      <option>Amigo</option>
+                      <option>Amiga</option>
+                      <option>Mejor amigo</option>
+                      <option>Mejor amiga</option>
+                      <option>Conocido</option>
+                      <option>Vecino</option>
+                      <option>Compañero</option>
+                      <option>Compañera</option>
+                      <option>Colega</option>
+                      <option>Aliado</option>
+                      <option>Cómplice</option>
+                    </optgroup>
+                    <optgroup label="Mentor / Alumno">
+                      <option>Mentor</option>
+                      <option>Mentora</option>
+                      <option>Maestro</option>
+                      <option>Maestra</option>
+                      <option>Alumno</option>
+                      <option>Alumna</option>
+                      <option>Aprendiz</option>
+                      <option>Discípulo</option>
+                      <option>Discípula</option>
+                    </optgroup>
+                    <optgroup label="Trabajo">
+                      <option>Jefe</option>
+                      <option>Jefa</option>
+                      <option>Empleado</option>
+                      <option>Empleada</option>
+                      <option>Subordinado</option>
+                      <option>Socio</option>
+                      <option>Socia</option>
+                      <option>Benefactor</option>
+                      <option>Benefactora</option>
+                    </optgroup>
+                    <optgroup label="Otros">
+                      <option>Mascota</option>
+                      <option>Guía</option>
+                      <option>Narrador</option>
+                      <option>Secundario</option>
+                      <option>Extra</option>
+                      <option>Desconocido</option>
+                      <option value="__custom__">✏️ Otro (personalizado)</option>
+                    </optgroup>
                   </select>
                 </label>
 
@@ -734,6 +815,11 @@
                   <input type="text" id="characterAge" maxlength="30" placeholder="Ej: 27 o 'Desconocida'" />
                 </label>
               </div>
+
+              <label class="admin-field" id="customRoleField" hidden>
+                <span>✏️ Escribe el rol personalizado</span>
+                <input type="text" id="characterCustomRole" maxlength="60" placeholder="Ej: hermanastro del villano, mentora secreta…" />
+              </label>
 
               <label class="admin-field">
                 <span>Emoji (si no pones imagen)</span>
