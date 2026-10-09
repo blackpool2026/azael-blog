@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Con ajustes del sitio (toggle likes/vistas)
+   Con: ajustes del sitio + árbol de personajes
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -17,6 +17,11 @@ let currentStory = null;
 let currentChapter = null;
 let currentPost = null;
 let currentProfile = null;
+
+// Árbol de personajes
+let currentTreeStory = null;
+let currentCharacter = null;
+let currentCharacterImageUrl = null;
 
 function ic(name, size = 18) {
   return `<i data-lucide="${name}" style="width:${size}px;height:${size}px;"></i>`;
@@ -1210,6 +1215,297 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
   limpiarCachePublica();
 });
 
+/* ============================================
+   ÁRBOLES DE PERSONAJES
+   ============================================ */
+
+/* ---------- ESTANTE DE LIBROS ---------- */
+async function abrirArbolesEstante() {
+  showView('viewArbolesEstante');
+  await cargarEstante();
+}
+
+async function cargarEstante() {
+  const shelf = document.getElementById('treesShelf');
+  showLoading();
+
+  const { data: stories, error } = await db
+    .from('stories')
+    .select('id, title, cover_url, genre, status, synopsis')
+    .order('created_at', { ascending: false });
+
+  hideLoading();
+
+  if (error || !stories?.length) {
+    shelf.innerHTML = emptyState('book', 'Sin historias', 'Crea una historia para empezar.');
+    return;
+  }
+
+  // Contar personajes por historia
+  const { data: nodes } = await db
+    .from('character_nodes')
+    .select('story_id');
+
+  const countByStory = {};
+  (nodes || []).forEach(n => {
+    countByStory[n.story_id] = (countByStory[n.story_id] || 0) + 1;
+  });
+
+  shelf.innerHTML = stories.map(s => {
+    const count = countByStory[s.id] || 0;
+    return `
+      <button class="tree-shelf-card" data-story-id="${s.id}">
+        <div class="tree-shelf-cover">
+          ${s.cover_url
+            ? `<img src="${s.cover_url}" alt="" loading="lazy" />`
+            : `<span>${escapeHtml(s.title.charAt(0))}</span>`}
+        </div>
+        <div class="tree-shelf-info">
+          <div class="tree-shelf-title">${escapeHtml(s.title)}</div>
+          <div class="tree-shelf-meta">
+            ${s.genre ? `<span>${escapeHtml(s.genre)}</span>` : ''}
+            <span>·</span>
+            <span>${count} ${count === 1 ? 'personaje' : 'personajes'}</span>
+          </div>
+        </div>
+      </button>
+    `;
+  }).join('');
+
+  document.querySelectorAll('.tree-shelf-card').forEach(card => {
+    card.addEventListener('click', () => abrirArbolLibro(card.dataset.storyId));
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
+
+/* ---------- ÁRBOL DE UN LIBRO ---------- */
+async function abrirArbolLibro(storyId) {
+  showLoading();
+  const { data: story } = await db
+    .from('stories')
+    .select('id, title, cover_url, genre, status, synopsis')
+    .eq('id', storyId)
+    .maybeSingle();
+  hideLoading();
+
+  if (!story) { toast('Historia no encontrada', 'error'); return; }
+
+  currentTreeStory = story;
+
+  const header = document.getElementById('arbolBookHeader');
+  header.innerHTML = `
+    <div class="arbol-book-header">
+      <div class="arbol-book-cover">
+        ${story.cover_url
+          ? `<img src="${story.cover_url}" alt="" />`
+          : `<span>${escapeHtml(story.title.charAt(0))}</span>`}
+      </div>
+      <div class="arbol-book-info">
+        <div class="story-badges">
+          ${story.genre ? `<span class="badge badge-genre">${escapeHtml(story.genre)}</span>` : ''}
+          <span class="badge badge-status">${escapeHtml(story.status || 'En curso')}</span>
+        </div>
+        <h1 class="story-h1" style="margin-top:8px;">${escapeHtml(story.title)}</h1>
+        ${story.synopsis ? `<p class="story-synopsis-c" style="margin-top:8px;">${escapeHtml(story.synopsis)}</p>` : ''}
+      </div>
+    </div>
+  `;
+
+  showView('viewArbol');
+  await cargarPersonajesAdmin(story.id);
+}
+
+/* ---------- LISTA DE PERSONAJES ---------- */
+async function cargarPersonajesAdmin(storyId) {
+  const list = document.getElementById('charactersAdminList');
+  showLoading();
+
+  const { data, error } = await db
+    .from('character_nodes')
+    .select('*')
+    .eq('story_id', storyId)
+    .order('created_at', { ascending: true });
+
+  hideLoading();
+
+  if (error) {
+    list.innerHTML = emptyState('alert-circle', 'Error', error.message);
+    return;
+  }
+
+  if (!data?.length) {
+    list.innerHTML = emptyState('users', 'Sin personajes', 'Añade el primer personaje de esta historia.');
+    return;
+  }
+
+  list.innerHTML = data.map(c => `
+    <div class="character-admin-card">
+      <div class="character-admin-avatar">
+        ${c.image_url
+          ? `<img src="${c.image_url}" alt="" onerror="this.parentElement.innerHTML='<span>${escapeHtml(c.emoji || '👤')}</span>';" />`
+          : `<span>${escapeHtml(c.emoji || '👤')}</span>`}
+      </div>
+      <div class="character-admin-body">
+        <div class="character-admin-name">
+          ${escapeHtml(c.name)}
+          ${c.alias ? `<span class="character-admin-alias">"${escapeHtml(c.alias)}"</span>` : ''}
+        </div>
+        <div class="character-admin-meta">
+          ${c.role ? `<span class="character-admin-role">${escapeHtml(c.role)}</span>` : ''}
+          ${c.age ? `<span>· ${escapeHtml(c.age)} años</span>` : ''}
+        </div>
+        ${c.description ? `<div class="character-admin-desc">${escapeHtml(c.description)}</div>` : ''}
+      </div>
+      <button class="admin-item-action" data-char-edit="${c.id}" title="Editar">${ic('edit-2', 16)}</button>
+    </div>
+  `).join('');
+
+  document.querySelectorAll('[data-char-edit]').forEach(btn => {
+    btn.addEventListener('click', () => abrirCharacterForm(btn.dataset.charEdit));
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
+
+/* ---------- FORM PERSONAJE ---------- */
+function abrirCharacterForm(id = null) {
+  currentCharacter = null;
+  currentCharacterImageUrl = null;
+  document.getElementById('characterForm').reset();
+  document.getElementById('characterEmoji').value = '👤';
+  document.getElementById('characterDeleteBtn').hidden = true;
+  document.getElementById('characterFormTitle').textContent = 'Nuevo personaje';
+  document.getElementById('characterRemoveImageBtn').hidden = true;
+  actualizarAvatarPreview('👤', null);
+
+  if (id) {
+    showLoading();
+    db.from('character_nodes').select('*').eq('id', id).maybeSingle().then(({ data }) => {
+      hideLoading();
+      if (!data) return;
+      currentCharacter = data;
+      currentCharacterImageUrl = data.image_url || null;
+      document.getElementById('characterName').value = data.name || '';
+      document.getElementById('characterAlias').value = data.alias || '';
+      document.getElementById('characterRole').value = data.role || '';
+      document.getElementById('characterAge').value = data.age || '';
+      document.getElementById('characterEmoji').value = data.emoji || '👤';
+      document.getElementById('characterDescription').value = data.description || '';
+      document.getElementById('characterFormTitle').textContent = 'Editar personaje';
+      document.getElementById('characterDeleteBtn').hidden = false;
+      actualizarAvatarPreview(data.emoji || '👤', data.image_url);
+      if (data.image_url) {
+        document.getElementById('characterRemoveImageBtn').hidden = false;
+      }
+    });
+  }
+
+  showView('viewCharacterForm');
+  setTimeout(() => document.getElementById('characterName')?.focus(), 100);
+}
+
+function actualizarAvatarPreview(emoji, imageUrl) {
+  const preview = document.getElementById('characterAvatarPreview');
+  if (imageUrl) {
+    preview.innerHTML = `<img src="${imageUrl}" alt="" />`;
+  } else {
+    preview.innerHTML = `<span>${escapeHtml(emoji || '👤')}</span>`;
+  }
+}
+
+document.getElementById('characterAvatarBtn')?.addEventListener('click', () => {
+  document.getElementById('characterAvatarInput').click();
+});
+
+document.getElementById('characterAvatarInput')?.addEventListener('change', async (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) { toast('La imagen supera 5 MB', 'error'); return; }
+  showLoading();
+  try {
+    const ext = file.name.split('.').pop();
+    const filename = `characters/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error: upErr } = await db.storage.from('media').upload(filename, file);
+    if (upErr) throw upErr;
+    const { data: pub } = db.storage.from('media').getPublicUrl(filename);
+    currentCharacterImageUrl = pub.publicUrl;
+    const emoji = document.getElementById('characterEmoji').value || '👤';
+    actualizarAvatarPreview(emoji, pub.publicUrl);
+    document.getElementById('characterRemoveImageBtn').hidden = false;
+    toast('Imagen subida', 'ok');
+  } catch (err) { toast('Error al subir: ' + err.message, 'error'); }
+  hideLoading();
+});
+
+document.getElementById('characterRemoveImageBtn')?.addEventListener('click', () => {
+  currentCharacterImageUrl = null;
+  const emoji = document.getElementById('characterEmoji').value || '👤';
+  actualizarAvatarPreview(emoji, null);
+  document.getElementById('characterRemoveImageBtn').hidden = true;
+  document.getElementById('characterAvatarInput').value = '';
+  toast('Imagen quitada', 'info');
+});
+
+document.getElementById('characterEmoji')?.addEventListener('input', (e) => {
+  if (!currentCharacterImageUrl) {
+    actualizarAvatarPreview(e.target.value || '👤', null);
+  }
+});
+
+document.getElementById('characterForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (!currentTreeStory) { toast('Error: no hay libro seleccionado', 'error'); return; }
+
+  const payload = {
+    story_id: currentTreeStory.id,
+    user_id: session.user.id,
+    name: document.getElementById('characterName').value.trim(),
+    alias: document.getElementById('characterAlias').value.trim(),
+    role: document.getElementById('characterRole').value,
+    age: document.getElementById('characterAge').value.trim(),
+    emoji: document.getElementById('characterEmoji').value.trim() || '👤',
+    description: document.getElementById('characterDescription').value.trim(),
+    image_url: currentCharacterImageUrl || null,
+  };
+
+  if (!payload.name) { toast('El nombre es obligatorio', 'error'); return; }
+
+  showLoading();
+  let error;
+  if (currentCharacter) {
+    ({ error } = await db.from('character_nodes').update(payload).eq('id', currentCharacter.id));
+  } else {
+    // Posición inicial aleatoria dentro del lienzo
+    payload.x = 200 + Math.random() * 400;
+    payload.y = 150 + Math.random() * 300;
+    ({ error } = await db.from('character_nodes').insert(payload));
+  }
+  hideLoading();
+
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast(currentCharacter ? 'Personaje actualizado' : 'Personaje creado', 'ok');
+  limpiarCachePublica();
+
+  setTimeout(() => {
+    showView('viewArbol');
+    cargarPersonajesAdmin(currentTreeStory.id);
+  }, 400);
+});
+
+document.getElementById('characterDeleteBtn')?.addEventListener('click', async () => {
+  if (!currentCharacter) return;
+  if (!confirm(`¿Eliminar a "${currentCharacter.name}"? Se eliminarán también sus conexiones.`)) return;
+  showLoading();
+  const { error } = await db.from('character_nodes').delete().eq('id', currentCharacter.id);
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Personaje eliminado', 'ok');
+  limpiarCachePublica();
+  showView('viewArbol');
+  cargarPersonajesAdmin(currentTreeStory.id);
+});
+
 /* ---------- BIOGRAFÍA ---------- */
 async function abrirBioView() {
   showView('viewBio');
@@ -1277,6 +1573,8 @@ document.getElementById('btnBio').addEventListener('click', () => abrirBioView()
 document.getElementById('btnDonaciones').addEventListener('click', () => abrirDonacionesView());
 document.getElementById('btnStats').addEventListener('click', () => abrirStatsView());
 document.getElementById('btnAjustes')?.addEventListener('click', () => abrirAjustesView());
+document.getElementById('btnArboles')?.addEventListener('click', () => abrirArbolesEstante());
+
 document.getElementById('btnNewChapter').addEventListener('click', () => {
   if (!currentStory) return;
   db.from('chapters').select('chapter_order').eq('story_id', currentStory.id).order('chapter_order', { ascending: false }).limit(1).then(({ data }) => {
@@ -1285,6 +1583,8 @@ document.getElementById('btnNewChapter').addEventListener('click', () => {
     setTimeout(() => { document.getElementById('chapterOrder').value = next; }, 100);
   });
 });
+
+document.getElementById('btnNewCharacter')?.addEventListener('click', () => abrirCharacterForm(null));
 
 document.getElementById('backFromStory').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromChapter').addEventListener('click', () => { showView('viewStory'); cargarCapitulosAdmin(currentStory.id); });
@@ -1295,6 +1595,9 @@ document.getElementById('backFromDonaciones').addEventListener('click', () => { 
 document.getElementById('backFromStats').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromStoryStats').addEventListener('click', () => { showView('viewStats'); });
 document.getElementById('backFromAjustes')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromArboles')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromArbol')?.addEventListener('click', () => { showView('viewArbolesEstante'); cargarEstante(); });
+document.getElementById('backFromCharacterForm')?.addEventListener('click', () => { showView('viewArbol'); if (currentTreeStory) cargarPersonajesAdmin(currentTreeStory.id); });
 
 /* ---------- HELPERS ---------- */
 function escapeHtml(str) {
