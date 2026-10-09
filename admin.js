@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Sin cálculo de reading_time
+   Con ajustes del sitio (toggle likes/vistas)
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -1167,6 +1167,49 @@ async function cargarStoryStats(storyId) {
   hideLoading();
 }
 
+/* ---------- AJUSTES DEL SITIO ---------- */
+async function abrirAjustesView() {
+  showView('viewAjustes');
+  await cargarAjustes();
+}
+
+async function cargarAjustes() {
+  showLoading();
+  const { data, error } = await db
+    .from('site_settings')
+    .select('show_likes, show_views')
+    .eq('id', 1)
+    .maybeSingle();
+  hideLoading();
+
+  if (error || !data) {
+    toast('No se pudieron cargar los ajustes', 'error');
+    return;
+  }
+
+  document.getElementById('toggleShowLikes').checked = !!data.show_likes;
+  document.getElementById('toggleShowViews').checked = !!data.show_views;
+}
+
+document.getElementById('saveSettingsBtn')?.addEventListener('click', async () => {
+  const show_likes = document.getElementById('toggleShowLikes').checked;
+  const show_views = document.getElementById('toggleShowViews').checked;
+
+  showLoading();
+  const { error } = await db
+    .from('site_settings')
+    .update({ show_likes, show_views, updated_at: new Date().toISOString() })
+    .eq('id', 1);
+  hideLoading();
+
+  if (error) {
+    toast('Error: ' + error.message, 'error');
+    return;
+  }
+  toast('Ajustes guardados', 'ok');
+  limpiarCachePublica();
+});
+
 /* ---------- BIOGRAFÍA ---------- */
 async function abrirBioView() {
   showView('viewBio');
@@ -1233,6 +1276,7 @@ document.getElementById('btnRedes').addEventListener('click', () => abrirRedesVi
 document.getElementById('btnBio').addEventListener('click', () => abrirBioView());
 document.getElementById('btnDonaciones').addEventListener('click', () => abrirDonacionesView());
 document.getElementById('btnStats').addEventListener('click', () => abrirStatsView());
+document.getElementById('btnAjustes')?.addEventListener('click', () => abrirAjustesView());
 document.getElementById('btnNewChapter').addEventListener('click', () => {
   if (!currentStory) return;
   db.from('chapters').select('chapter_order').eq('story_id', currentStory.id).order('chapter_order', { ascending: false }).limit(1).then(({ data }) => {
@@ -1250,6 +1294,7 @@ document.getElementById('backFromBio').addEventListener('click', () => { showVie
 document.getElementById('backFromDonaciones').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromStats').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromStoryStats').addEventListener('click', () => { showView('viewStats'); });
+document.getElementById('backFromAjustes')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 
 /* ---------- HELPERS ---------- */
 function escapeHtml(str) {
