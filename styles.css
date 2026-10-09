@@ -4731,3 +4731,49 @@ body.focus-mode .chapter-story-link {
   border-color: var(--accent-color);
   box-shadow: 0 0 16px var(--accent-glow);
 }
+/* ============ FIX: MODAL DE CONEXIÓN SCROLLABLE ============ */
+.edge-modal {
+  max-height: 90vh;
+  overflow-y: auto;
+  padding-bottom: 24px;
+}
+
+.edge-modal .custom-input-actions {
+  position: sticky;
+  bottom: 0;
+  background: var(--bg-elevated);
+  padding-top: 16px;
+  padding-bottom: 8px;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-color);
+  z-index: 2;
+}
+
+/* Ajuste en móvil: modal más compacto */
+@media (max-width: 500px) {
+  .edge-modal {
+    max-height: 92vh;
+    padding: 20px 18px 16px;
+  }
+
+  .edge-modal .custom-input-field {
+    margin-bottom: 14px;
+  }
+
+  .edge-modal .edge-color-presets {
+    gap: 4px;
+  }
+
+  .edge-modal .edge-color-preset {
+    width: 24px;
+    height: 24px;
+  }
+
+  .edge-modal .edge-style-btn {
+    padding: 8px;
+  }
+
+  .edge-modal .edge-style-btn svg {
+    width: 32px;
+  }
+}
