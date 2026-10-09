@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Con roles, canvas drag&drop, conectores y paste limpio
+   Con dropdowns personalizados, canvas y conectores
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -22,6 +22,10 @@ let currentProfile = null;
 let currentTreeStory = null;
 let currentCharacter = null;
 let currentCharacterImageUrl = null;
+
+// Dropdown de rol actual
+let characterRoleDropdown = null;
+let selectedRole = '';
 
 // Lista de roles predefinidos
 const PREDEFINED_ROLES = [
@@ -99,6 +103,121 @@ function limpiarCachePublica() {
   } catch {}
 }
 
+/* ---------- DROPDOWN PERSONALIZADO ---------- */
+function crearDropdownPersonalizado(containerId, groups, opts = {}) {
+  const container = document.getElementById(containerId);
+  if (!container) return null;
+
+  let currentValue = opts.value || '';
+  const placeholder = opts.placeholder || '— Selecciona —';
+  const onChange = opts.onChange || (() => {});
+
+  // Limpiar
+  container.innerHTML = '';
+  const dropdown = document.createElement('div');
+  dropdown.className = 'custom-dropdown';
+
+  dropdown.innerHTML = `
+    <button type="button" class="custom-dropdown-trigger">
+      <div class="custom-dropdown-trigger-content">
+        <span class="custom-dropdown-trigger-emoji" hidden></span>
+        <span class="custom-dropdown-trigger-text placeholder">${escapeHtml(placeholder)}</span>
+      </div>
+      <svg class="custom-dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="6 9 12 15 18 9"/>
+      </svg>
+    </button>
+    <div class="custom-dropdown-menu"></div>
+  `;
+
+  const trigger = dropdown.querySelector('.custom-dropdown-trigger');
+  const triggerEmoji = dropdown.querySelector('.custom-dropdown-trigger-emoji');
+  const triggerText = dropdown.querySelector('.custom-dropdown-trigger-text');
+  const menu = dropdown.querySelector('.custom-dropdown-menu');
+
+  groups.forEach(group => {
+    if (group.label) {
+      const groupEl = document.createElement('div');
+      groupEl.className = 'custom-dropdown-group';
+      groupEl.textContent = group.label;
+      menu.appendChild(groupEl);
+    }
+
+    group.options.forEach(opt => {
+      const optEl = document.createElement('div');
+      optEl.className = 'custom-dropdown-option';
+      if (opt.value === '__custom__') optEl.classList.add('custom-option');
+      optEl.dataset.value = opt.value;
+
+      optEl.innerHTML = `
+        ${opt.emoji ? `<span class="custom-dropdown-option-emoji">${opt.emoji}</span>` : ''}
+        <span class="custom-dropdown-option-label">${escapeHtml(opt.label)}</span>
+      `;
+
+      optEl.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentValue = opt.value;
+        actualizar();
+        dropdown.classList.remove('open');
+        onChange(opt.value, opt);
+      });
+
+      menu.appendChild(optEl);
+    });
+  });
+
+  function actualizar() {
+    let selectedOpt = null;
+    for (const group of groups) {
+      const found = group.options.find(o => o.value === currentValue);
+      if (found) { selectedOpt = found; break; }
+    }
+
+    if (selectedOpt) {
+      triggerText.textContent = selectedOpt.label;
+      triggerText.classList.remove('placeholder');
+      if (selectedOpt.emoji) {
+        triggerEmoji.textContent = selectedOpt.emoji;
+        triggerEmoji.hidden = false;
+      } else {
+        triggerEmoji.hidden = true;
+      }
+    } else {
+      triggerText.textContent = placeholder;
+      triggerText.classList.add('placeholder');
+      triggerEmoji.hidden = true;
+    }
+
+    menu.querySelectorAll('.custom-dropdown-option').forEach(opt => {
+      opt.classList.toggle('selected', opt.dataset.value === currentValue);
+    });
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    document.querySelectorAll('.custom-dropdown.open').forEach(d => {
+      if (d !== dropdown) d.classList.remove('open');
+    });
+    dropdown.classList.toggle('open');
+  });
+
+  document.addEventListener('click', () => {
+    dropdown.classList.remove('open');
+  });
+
+  container.appendChild(dropdown);
+  actualizar();
+
+  dropdown.setValue = (val) => {
+    currentValue = val;
+    actualizar();
+  };
+  dropdown.getValue = () => currentValue;
+
+  return dropdown;
+}
+
+/* ---------- INPUT MODAL ---------- */
 function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
   return new Promise((resolve) => {
     const modal = document.createElement('div');
@@ -219,7 +338,6 @@ function inyectarAuthModal() {
   });
 }
 
-/* ---------- MODAL SIN PERMISOS ---------- */
 function mostrarModalSinPermisos() {
   let modal = document.getElementById('deniedModal');
   if (!modal) {
@@ -590,7 +708,6 @@ function initEditor(toolbarId, editorId, counterId) {
     });
   });
 
-  // 🎯 Pegar con estructura limpia
   editor.addEventListener('paste', (e) => {
     e.preventDefault();
     const html = e.clipboardData.getData('text/html');
@@ -618,7 +735,6 @@ function initEditor(toolbarId, editorId, counterId) {
   setInterval(() => guardarBorrador(editorId), 30000);
 }
 
-/* ---------- LIMPIAR HTML PEGADO ---------- */
 function limpiarHtmlPegado(html) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -646,19 +762,11 @@ function limpiarHtmlPegado(html) {
   };
 
   function clean(node) {
-    if (node.nodeType === Node.TEXT_NODE) {
-      return node;
-    }
-
-    if (node.nodeType !== Node.ELEMENT_NODE) {
-      return null;
-    }
+    if (node.nodeType === Node.TEXT_NODE) return node;
+    if (node.nodeType !== Node.ELEMENT_NODE) return null;
 
     const tag = node.tagName;
-
-    if (REMOVE_WITH_CONTENT.has(tag)) {
-      return null;
-    }
+    if (REMOVE_WITH_CONTENT.has(tag)) return null;
 
     if (!ALLOWED.has(tag)) {
       const fragment = document.createDocumentFragment();
@@ -695,9 +803,7 @@ function limpiarHtmlPegado(html) {
         p.innerHTML = newNode.innerHTML;
         return p;
       }
-      if (newNode.children.length > 0) {
-        return newNode;
-      }
+      if (newNode.children.length > 0) return newNode;
       return null;
     }
 
@@ -1529,8 +1635,146 @@ function abrirCharacterForm(id = null) {
   document.getElementById('characterRemoveImageBtn').hidden = true;
   document.getElementById('customRoleField').hidden = true;
   document.getElementById('characterCustomRole').value = '';
-  document.getElementById('characterRole').value = '';
+  selectedRole = '';
   actualizarAvatarPreview('👤', null);
+
+  // Inicializar dropdown de rol
+  const roleGroups = [
+    {
+      label: 'Protagonistas',
+      options: [
+        { value: 'Protagonista', label: 'Protagonista', emoji: '⭐' },
+        { value: 'Coprotagonista', label: 'Coprotagonista', emoji: '⭐' },
+        { value: 'Deuteragonista', label: 'Deuteragonista', emoji: '⭐' },
+      ],
+    },
+    {
+      label: 'Antagonistas',
+      options: [
+        { value: 'Antagonista', label: 'Antagonista', emoji: '😈' },
+        { value: 'Villano', label: 'Villano', emoji: '👹' },
+        { value: 'Rival', label: 'Rival', emoji: '⚔️' },
+        { value: 'Traidor', label: 'Traidor', emoji: '🗡️' },
+      ],
+    },
+    {
+      label: 'Familia',
+      options: [
+        { value: 'Padre', label: 'Padre', emoji: '👨' },
+        { value: 'Madre', label: 'Madre', emoji: '👩' },
+        { value: 'Hijo', label: 'Hijo', emoji: '👦' },
+        { value: 'Hija', label: 'Hija', emoji: '👧' },
+        { value: 'Hermano', label: 'Hermano', emoji: '👦' },
+        { value: 'Hermana', label: 'Hermana', emoji: '👧' },
+        { value: 'Abuelo', label: 'Abuelo', emoji: '👴' },
+        { value: 'Abuela', label: 'Abuela', emoji: '👵' },
+        { value: 'Tío', label: 'Tío', emoji: '🧔' },
+        { value: 'Tía', label: 'Tía', emoji: '👩' },
+        { value: 'Primo', label: 'Primo', emoji: '👦' },
+        { value: 'Prima', label: 'Prima', emoji: '👧' },
+        { value: 'Sobrino', label: 'Sobrino', emoji: '👦' },
+        { value: 'Sobrina', label: 'Sobrina', emoji: '👧' },
+        { value: 'Cuñado', label: 'Cuñado', emoji: '🧔' },
+        { value: 'Cuñada', label: 'Cuñada', emoji: '👩' },
+        { value: 'Suegro', label: 'Suegro', emoji: '👴' },
+        { value: 'Suegra', label: 'Suegra', emoji: '👵' },
+        { value: 'Padrastro', label: 'Padrastro', emoji: '👨' },
+        { value: 'Madrastra', label: 'Madrastra', emoji: '👩' },
+        { value: 'Hijastro', label: 'Hijastro', emoji: '👦' },
+        { value: 'Hijastra', label: 'Hijastra', emoji: '👧' },
+        { value: 'Familia', label: 'Familia', emoji: '🏠' },
+      ],
+    },
+    {
+      label: 'Pareja',
+      options: [
+        { value: 'Pareja', label: 'Pareja', emoji: '💕' },
+        { value: 'Esposo', label: 'Esposo', emoji: '💍' },
+        { value: 'Esposa', label: 'Esposa', emoji: '💍' },
+        { value: 'Novio', label: 'Novio', emoji: '💑' },
+        { value: 'Novia', label: 'Novia', emoji: '💑' },
+        { value: 'Prometido', label: 'Prometido', emoji: '💍' },
+        { value: 'Prometida', label: 'Prometida', emoji: '💍' },
+        { value: 'Ex-pareja', label: 'Ex-pareja', emoji: '💔' },
+        { value: 'Amante', label: 'Amante', emoji: '💋' },
+        { value: 'Interés amoroso', label: 'Interés amoroso', emoji: '💖' },
+      ],
+    },
+    {
+      label: 'Social',
+      options: [
+        { value: 'Amigo', label: 'Amigo', emoji: '🤝' },
+        { value: 'Amiga', label: 'Amiga', emoji: '🤝' },
+        { value: 'Mejor amigo', label: 'Mejor amigo', emoji: '🫂' },
+        { value: 'Mejor amiga', label: 'Mejor amiga', emoji: '🫂' },
+        { value: 'Conocido', label: 'Conocido', emoji: '👋' },
+        { value: 'Vecino', label: 'Vecino', emoji: '🏘️' },
+        { value: 'Compañero', label: 'Compañero', emoji: '👥' },
+        { value: 'Compañera', label: 'Compañera', emoji: '👥' },
+        { value: 'Colega', label: 'Colega', emoji: '👔' },
+        { value: 'Aliado', label: 'Aliado', emoji: '🛡️' },
+        { value: 'Cómplice', label: 'Cómplice', emoji: '🎭' },
+      ],
+    },
+    {
+      label: 'Mentor / Alumno',
+      options: [
+        { value: 'Mentor', label: 'Mentor', emoji: '🎓' },
+        { value: 'Mentora', label: 'Mentora', emoji: '🎓' },
+        { value: 'Maestro', label: 'Maestro', emoji: '📚' },
+        { value: 'Maestra', label: 'Maestra', emoji: '📚' },
+        { value: 'Alumno', label: 'Alumno', emoji: '🎒' },
+        { value: 'Alumna', label: 'Alumna', emoji: '🎒' },
+        { value: 'Aprendiz', label: 'Aprendiz', emoji: '🔰' },
+        { value: 'Discípulo', label: 'Discípulo', emoji: '📖' },
+        { value: 'Discípula', label: 'Discípula', emoji: '📖' },
+      ],
+    },
+    {
+      label: 'Trabajo',
+      options: [
+        { value: 'Jefe', label: 'Jefe', emoji: '👔' },
+        { value: 'Jefa', label: 'Jefa', emoji: '👔' },
+        { value: 'Empleado', label: 'Empleado', emoji: '💼' },
+        { value: 'Empleada', label: 'Empleada', emoji: '💼' },
+        { value: 'Subordinado', label: 'Subordinado', emoji: '📋' },
+        { value: 'Socio', label: 'Socio', emoji: '🤝' },
+        { value: 'Socia', label: 'Socia', emoji: '🤝' },
+        { value: 'Benefactor', label: 'Benefactor', emoji: '🎁' },
+        { value: 'Benefactora', label: 'Benefactora', emoji: '🎁' },
+      ],
+    },
+    {
+      label: 'Otros',
+      options: [
+        { value: 'Mascota', label: 'Mascota', emoji: '🐾' },
+        { value: 'Guía', label: 'Guía', emoji: '🧭' },
+        { value: 'Narrador', label: 'Narrador', emoji: '📖' },
+        { value: 'Secundario', label: 'Secundario', emoji: '👤' },
+        { value: 'Extra', label: 'Extra', emoji: '👤' },
+        { value: 'Desconocido', label: 'Desconocido', emoji: '❓' },
+        { value: '__custom__', label: 'Otro (personalizado)', emoji: '✏️' },
+      ],
+    },
+  ];
+
+  characterRoleDropdown = crearDropdownPersonalizado('characterRoleDropdownMount', roleGroups, {
+    value: '',
+    placeholder: '— Selecciona rol —',
+    onChange: (value) => {
+      selectedRole = value;
+      const field = document.getElementById('customRoleField');
+      const input = document.getElementById('characterCustomRole');
+      if (!field || !input) return;
+      if (value === '__custom__') {
+        field.hidden = false;
+        setTimeout(() => input.focus(), 100);
+      } else {
+        field.hidden = true;
+        input.value = '';
+      }
+    },
+  });
 
   if (id) {
     showLoading();
@@ -1547,13 +1791,14 @@ function abrirCharacterForm(id = null) {
 
       const role = data.role || '';
       if (esRolPersonalizado(role)) {
-        document.getElementById('characterRole').value = '__custom__';
+        selectedRole = '__custom__';
         document.getElementById('characterCustomRole').value = role;
         document.getElementById('customRoleField').hidden = false;
       } else {
-        document.getElementById('characterRole').value = role;
+        selectedRole = role;
         document.getElementById('customRoleField').hidden = true;
       }
+      if (characterRoleDropdown) characterRoleDropdown.setValue(selectedRole);
 
       document.getElementById('characterFormTitle').textContent = 'Editar personaje';
       document.getElementById('characterDeleteBtn').hidden = false;
@@ -1616,33 +1861,19 @@ document.getElementById('characterEmoji')?.addEventListener('input', (e) => {
   }
 });
 
-document.getElementById('characterRole')?.addEventListener('change', (e) => {
-  const field = document.getElementById('customRoleField');
-  const input = document.getElementById('characterCustomRole');
-  if (!field || !input) return;
-  if (e.target.value === '__custom__') {
-    field.hidden = false;
-    setTimeout(() => input.focus(), 100);
-  } else {
-    field.hidden = true;
-    input.value = '';
-  }
-});
-
 document.getElementById('characterForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!currentTreeStory) { toast('Error: no hay libro seleccionado', 'error'); return; }
 
-  const roleSelect = document.getElementById('characterRole').value;
   let finalRole = '';
-  if (roleSelect === '__custom__') {
+  if (selectedRole === '__custom__') {
     finalRole = document.getElementById('characterCustomRole').value.trim();
     if (!finalRole) {
       toast('Escribe el rol personalizado o elige otro', 'error');
       return;
     }
   } else {
-    finalRole = roleSelect;
+    finalRole = selectedRole;
   }
 
   const payload = {
@@ -2109,13 +2340,7 @@ async function abrirModalConexion(fromNode, toNode) {
       <div class="custom-input-fields-scroll">
         <div class="custom-input-field">
           <label>Tipo de relación</label>
-          <select id="edgeTypeSelect">
-            ${Object.entries(RELATION_TYPES).map(([key, t]) => `
-              <option value="${key}" ${edgeData.relation_type === key ? 'selected' : ''}>
-                ${t.emoji} ${t.label}
-              </option>
-            `).join('')}
-          </select>
+          <div id="edgeTypeDropdownMount"></div>
         </div>
 
         <div class="custom-input-field">
@@ -2174,7 +2399,21 @@ async function abrirModalConexion(fromNode, toNode) {
   `;
   document.body.appendChild(modal);
 
-  const typeSelect = modal.querySelector('#edgeTypeSelect');
+  // Dropdown personalizado para tipo
+  const edgeTypeGroups = [
+    {
+      label: 'Tipos de relación',
+      options: Object.entries(RELATION_TYPES).map(([key, t]) => ({
+        value: key,
+        label: t.label,
+        emoji: t.emoji,
+      })),
+    },
+  ];
+
+  let selectedType = edgeData.relation_type || 'otro';
+  let selectedStyle = edgeData.line_style || 'solid';
+
   const labelInput = modal.querySelector('#edgeLabelInput');
   const colorInput = modal.querySelector('#edgeColorInput');
   const styleBtns = modal.querySelectorAll('.edge-style-btn');
@@ -2182,18 +2421,21 @@ async function abrirModalConexion(fromNode, toNode) {
   const arrowStart = modal.querySelector('#edgeArrowStart');
   const arrowEnd = modal.querySelector('#edgeArrowEnd');
 
-  let selectedStyle = edgeData.line_style || 'solid';
-
-  typeSelect.addEventListener('change', () => {
-    const t = RELATION_TYPES[typeSelect.value];
-    if (!t) return;
-    colorInput.value = t.color;
-    selectedStyle = t.style;
-    styleBtns.forEach(b => b.classList.toggle('active', b.dataset.style === t.style));
-    if (!labelInput.value.trim() || labelInput.dataset.auto === '1') {
-      labelInput.value = t.defaultLabel;
-      labelInput.dataset.auto = '1';
-    }
+  crearDropdownPersonalizado('edgeTypeDropdownMount', edgeTypeGroups, {
+    value: selectedType,
+    placeholder: '— Selecciona tipo —',
+    onChange: (value) => {
+      selectedType = value;
+      const t = RELATION_TYPES[value];
+      if (!t) return;
+      colorInput.value = t.color;
+      selectedStyle = t.style;
+      styleBtns.forEach(b => b.classList.toggle('active', b.dataset.style === t.style));
+      if (!labelInput.value.trim() || labelInput.dataset.auto === '1') {
+        labelInput.value = t.defaultLabel;
+        labelInput.dataset.auto = '1';
+      }
+    },
   });
 
   labelInput.addEventListener('input', () => {
@@ -2227,7 +2469,7 @@ async function abrirModalConexion(fromNode, toNode) {
       user_id: session.user.id,
       from_node_id: fromNode.id,
       to_node_id: toNode.id,
-      relation_type: typeSelect.value,
+      relation_type: selectedType,
       relation_label: labelInput.value.trim(),
       line_color: colorInput.value,
       line_style: selectedStyle,
