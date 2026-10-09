@@ -4036,3 +4036,237 @@ body.focus-mode .chapter-story-link {
   outline: 2px solid var(--accent-color);
   outline-offset: 2px;
 }
+/* ============================================
+   ÁRBOLES DE PERSONAJES
+   ============================================ */
+
+/* ---------- ESTANTE DE LIBROS ---------- */
+.trees-shelf {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 20px;
+  margin-top: 24px;
+}
+
+.tree-shelf-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: var(--transition);
+  font-family: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.tree-shelf-card:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--accent-color);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+
+.tree-shelf-cover {
+  aspect-ratio: 2/3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--bg-surface), var(--bg-elevated));
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-size: 48px;
+  color: var(--text-tertiary);
+  box-shadow: var(--shadow-3d);
+}
+
+.tree-shelf-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tree-shelf-info { display: flex; flex-direction: column; gap: 4px; }
+
+.tree-shelf-title {
+  font-family: var(--font-serif);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tree-shelf-meta {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* ---------- HEADER DEL LIBRO ---------- */
+.arbol-book-header {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 24px;
+  padding: 24px 0;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 24px;
+}
+
+.arbol-book-cover {
+  aspect-ratio: 2/3;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--bg-elevated);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-size: 40px;
+  color: var(--text-tertiary);
+  box-shadow: var(--shadow-3d);
+}
+
+.arbol-book-cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.arbol-book-info { display: flex; flex-direction: column; justify-content: center; }
+
+/* ---------- LISTA DE PERSONAJES ---------- */
+.characters-admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.character-admin-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  transition: var(--transition);
+}
+
+.character-admin-card:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--text-tertiary);
+}
+
+.character-admin-avatar {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  flex-shrink: 0;
+  border: 2px solid var(--border-color);
+  box-shadow: var(--shadow-md);
+}
+
+.character-admin-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.character-admin-body { flex: 1; min-width: 0; }
+
+.character-admin-name {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.character-admin-alias {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
+.character-admin-meta {
+  font-size: 12px;
+  color: var(--text-secondary);
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+
+.character-admin-role {
+  color: var(--accent-color);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10.5px;
+}
+
+.character-admin-desc {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ---------- PREVIEW DE AVATAR EN FORM ---------- */
+.character-avatar-preview {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  display: grid;
+  place-items: center;
+  font-size: 72px;
+  color: var(--text-tertiary);
+  box-shadow: var(--shadow-lg);
+  border: 3px solid var(--border-color);
+  max-width: 180px;
+  margin: 0 auto;
+}
+
+.character-avatar-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+@media (max-width: 700px) {
+  .arbol-book-header {
+    grid-template-columns: 80px 1fr;
+    gap: 16px;
+  }
+  .arbol-book-cover { font-size: 30px; }
+  .character-admin-avatar { width: 50px; height: 50px; font-size: 22px; }
+  .character-admin-name { font-size: 15px; }
+  .character-avatar-preview { max-width: 140px; font-size: 56px; }
+  .trees-shelf { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+}
