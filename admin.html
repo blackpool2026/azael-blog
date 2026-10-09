@@ -64,6 +64,10 @@
             <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
             Estadísticas
           </button>
+          <button class="btn btn-ghost" id="btnAjustes">
+            <i data-lucide="settings" style="width:16px;height:16px;"></i>
+            Ajustes
+          </button>
         </div>
 
         <section class="section">
@@ -502,6 +506,62 @@
             </div>
           </div>
           <div class="stats-list" id="storyStatsChapters"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- AJUSTES DEL SITIO -->
+    <section class="admin-view" id="viewAjustes" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromAjustes">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Ajustes del sitio</h1>
+          <p class="page-sub-c">Controla qué información se muestra al público</p>
+        </div>
+
+        <div class="admin-form" style="max-width:640px;">
+          <div class="admin-setting-row">
+            <div class="admin-setting-info">
+              <div class="admin-setting-title">
+                <i data-lucide="heart" style="width:18px;height:18px;"></i>
+                Mostrar likes al público
+              </div>
+              <div class="admin-setting-desc">
+                Si está activado, los lectores ven el número total de likes en libros y capítulos.
+              </div>
+            </div>
+            <label class="admin-toggle">
+              <input type="checkbox" id="toggleShowLikes" />
+              <span class="admin-toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="admin-setting-row">
+            <div class="admin-setting-info">
+              <div class="admin-setting-title">
+                <i data-lucide="eye" style="width:18px;height:18px;"></i>
+                Mostrar vistas al público
+              </div>
+              <div class="admin-setting-desc">
+                Si está activado, los lectores ven cuántas veces se ha leído cada libro y capítulo.
+              </div>
+            </div>
+            <label class="admin-toggle">
+              <input type="checkbox" id="toggleShowViews" />
+              <span class="admin-toggle-slider"></span>
+            </label>
+          </div>
+
+          <div class="admin-form-actions" style="margin-top:16px;">
+            <button type="button" class="btn btn-primary" id="saveSettingsBtn">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              Guardar ajustes
+            </button>
+          </div>
         </div>
       </div>
     </section>
