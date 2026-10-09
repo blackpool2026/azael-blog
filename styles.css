@@ -4529,3 +4529,205 @@ body.focus-mode .chapter-story-link {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: translateY(0); }
 }
+/* ============================================
+   CONECTORES — FASE 4A
+   ============================================ */
+
+/* Modo conectar */
+.arbol-canvas-hint-connect {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+  border-top-color: var(--accent-color);
+}
+
+.arbol-canvas-hint-connect svg {
+  color: var(--accent-color);
+}
+
+#canvasHintConnectText {
+  flex: 1;
+}
+
+#canvasCancelConnect {
+  margin-left: auto;
+  padding: 6px 12px !important;
+  font-size: 12px !important;
+}
+
+.arbol-canvas-viewport.connect-mode {
+  cursor: crosshair;
+}
+
+.arbol-canvas-viewport.connect-mode .canvas-node {
+  cursor: pointer;
+}
+
+/* Estado "seleccionado como origen" */
+.canvas-node.selecting-from {
+  border-color: var(--accent-color) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 8px 24px rgba(0,0,0,.5), 0 0 30px var(--accent-glow);
+  transform: scale(1.05);
+  z-index: 10;
+}
+
+/* Estado "disponible para seleccionar" */
+.canvas-node.selecting-to {
+  animation: pulseConnectNode 1.5s ease-in-out infinite;
+  border-color: var(--accent-color);
+}
+
+@keyframes pulseConnectNode {
+  0%, 100% { box-shadow: 0 4px 12px rgba(0,0,0,.3); }
+  50% { box-shadow: 0 4px 12px rgba(0,0,0,.3), 0 0 0 4px var(--accent-soft); }
+}
+
+/* Líneas SVG */
+.canvas-edge-line {
+  transition: stroke-width 0.15s;
+}
+
+.canvas-edge-line:hover {
+  stroke-width: 4 !important;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.canvas-edge-label-group:hover rect {
+  stroke-width: 2.5;
+}
+
+/* Modal de conexión */
+.edge-modal {
+  max-width: 480px;
+}
+
+.edge-modal-node-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 100px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.edge-modal-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  display: grid;
+  place-items: center;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.edge-modal-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+#edgeTypeSelect {
+  width: 100%;
+  padding: 12px 14px;
+  font-family: inherit;
+  font-size: 14.5px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+}
+
+#edgeTypeSelect:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 4px var(--accent-soft);
+}
+
+/* Color picker */
+.edge-color-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#edgeColorInput {
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  background: transparent;
+  padding: 2px;
+}
+
+.edge-color-presets {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.edge-color-preset {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-color);
+  cursor: pointer;
+  transition: var(--transition);
+  padding: 0;
+}
+
+.edge-color-preset:hover {
+  transform: scale(1.15);
+  border-color: var(--text-primary);
+}
+
+/* Style picker */
+.edge-style-picker {
+  display: flex;
+  gap: 6px;
+}
+
+.edge-style-btn {
+  flex: 1;
+  padding: 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: var(--transition);
+}
+
+.edge-style-btn:hover {
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
+}
+
+.edge-style-btn.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* Arrows picker */
+.edge-arrows-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* Botón conectar activo */
+#canvasConnectBtn.active {
+  background: var(--accent-color);
+  color: #ffffff;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
