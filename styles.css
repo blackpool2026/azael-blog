@@ -4734,21 +4734,34 @@ body.focus-mode .chapter-story-link {
 /* ============ FIX: MODAL DE CONEXIÓN SCROLLABLE ============ */
 .edge-modal {
   max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 24px 0;
+  overflow: hidden;
+}
+
+.edge-modal > * {
+  flex-shrink: 0;
+}
+
+/* Contenedor scrolleable interno */
+.edge-modal .custom-input-fields-scroll {
   overflow-y: auto;
-  padding-bottom: 24px;
-}
-
-.edge-modal .custom-input-actions {
-  position: sticky;
-  bottom: 0;
-  background: var(--bg-elevated);
-  padding-top: 16px;
+  flex: 1;
+  min-height: 0;
+  padding-right: 4px;
+  margin-right: -4px;
   padding-bottom: 8px;
-  margin-top: 8px;
-  border-top: 1px solid var(--border-color);
-  z-index: 2;
 }
 
+/* Botones fijos al fondo */
+.edge-modal .custom-input-actions {
+  flex-shrink: 0;
+  padding: 16px 0 20px;
+  background: var(--bg-elevated);
+  border-top: 1px solid var(--border-color);
+  margin-top: 8px;
+}
 /* Ajuste en móvil: modal más compacto */
 @media (max-width: 500px) {
   .edge-modal {
