@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Con roles mejorados, canvas drag&drop y conectores
+   Con roles, canvas drag&drop, conectores y paste limpio
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -568,6 +568,7 @@ function initEditor(toolbarId, editorId, counterId) {
   const toolbar = document.getElementById(toolbarId);
   const editor = document.getElementById(editorId);
   if (!toolbar || !editor) return;
+
   toolbar.querySelectorAll('.ed-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -588,11 +589,140 @@ function initEditor(toolbarId, editorId, counterId) {
       if (counterId) actualizarContador(editorId, counterId);
     });
   });
+
+  // 🎯 Pegar con estructura limpia
+  editor.addEventListener('paste', (e) => {
+    e.preventDefault();
+    const html = e.clipboardData.getData('text/html');
+    const text = e.clipboardData.getData('text/plain');
+
+    if (html) {
+      const clean = limpiarHtmlPegado(html);
+      document.execCommand('insertHTML', false, clean);
+    } else {
+      const safe = escapeHtml(text)
+        .replace(/\r\n/g, '\n')
+        .replace(/\n{2,}/g, '</p><p>')
+        .replace(/\n/g, '<br>');
+      document.execCommand('insertHTML', false, `<p>${safe}</p>`);
+    }
+
+    if (counterId) actualizarContador(editorId, counterId);
+    guardarBorrador(editorId);
+  });
+
   editor.addEventListener('input', () => {
     if (counterId) actualizarContador(editorId, counterId);
     guardarBorrador(editorId);
   });
   setInterval(() => guardarBorrador(editorId), 30000);
+}
+
+/* ---------- LIMPIAR HTML PEGADO ---------- */
+function limpiarHtmlPegado(html) {
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(html, 'text/html');
+  const body = doc.body;
+
+  const ALLOWED = new Set([
+    'P', 'BR', 'HR',
+    'STRONG', 'B', 'EM', 'I', 'U', 'S', 'DEL', 'MARK', 'SUP', 'SUB',
+    'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
+    'BLOCKQUOTE', 'PRE', 'CODE',
+    'UL', 'OL', 'LI',
+    'A', 'IMG',
+    'DIV', 'SPAN',
+  ]);
+
+  const REMOVE_WITH_CONTENT = new Set([
+    'SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM',
+    'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'VIDEO', 'AUDIO',
+    'CANVAS', 'SVG', 'MATH', 'TEMPLATE', 'NOSCRIPT',
+  ]);
+
+  const ATTRS_BY_TAG = {
+    A: new Set(['href', 'title']),
+    IMG: new Set(['src', 'alt', 'title']),
+  };
+
+  function clean(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) {
+      return null;
+    }
+
+    const tag = node.tagName;
+
+    if (REMOVE_WITH_CONTENT.has(tag)) {
+      return null;
+    }
+
+    if (!ALLOWED.has(tag)) {
+      const fragment = document.createDocumentFragment();
+      Array.from(node.childNodes).forEach(child => {
+        const cleaned = clean(child);
+        if (cleaned) fragment.appendChild(cleaned);
+      });
+      return fragment;
+    }
+
+    const newNode = document.createElement(tag);
+
+    const allowedAttrs = ATTRS_BY_TAG[tag];
+    if (allowedAttrs) {
+      allowedAttrs.forEach(attr => {
+        if (node.hasAttribute(attr)) {
+          const val = node.getAttribute(attr);
+          if (tag === 'A' && attr === 'href') {
+            if (/^\s*javascript:/i.test(val)) return;
+          }
+          newNode.setAttribute(attr, val);
+        }
+      });
+    }
+
+    Array.from(node.childNodes).forEach(child => {
+      const cleaned = clean(child);
+      if (cleaned) newNode.appendChild(cleaned);
+    });
+
+    if (tag === 'DIV' && !node.getAttribute('class')) {
+      if (newNode.children.length === 0 && newNode.textContent.trim()) {
+        const p = document.createElement('P');
+        p.innerHTML = newNode.innerHTML;
+        return p;
+      }
+      if (newNode.children.length > 0) {
+        return newNode;
+      }
+      return null;
+    }
+
+    if (tag === 'SPAN') {
+      const fragment = document.createDocumentFragment();
+      Array.from(newNode.childNodes).forEach(child => fragment.appendChild(child));
+      return fragment;
+    }
+
+    if ((tag === 'P' || /^H[1-6]$/.test(tag)) && !newNode.textContent.trim() && !newNode.querySelector('img,br')) {
+      return null;
+    }
+
+    return newNode;
+  }
+
+  const result = document.createDocumentFragment();
+  Array.from(body.childNodes).forEach(child => {
+    const cleaned = clean(child);
+    if (cleaned) result.appendChild(cleaned);
+  });
+
+  const temp = document.createElement('div');
+  temp.appendChild(result);
+  return temp.innerHTML;
 }
 
 async function insertarImagen(editor) {
@@ -1244,7 +1374,6 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
    ÁRBOLES DE PERSONAJES
    ============================================ */
 
-/* ---------- ESTANTE DE LIBROS ---------- */
 async function abrirArbolesEstante() {
   showView('viewArbolesEstante');
   await cargarEstante();
@@ -1303,7 +1432,6 @@ async function cargarEstante() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- ÁRBOL DE UN LIBRO ---------- */
 async function abrirArbolLibro(storyId) {
   showLoading();
   const { data: story } = await db
@@ -1340,7 +1468,6 @@ async function abrirArbolLibro(storyId) {
   await cargarPersonajesAdmin(story.id);
 }
 
-/* ---------- LISTA DE PERSONAJES ---------- */
 async function cargarPersonajesAdmin(storyId) {
   const list = document.getElementById('charactersAdminList');
   showLoading();
@@ -1392,7 +1519,6 @@ async function cargarPersonajesAdmin(storyId) {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- FORM PERSONAJE ---------- */
 function abrirCharacterForm(id = null) {
   currentCharacter = null;
   currentCharacterImageUrl = null;
@@ -1700,7 +1826,6 @@ function renderizarCanvas() {
   });
 }
 
-/* ---------- DRAG DE NODOS ---------- */
 function iniciarDragNode(e) {
   if (e.target.closest('button')) return;
   if (connectState.active) return;
@@ -1797,7 +1922,6 @@ async function guardarPosiciones() {
   }
 }
 
-/* ---------- PAN DEL LIENZO ---------- */
 function iniciarPanCanvas(e) {
   if (e.target.closest('.canvas-node')) return;
   if (connectState.active) return;
@@ -1838,7 +1962,6 @@ function aplicarTransformCanvas() {
   }
 }
 
-/* ---------- ZOOM ---------- */
 function cambiarZoom(delta) {
   const nuevo = Math.min(2, Math.max(0.3, canvasState.zoom + delta));
   if (nuevo === canvasState.zoom) return;
@@ -1861,7 +1984,7 @@ function resetearVista() {
 }
 
 /* ============================================
-   CONECTORES — FASE 4A
+   CONECTORES
    ============================================ */
 
 const RELATION_TYPES = {
@@ -1983,60 +2106,62 @@ async function abrirModalConexion(fromNode, toNode) {
         </span>
       </p>
 
-      <div class="custom-input-field">
-        <label>Tipo de relación</label>
-        <select id="edgeTypeSelect">
-          ${Object.entries(RELATION_TYPES).map(([key, t]) => `
-            <option value="${key}" ${edgeData.relation_type === key ? 'selected' : ''}>
-              ${t.emoji} ${t.label}
-            </option>
-          `).join('')}
-        </select>
-      </div>
-
-      <div class="custom-input-field">
-        <label>Etiqueta (texto sobre la línea)</label>
-        <input type="text" id="edgeLabelInput" maxlength="60" placeholder="Ej: padre de, amigo de…" value="${escapeHtml(edgeData.relation_label || '')}" />
-      </div>
-
-      <div class="custom-input-field">
-        <label>Color de la línea</label>
-        <div class="edge-color-picker">
-          <input type="color" id="edgeColorInput" value="${edgeData.line_color || '#e50914'}" />
-          <div class="edge-color-presets">
+      <div class="custom-input-fields-scroll">
+        <div class="custom-input-field">
+          <label>Tipo de relación</label>
+          <select id="edgeTypeSelect">
             ${Object.entries(RELATION_TYPES).map(([key, t]) => `
-              <button type="button" class="edge-color-preset" data-color="${t.color}" style="background:${t.color};" title="${t.label}"></button>
+              <option value="${key}" ${edgeData.relation_type === key ? 'selected' : ''}>
+                ${t.emoji} ${t.label}
+              </option>
             `).join('')}
+          </select>
+        </div>
+
+        <div class="custom-input-field">
+          <label>Etiqueta (texto sobre la línea)</label>
+          <input type="text" id="edgeLabelInput" maxlength="60" placeholder="Ej: padre de, amigo de…" value="${escapeHtml(edgeData.relation_label || '')}" />
+        </div>
+
+        <div class="custom-input-field">
+          <label>Color de la línea</label>
+          <div class="edge-color-picker">
+            <input type="color" id="edgeColorInput" value="${edgeData.line_color || '#e50914'}" />
+            <div class="edge-color-presets">
+              ${Object.entries(RELATION_TYPES).map(([key, t]) => `
+                <button type="button" class="edge-color-preset" data-color="${t.color}" style="background:${t.color};" title="${t.label}"></button>
+              `).join('')}
+            </div>
           </div>
         </div>
-      </div>
 
-      <div class="custom-input-field">
-        <label>Estilo de línea</label>
-        <div class="edge-style-picker">
-          <button type="button" class="edge-style-btn ${edgeData.line_style === 'solid' ? 'active' : ''}" data-style="solid">
-            <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2"/></svg>
-          </button>
-          <button type="button" class="edge-style-btn ${edgeData.line_style === 'dashed' ? 'active' : ''}" data-style="dashed">
-            <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="6,4"/></svg>
-          </button>
-          <button type="button" class="edge-style-btn ${edgeData.line_style === 'dotted' ? 'active' : ''}" data-style="dotted">
-            <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2,4"/></svg>
-          </button>
+        <div class="custom-input-field">
+          <label>Estilo de línea</label>
+          <div class="edge-style-picker">
+            <button type="button" class="edge-style-btn ${edgeData.line_style === 'solid' ? 'active' : ''}" data-style="solid">
+              <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2"/></svg>
+            </button>
+            <button type="button" class="edge-style-btn ${edgeData.line_style === 'dashed' ? 'active' : ''}" data-style="dashed">
+              <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="6,4"/></svg>
+            </button>
+            <button type="button" class="edge-style-btn ${edgeData.line_style === 'dotted' ? 'active' : ''}" data-style="dotted">
+              <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2,4"/></svg>
+            </button>
+          </div>
         </div>
-      </div>
 
-      <div class="custom-input-field">
-        <label>Flechas</label>
-        <div class="edge-arrows-picker">
-          <label class="admin-check" style="padding:8px 12px;">
-            <input type="checkbox" id="edgeArrowStart" ${edgeData.arrow_start ? 'checked' : ''} />
-            <span>Al inicio</span>
-          </label>
-          <label class="admin-check" style="padding:8px 12px;">
-            <input type="checkbox" id="edgeArrowEnd" ${edgeData.arrow_end ? 'checked' : ''} />
-            <span>Al final</span>
-          </label>
+        <div class="custom-input-field">
+          <label>Flechas</label>
+          <div class="edge-arrows-picker">
+            <label class="admin-check">
+              <input type="checkbox" id="edgeArrowStart" ${edgeData.arrow_start ? 'checked' : ''} />
+              <span>Al inicio</span>
+            </label>
+            <label class="admin-check">
+              <input type="checkbox" id="edgeArrowEnd" ${edgeData.arrow_end ? 'checked' : ''} />
+              <span>Al final</span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -2266,7 +2391,6 @@ function dibujarEdges() {
   });
 }
 
-/* ---------- INIT DEL CANVAS ---------- */
 function initCanvasListeners() {
   const viewport = document.getElementById('arbolCanvasViewport');
   if (viewport) {
