@@ -1,6 +1,7 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Cambios: sin tiempo de lectura, fix pantalla roja
+   Con toggle likes/vistas, anti-copia, modo
+   enfoque corregido y sin tiempo de lectura
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -12,6 +13,28 @@ const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const THEME_KEY = 'azael-theme-v2';
 const PREMIUM_FREE_LIMIT = 5;
 const READ_HISTORY_KEY = 'azael-read-history';
+
+// Configuración del sitio (se carga desde Supabase)
+let SITE_SETTINGS = {
+  show_likes: true,
+  show_views: true,
+};
+
+async function cargarSiteSettings() {
+  try {
+    const { data } = await db
+      .from('site_settings')
+      .select('show_likes, show_views')
+      .eq('id', 1)
+      .maybeSingle();
+    if (data) {
+      SITE_SETTINGS.show_likes = !!data.show_likes;
+      SITE_SETTINGS.show_views = !!data.show_views;
+    }
+  } catch (e) {
+    console.warn('No se pudo cargar site_settings:', e);
+  }
+}
 
 function withTimeout(promise, ms = 8000) {
   return Promise.race([
@@ -990,7 +1013,7 @@ async function prepararFormComentarioCapitulo(chapterId) {
   });
 }
 
-/* ---------- LIKES ---------- */
+/* ---------- LIKES + VISTAS ---------- */
 async function cargarLikeBoton(tipo, id) {
   const rowId = tipo === 'story' ? 'storyLikeRow' : 'chapterLikeRow';
   const row = document.getElementById(rowId);
@@ -1012,13 +1035,61 @@ async function cargarLikeBoton(tipo, id) {
       dioLike = !!myLike;
     }
 
+    // Contar likes totales
+    let totalLikes = 0;
+    let queryCount = db.from('likes').select('id', { count: 'exact', head: true });
+    if (tipo === 'story') {
+      queryCount = queryCount.eq('story_id', id).is('chapter_id', null);
+    } else {
+      queryCount = queryCount.eq('chapter_id', id);
+    }
+    const { count } = await queryCount;
+    totalLikes = count || 0;
+
+    // Contar vistas (solo si el toggle está activado)
+    let totalVistas = 0;
+    if (SITE_SETTINGS.show_views) {
+      try {
+        if (tipo === 'story') {
+          const { data: v } = await db.rpc('count_story_views', { story_id_param: id });
+          totalVistas = v || 0;
+        } else {
+          const { data: v } = await db.rpc('count_chapter_views', { chapter_id_param: id });
+          totalVistas = v || 0;
+        }
+      } catch (e) {
+        console.warn('Error contando vistas:', e);
+      }
+    }
+
+    const mostrarLikes = SITE_SETTINGS.show_likes;
+    const mostrarVistas = SITE_SETTINGS.show_views;
+    const labelLike = dioLike ? 'Te gusta' : 'Me gusta';
+
+    const spanLikes = mostrarLikes
+      ? `<span class="like-count">${totalLikes.toLocaleString('es-ES')}</span>`
+      : '';
+
+    const spanVistas = mostrarVistas
+      ? `<span class="views-counter" title="Visualizaciones">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          ${totalVistas.toLocaleString('es-ES')}
+        </span>`
+      : '';
+
     row.innerHTML = `
-      <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}" title="${dioLike ? 'Quitar me gusta' : 'Me gusta'}" aria-label="${dioLike ? 'Quitar me gusta' : 'Me gusta'}">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="${dioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-        </svg>
-        <span class="like-label">${dioLike ? 'Te gusta' : 'Me gusta'}</span>
-      </button>
+      <div class="like-row-inner">
+        <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}" title="${dioLike ? 'Quitar me gusta' : 'Me gusta'}" aria-label="${dioLike ? 'Quitar me gusta' : 'Me gusta'}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="${dioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+          </svg>
+          ${mostrarLikes ? spanLikes : `<span class="like-label">${labelLike}</span>`}
+        </button>
+        ${spanVistas}
+      </div>
     `;
 
     row.querySelector('.like-btn')?.addEventListener('click', async () => {
@@ -1673,6 +1744,36 @@ function showResumeToast(targetY) {
 }
 
 /* ---------- INIT ---------- */
+function dispararContenidoSegunPath() {
+  const path = pagActiva();
+  const params = new URLSearchParams(location.search);
+
+  if (path === 'index.html' || path === '') {
+    cargarHero();
+    cargarNovedades();
+    cargarUltimoBlogHome();
+    cargarHistorias({ excluirDestacada: false });
+  } else if (path === 'historias.html') {
+    cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') });
+  } else if (path === 'generos.html') {
+    cargarGeneros();
+  } else if (path === 'blog.html') {
+    cargarBlog();
+  } else if (path === 'post.html') {
+    cargarPost();
+  } else if (path === 'redes.html') {
+    cargarRedes();
+  } else if (path === 'donaciones.html') {
+    cargarDonaciones();
+  } else if (path === 'biografia.html') {
+    cargarBiografia();
+  } else if (path === 'historia.html') {
+    cargarHistoriaDetalle();
+  } else if (path === 'capitulo.html') {
+    cargarCapitulo();
+  }
+}
+
 initTheme();
 loadReaderPrefs();
 inyectarHeader();
@@ -1687,35 +1788,12 @@ if (document.referrer && document.referrer.includes('admin')) {
 const yearEl = document.getElementById('year');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-const path = pagActiva();
-const params = new URLSearchParams(location.search);
+(async () => {
+  await cargarSiteSettings();
+  dispararContenidoSegunPath();
+  if (window.lucide) lucide.createIcons();
+})();
 
-if (path === 'index.html' || path === '') {
-  cargarHero();
-  cargarNovedades();
-  cargarUltimoBlogHome();
-  cargarHistorias({ excluirDestacada: false });
-} else if (path === 'historias.html') {
-  cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') });
-} else if (path === 'generos.html') {
-  cargarGeneros();
-} else if (path === 'blog.html') {
-  cargarBlog();
-} else if (path === 'post.html') {
-  cargarPost();
-} else if (path === 'redes.html') {
-  cargarRedes();
-} else if (path === 'donaciones.html') {
-  cargarDonaciones();
-} else if (path === 'biografia.html') {
-  cargarBiografia();
-} else if (path === 'historia.html') {
-  cargarHistoriaDetalle();
-} else if (path === 'capitulo.html') {
-  cargarCapitulo();
-}
-
-if (window.lucide) lucide.createIcons();
 window.addEventListener('load', () => { if (window.lucide) lucide.createIcons(); });
 
 /* ============================================
