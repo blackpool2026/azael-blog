@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Con: ajustes + árbol + canvas visual (drag&drop)
+   Roles mejorados + canvas drag&drop
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -22,6 +22,31 @@ let currentProfile = null;
 let currentTreeStory = null;
 let currentCharacter = null;
 let currentCharacterImageUrl = null;
+
+// Lista de roles predefinidos (para detectar si un rol guardado es "personalizado")
+const PREDEFINED_ROLES = [
+  'Protagonista','Coprotagonista','Deuteragonista',
+  'Antagonista','Villano','Rival','Traidor',
+  'Padre','Madre','Hijo','Hija','Hermano','Hermana',
+  'Abuelo','Abuela','Tío','Tía','Primo','Prima',
+  'Sobrino','Sobrina','Cuñado','Cuñada','Suegro','Suegra',
+  'Padrastro','Madrastra','Hijastro','Hijastra','Familia',
+  'Pareja','Esposo','Esposa','Novio','Novia',
+  'Prometido','Prometida','Ex-pareja','Amante','Interés amoroso',
+  'Amigo','Amiga','Mejor amigo','Mejor amiga',
+  'Conocido','Vecino','Compañero','Compañera','Colega',
+  'Aliado','Cómplice',
+  'Mentor','Mentora','Maestro','Maestra',
+  'Alumno','Alumna','Aprendiz','Discípulo','Discípula',
+  'Jefe','Jefa','Empleado','Empleada','Subordinado',
+  'Socio','Socia','Benefactor','Benefactora',
+  'Mascota','Guía','Narrador','Secundario','Extra','Desconocido'
+];
+
+function esRolPersonalizado(role) {
+  if (!role) return false;
+  return !PREDEFINED_ROLES.includes(role);
+}
 
 function ic(name, size = 18) {
   return `<i data-lucide="${name}" style="width:${size}px;height:${size}px;"></i>`;
@@ -1376,6 +1401,9 @@ function abrirCharacterForm(id = null) {
   document.getElementById('characterDeleteBtn').hidden = true;
   document.getElementById('characterFormTitle').textContent = 'Nuevo personaje';
   document.getElementById('characterRemoveImageBtn').hidden = true;
+  document.getElementById('customRoleField').hidden = true;
+  document.getElementById('characterCustomRole').value = '';
+  document.getElementById('characterRole').value = '';
   actualizarAvatarPreview('👤', null);
 
   if (id) {
@@ -1387,10 +1415,20 @@ function abrirCharacterForm(id = null) {
       currentCharacterImageUrl = data.image_url || null;
       document.getElementById('characterName').value = data.name || '';
       document.getElementById('characterAlias').value = data.alias || '';
-      document.getElementById('characterRole').value = data.role || '';
       document.getElementById('characterAge').value = data.age || '';
       document.getElementById('characterEmoji').value = data.emoji || '👤';
       document.getElementById('characterDescription').value = data.description || '';
+
+      const role = data.role || '';
+      if (esRolPersonalizado(role)) {
+        document.getElementById('characterRole').value = '__custom__';
+        document.getElementById('characterCustomRole').value = role;
+        document.getElementById('customRoleField').hidden = false;
+      } else {
+        document.getElementById('characterRole').value = role;
+        document.getElementById('customRoleField').hidden = true;
+      }
+
       document.getElementById('characterFormTitle').textContent = 'Editar personaje';
       document.getElementById('characterDeleteBtn').hidden = false;
       actualizarAvatarPreview(data.emoji || '👤', data.image_url);
@@ -1452,16 +1490,41 @@ document.getElementById('characterEmoji')?.addEventListener('input', (e) => {
   }
 });
 
+document.getElementById('characterRole')?.addEventListener('change', (e) => {
+  const field = document.getElementById('customRoleField');
+  const input = document.getElementById('characterCustomRole');
+  if (!field || !input) return;
+  if (e.target.value === '__custom__') {
+    field.hidden = false;
+    setTimeout(() => input.focus(), 100);
+  } else {
+    field.hidden = true;
+    input.value = '';
+  }
+});
+
 document.getElementById('characterForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
   if (!currentTreeStory) { toast('Error: no hay libro seleccionado', 'error'); return; }
+
+  const roleSelect = document.getElementById('characterRole').value;
+  let finalRole = '';
+  if (roleSelect === '__custom__') {
+    finalRole = document.getElementById('characterCustomRole').value.trim();
+    if (!finalRole) {
+      toast('Escribe el rol personalizado o elige otro', 'error');
+      return;
+    }
+  } else {
+    finalRole = roleSelect;
+  }
 
   const payload = {
     story_id: currentTreeStory.id,
     user_id: session.user.id,
     name: document.getElementById('characterName').value.trim(),
     alias: document.getElementById('characterAlias').value.trim(),
-    role: document.getElementById('characterRole').value,
+    role: finalRole,
     age: document.getElementById('characterAge').value.trim(),
     emoji: document.getElementById('characterEmoji').value.trim() || '👤',
     description: document.getElementById('characterDescription').value.trim(),
@@ -1477,7 +1540,6 @@ document.getElementById('characterForm')?.addEventListener('submit', async (e) =
   if (currentCharacter) {
     ({ error } = await db.from('character_nodes').update(payload).eq('id', currentCharacter.id));
   } else {
-    // Posición inicial cercana al centro del canvas visible
     payload.x = 300 + Math.random() * 200;
     payload.y = 200 + Math.random() * 200;
     ({ error } = await db.from('character_nodes').insert(payload));
@@ -1655,11 +1717,9 @@ function moverDragNode(e) {
   const el = document.querySelector(`.canvas-node[data-node-id="${node.id}"]`);
   if (!el) return;
 
-  // Diferencia del puntero respecto al inicio del drag
   const dx = (e.clientX - canvasState.dragStartPointerX) / canvasState.zoom;
   const dy = (e.clientY - canvasState.dragStartPointerY) / canvasState.zoom;
 
-  // Nueva posición = posición inicial del nodo + diferencia
   const newX = Math.max(0, canvasState.dragStartNodeX + dx);
   const newY = Math.max(0, canvasState.dragStartNodeY + dy);
 
@@ -1788,7 +1848,6 @@ function initCanvasListeners() {
         iniciarPanCanvas(e);
       }
     });
-    // Prevenir scroll táctil mientras se arrastra
     viewport.addEventListener('touchmove', (e) => {
       if (canvasState.draggingNode || canvasState.isPanning) {
         e.preventDefault();
