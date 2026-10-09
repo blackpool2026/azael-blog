@@ -68,6 +68,10 @@
             <i data-lucide="settings" style="width:16px;height:16px;"></i>
             Ajustes
           </button>
+          <button class="btn btn-ghost" id="btnArboles">
+            <i data-lucide="network" style="width:16px;height:16px;"></i>
+            Árboles
+          </button>
         </div>
 
         <section class="section">
@@ -563,6 +567,151 @@
             </button>
           </div>
         </div>
+      </div>
+    </section>
+
+    <!-- ÁRBOLES — ESTANTE -->
+    <section class="admin-view" id="viewArbolesEstante" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromArboles">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Árboles de personajes</h1>
+          <p class="page-sub-c">Elige un libro para gestionar sus personajes</p>
+        </div>
+
+        <div class="trees-shelf" id="treesShelf">
+          <div class="empty-c">
+            <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+            <div class="empty-title">Cargando…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ÁRBOLES — PERSONAJES DE UN LIBRO -->
+    <section class="admin-view" id="viewArbol" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromArbol">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al estante
+        </button>
+
+        <div id="arbolBookHeader"></div>
+
+        <section class="section">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Personajes</h2>
+              <p class="section-sub">Los habitantes de esta historia</p>
+            </div>
+            <button class="btn btn-primary" id="btnNewCharacter">
+              <i data-lucide="plus" style="width:14px;height:14px;"></i>
+              Añadir personaje
+            </button>
+          </div>
+          <div class="characters-admin-list" id="charactersAdminList">
+            <div class="empty-c">
+              <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+              <div class="empty-title">Cargando…</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+
+    <!-- ÁRBOLES — FORM PERSONAJE -->
+    <section class="admin-view" id="viewCharacterForm" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromCharacterForm">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver a personajes
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c" id="characterFormTitle">Nuevo personaje</h1>
+        </div>
+
+        <form class="admin-form" id="characterForm">
+          <div class="admin-form-grid">
+            <div class="admin-cover-uploader">
+              <div class="character-avatar-preview" id="characterAvatarPreview">
+                <span>👤</span>
+              </div>
+              <input type="file" id="characterAvatarInput" accept="image/*" hidden />
+              <button type="button" class="btn btn-ghost btn-block" id="characterAvatarBtn">
+                <i data-lucide="image" style="width:14px;height:14px;"></i>
+                Subir imagen
+              </button>
+              <button type="button" class="btn btn-ghost btn-block" id="characterRemoveImageBtn" style="margin-top:6px;" hidden>
+                <i data-lucide="x" style="width:14px;height:14px;"></i>
+                Quitar imagen
+              </button>
+              <p class="admin-hint">Cuadrada · Máx 5 MB</p>
+            </div>
+
+            <div class="admin-fields">
+              <label class="admin-field">
+                <span>Nombre <span style="color:var(--accent-color);">*</span></span>
+                <input type="text" id="characterName" required maxlength="80" placeholder="Nombre del personaje" />
+              </label>
+
+              <label class="admin-field">
+                <span>Alias / Apodo</span>
+                <input type="text" id="characterAlias" maxlength="60" placeholder='Ej: "El Solista"' />
+              </label>
+
+              <div class="admin-row">
+                <label class="admin-field" style="flex:1;">
+                  <span>Rol</span>
+                  <select id="characterRole">
+                    <option value="">— Selecciona —</option>
+                    <option>Protagonista</option>
+                    <option>Antagonista</option>
+                    <option>Villano</option>
+                    <option>Secundario</option>
+                    <option>Mentor</option>
+                    <option>Aliado</option>
+                    <option>Familia</option>
+                    <option>Amigo</option>
+                    <option>Mascota</option>
+                    <option>Extra</option>
+                    <option>Otro</option>
+                  </select>
+                </label>
+
+                <label class="admin-field" style="flex:1;">
+                  <span>Edad</span>
+                  <input type="text" id="characterAge" maxlength="30" placeholder="Ej: 27 o 'Desconocida'" />
+                </label>
+              </div>
+
+              <label class="admin-field">
+                <span>Emoji (si no pones imagen)</span>
+                <input type="text" id="characterEmoji" maxlength="4" placeholder="👤" value="👤" />
+              </label>
+
+              <label class="admin-field">
+                <span>Descripción corta</span>
+                <textarea id="characterDescription" rows="4" maxlength="400" placeholder="Cuéntanos sobre este personaje…"></textarea>
+              </label>
+            </div>
+          </div>
+
+          <div class="admin-form-actions">
+            <button type="button" class="btn btn-ghost" id="characterDeleteBtn" hidden>
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              Eliminar
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              Guardar
+            </button>
+          </div>
+        </form>
       </div>
     </section>
 
