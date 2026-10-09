@@ -3,7 +3,7 @@
    PWA offline + cache para carga rápida
    ============================================ */
 
-const CACHE_VERSION = 'azael-v5';
+const CACHE_VERSION = 'azael-v7';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
