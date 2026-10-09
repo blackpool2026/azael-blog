@@ -4517,3 +4517,15 @@ body.focus-mode .chapter-story-link {
   .canvas-node-avatar { width: 58px; height: 58px; font-size: 30px; }
   .canvas-node-name { font-size: 12px; }
 }
+/* ============ CAMPO DE ROL PERSONALIZADO ============ */
+#customRoleField {
+  animation: fadeInCustomRole 0.25s ease;
+  border-left: 3px solid var(--accent-color);
+  padding-left: 14px;
+  margin-left: 2px;
+}
+
+@keyframes fadeInCustomRole {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
