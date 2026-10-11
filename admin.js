@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   Con dropdowns personalizados, canvas y conectores
+   FASE 4B: curvatura, grosor, opacidad
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -18,16 +18,13 @@ let currentChapter = null;
 let currentPost = null;
 let currentProfile = null;
 
-// Árbol de personajes
 let currentTreeStory = null;
 let currentCharacter = null;
 let currentCharacterImageUrl = null;
 
-// Dropdown de rol actual
 let characterRoleDropdown = null;
 let selectedRole = '';
 
-// Lista de roles predefinidos
 const PREDEFINED_ROLES = [
   'Protagonista','Coprotagonista','Deuteragonista',
   'Antagonista','Villano','Rival','Traidor',
@@ -112,7 +109,6 @@ function crearDropdownPersonalizado(containerId, groups, opts = {}) {
   const placeholder = opts.placeholder || '— Selecciona —';
   const onChange = opts.onChange || (() => {});
 
-  // Limpiar
   container.innerHTML = '';
   const dropdown = document.createElement('div');
   dropdown.className = 'custom-dropdown';
@@ -1638,7 +1634,6 @@ function abrirCharacterForm(id = null) {
   selectedRole = '';
   actualizarAvatarPreview('👤', null);
 
-  // Inicializar dropdown de rol
   const roleGroups = [
     {
       label: 'Protagonistas',
@@ -2388,6 +2383,31 @@ async function abrirModalConexion(fromNode, toNode) {
             </label>
           </div>
         </div>
+
+        <div class="custom-input-field">
+          <label>Grosor de línea</label>
+          <div class="edge-slider-row">
+            <input type="range" id="edgeWidthInput" min="1" max="6" step="0.5" value="${edgeData.line_width || 2}" />
+            <span class="edge-slider-value" id="edgeWidthValue">${edgeData.line_width || 2}px</span>
+          </div>
+        </div>
+
+        <div class="custom-input-field">
+          <label>Opacidad</label>
+          <div class="edge-slider-row">
+            <input type="range" id="edgeOpacityInput" min="0.2" max="1" step="0.05" value="${edgeData.line_opacity || 1}" />
+            <span class="edge-slider-value" id="edgeOpacityValue">${Math.round((edgeData.line_opacity || 1) * 100)}%</span>
+          </div>
+        </div>
+
+        <div class="custom-input-field">
+          <label>Curvatura</label>
+          <div class="edge-slider-row">
+            <input type="range" id="edgeCurveInput" min="-100" max="100" step="5" value="${edgeData.curve_offset || 0}" />
+            <span class="edge-slider-value" id="edgeCurveValue">${edgeData.curve_offset || 0}</span>
+          </div>
+          <p class="custom-input-hint">0 = recta · Valores negativos/positivos curvan la línea</p>
+        </div>
       </div>
 
       <div class="custom-input-actions">
@@ -2420,6 +2440,22 @@ async function abrirModalConexion(fromNode, toNode) {
   const colorPresets = modal.querySelectorAll('.edge-color-preset');
   const arrowStart = modal.querySelector('#edgeArrowStart');
   const arrowEnd = modal.querySelector('#edgeArrowEnd');
+  const widthInput = modal.querySelector('#edgeWidthInput');
+  const widthValue = modal.querySelector('#edgeWidthValue');
+  const opacityInput = modal.querySelector('#edgeOpacityInput');
+  const opacityValue = modal.querySelector('#edgeOpacityValue');
+  const curveInput = modal.querySelector('#edgeCurveInput');
+  const curveValue = modal.querySelector('#edgeCurveValue');
+
+  widthInput.addEventListener('input', () => {
+    widthValue.textContent = widthInput.value + 'px';
+  });
+  opacityInput.addEventListener('input', () => {
+    opacityValue.textContent = Math.round(parseFloat(opacityInput.value) * 100) + '%';
+  });
+  curveInput.addEventListener('input', () => {
+    curveValue.textContent = curveInput.value;
+  });
 
   crearDropdownPersonalizado('edgeTypeDropdownMount', edgeTypeGroups, {
     value: selectedType,
@@ -2473,11 +2509,11 @@ async function abrirModalConexion(fromNode, toNode) {
       relation_label: labelInput.value.trim(),
       line_color: colorInput.value,
       line_style: selectedStyle,
-      line_width: 2,
+      line_width: parseFloat(widthInput.value) || 2,
       arrow_start: arrowStart.checked,
       arrow_end: arrowEnd.checked,
-      curve_offset: 0,
-      line_opacity: 1,
+      curve_offset: parseFloat(curveInput.value) || 0,
+      line_opacity: parseFloat(opacityInput.value) || 1,
       is_custom_style: true,
     };
 
@@ -2555,20 +2591,46 @@ function dibujarEdges() {
 
     const color = edge.line_color || '#e50914';
     const style = edge.line_style || 'solid';
-    const width = edge.line_width || 2;
-    const opacity = edge.line_opacity || 1;
+    const width = parseFloat(edge.line_width) || 2;
+    const opacity = parseFloat(edge.line_opacity) || 1;
+    const curveOffset = parseFloat(edge.curve_offset) || 0;
 
     let dashAttr = '';
-    if (style === 'dashed') dashAttr = 'stroke-dasharray="8,6"';
-    else if (style === 'dotted') dashAttr = 'stroke-dasharray="2,6"';
+    if (style === 'dashed') dashAttr = `stroke-dasharray="${width * 4},${width * 3}"`;
+    else if (style === 'dotted') dashAttr = `stroke-dasharray="${width},${width * 3}"`;
 
     const markerStart = edge.arrow_start ? 'marker-start="url(#arrowStart)"' : '';
     const markerEnd = edge.arrow_end ? 'marker-end="url(#arrowEnd)"' : '';
 
+    let pathD;
+    let labelX, labelY;
+
+    if (curveOffset === 0) {
+      pathD = `M ${fromX} ${fromY} L ${toX} ${toY}`;
+      labelX = (fromX + toX) / 2;
+      labelY = (fromY + toY) / 2;
+    } else {
+      const midX = (fromX + toX) / 2;
+      const midY = (fromY + toY) / 2;
+
+      const dx = toX - fromX;
+      const dy = toY - fromY;
+      const len = Math.sqrt(dx * dx + dy * dy) || 1;
+      const perpX = -dy / len;
+      const perpY = dx / len;
+
+      const cpX = midX + perpX * curveOffset;
+      const cpY = midY + perpY * curveOffset;
+
+      pathD = `M ${fromX} ${fromY} Q ${cpX} ${cpY} ${toX} ${toY}`;
+
+      labelX = 0.25 * fromX + 0.5 * cpX + 0.25 * toX;
+      labelY = 0.25 * fromY + 0.5 * cpY + 0.25 * toY;
+    }
+
     svg.insertAdjacentHTML('beforeend', `
-      <line
-        x1="${fromX}" y1="${fromY}"
-        x2="${toX}" y2="${toY}"
+      <path
+        d="${pathD}"
         stroke="${color}"
         stroke-width="${width}"
         stroke-opacity="${opacity}"
@@ -2576,6 +2638,7 @@ function dibujarEdges() {
         ${markerStart}
         ${markerEnd}
         stroke-linecap="round"
+        fill="none"
         data-edge-id="${edge.id}"
         class="canvas-edge-line"
         style="cursor: pointer; pointer-events: stroke;"
@@ -2583,20 +2646,14 @@ function dibujarEdges() {
     `);
 
     if (edge.relation_label && edge.relation_label.trim()) {
-      const midX = (fromX + toX) / 2;
-      const midY = (fromY + toY) / 2;
-
-      let angleDeg = Math.atan2(toY - fromY, toX - fromX) * 180 / Math.PI;
-      if (angleDeg > 90 || angleDeg < -90) angleDeg += 180;
-
       const labelWidth = edge.relation_label.length * 6.5 + 16;
       const labelHeight = 20;
 
       svg.insertAdjacentHTML('beforeend', `
         <g class="canvas-edge-label-group" data-edge-id="${edge.id}" style="cursor: pointer;">
           <rect
-            x="${midX - labelWidth / 2}"
-            y="${midY - labelHeight / 2}"
+            x="${labelX - labelWidth / 2}"
+            y="${labelY - labelHeight / 2}"
             width="${labelWidth}"
             height="${labelHeight}"
             rx="10"
@@ -2606,8 +2663,8 @@ function dibujarEdges() {
             opacity="0.95"
           />
           <text
-            x="${midX}"
-            y="${midY + 4}"
+            x="${labelX}"
+            y="${labelY + 4}"
             text-anchor="middle"
             font-family="Inter, sans-serif"
             font-size="11"
