@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Temas de lectura mejorados + migración
+   Con sistema de notificaciones integrado
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -13,7 +13,6 @@ const THEME_KEY = 'azael-theme-v2';
 const PREMIUM_FREE_LIMIT = 5;
 const READ_HISTORY_KEY = 'azael-read-history';
 
-// Configuración del sitio (se carga desde Supabase)
 let SITE_SETTINGS = {
   show_likes: true,
   show_views: true,
@@ -120,8 +119,6 @@ const READER_PREFS = { fontFamily: 'serif', fontSize: 18, lineHeight: 1.6, theme
 function loadReaderPrefs() {
   try {
     const saved = JSON.parse(localStorage.getItem('azael-reader-prefs') || '{}');
-
-    // Migrar temas antiguos a nuevos
     const migracion = {
       'oled': 'obsidian',
       'night': 'midnight',
@@ -130,7 +127,6 @@ function loadReaderPrefs() {
     if (saved.theme && migracion[saved.theme]) {
       saved.theme = migracion[saved.theme];
     }
-
     Object.assign(READER_PREFS, saved);
   } catch {}
 }
@@ -176,6 +172,35 @@ function tiempoRelativo(fecha) {
   if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
   if (diff < 604800) return `hace ${Math.floor(diff / 86400)} d`;
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+/* ---------- CREAR NOTIFICACIÓN PARA EL AUTOR ---------- */
+async function crearNotificacion({ type, storyId, chapterId, postId, commentId }) {
+  try {
+    const { data: author } = await db
+      .from('profiles')
+      .select('id')
+      .eq('is_author', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (!author?.id) return;
+
+    const { data: { session } } = await db.auth.getSession();
+    if (session?.user?.id === author.id) return;
+
+    await db.from('notifications').insert({
+      user_id: author.id,
+      type,
+      from_user_id: session?.user?.id || null,
+      story_id: storyId || null,
+      chapter_id: chapterId || null,
+      post_id: postId || null,
+      comment_id: commentId || null,
+    });
+  } catch (e) {
+    console.warn('Error creando notificación:', e);
+  }
 }
 
 function getReadHistory() {
@@ -478,13 +503,26 @@ function inyectarAuthModal() {
     const username = document.getElementById('registerUsername').value.trim();
     const email = document.getElementById('registerEmail').value.trim();
     const password = document.getElementById('registerPassword').value;
-    const { error } = await db.auth.signUp({
+    const { data: signUpData, error } = await db.auth.signUp({
       email, password,
       options: { data: { username, newsletter: true } },
     });
     hideLoading();
     if (error) { registerError.textContent = traducirError(error.message); registerError.hidden = false; return; }
     showToast('Cuenta creada. ¡Bienvenido!', 'ok');
+
+    // 🎯 Notificación de nuevo usuario
+    try {
+      const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle();
+      if (author?.id && signUpData?.user?.id) {
+        await db.from('notifications').insert({
+          user_id: author.id,
+          type: 'new_user',
+          from_user_id: signUpData.user.id,
+        });
+      }
+    } catch (e) { console.warn('Error notif user:', e); }
+
     authModal.hidden = true;
     registerForm.reset();
     cache.clear();
@@ -945,11 +983,18 @@ async function prepararFormComentario(postId) {
     const content = document.getElementById('commentText').value.trim();
     if (!content) return;
     showLoading();
-    const { error } = await db.from('comments').insert({ post_id: postId, user_id: session.user.id, content });
+    const { data: insertedComment, error } = await db.from('comments')
+      .insert({ post_id: postId, user_id: session.user.id, content })
+      .select()
+      .maybeSingle();
     hideLoading();
     if (error) { showToast('No se pudo publicar el comentario', 'error'); return; }
     showToast('Comentario publicado', 'ok');
     document.getElementById('commentText').value = '';
+
+    // 🎯 Notificar al autor
+    crearNotificacion({ type: 'comment_post', postId, commentId: insertedComment?.id });
+
     await cargarComentarios(postId);
   });
 }
@@ -1017,11 +1062,19 @@ async function prepararFormComentarioCapitulo(chapterId) {
     const content = document.getElementById('chapterCommentText').value.trim();
     if (!content) return;
     showLoading();
-    const { error } = await db.from('comments').insert({ chapter_id: chapterId, user_id: session.user.id, content });
+    const { data: insertedComment, error } = await db.from('comments')
+      .insert({ chapter_id: chapterId, user_id: session.user.id, content })
+      .select()
+      .maybeSingle();
     hideLoading();
     if (error) { showToast('No se pudo publicar el comentario', 'error'); return; }
     showToast('Comentario publicado', 'ok');
     document.getElementById('chapterCommentText').value = '';
+
+    // 🎯 Notificar al autor
+    const { data: ch } = await db.from('chapters').select('story_id').eq('id', chapterId).maybeSingle();
+    crearNotificacion({ type: 'comment_chapter', storyId: ch?.story_id, chapterId, commentId: insertedComment?.id });
+
     await cargarComentariosCapitulo(chapterId);
   });
 }
@@ -1145,6 +1198,14 @@ async function toggleLike(tipo, id) {
       const { error } = await db.from('likes').insert(insert);
       if (error) throw error;
       showToast('¡Gracias por el me gusta!', 'ok');
+
+      // 🎯 Notificar al autor
+      if (tipo === 'story') {
+        crearNotificacion({ type: 'like_story', storyId: id });
+      } else {
+        const { data: ch } = await db.from('chapters').select('story_id').eq('id', id).maybeSingle();
+        crearNotificacion({ type: 'like_chapter', storyId: ch?.story_id, chapterId: id });
+      }
     }
 
     await cargarLikeBoton(tipo, id);
