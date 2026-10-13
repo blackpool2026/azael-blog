@@ -5094,3 +5094,101 @@ body.focus-mode .chapter-story-link {
   text-align: right;
   font-variant-numeric: tabular-nums;
 }
+/* ============================================
+   TEMAS DE LECTURA MEJORADOS
+   ============================================ */
+
+/* Los temas se aplican al body con data-reader-theme */
+body[data-reader-theme="obsidian"] {
+  --reader-bg: #0a0a0c;
+  --reader-text: #e8e8ed;
+  --reader-accent: #e50914;
+}
+
+body[data-reader-theme="midnight"] {
+  --reader-bg: #0f0f1a;
+  --reader-text: #d8d8e4;
+  --reader-accent: #6a8cff;
+}
+
+body[data-reader-theme="parchment"] {
+  --reader-bg: #f2ead8;
+  --reader-text: #2a2620;
+  --reader-accent: #b8860b;
+}
+
+body[data-reader-theme="neutral"] {
+  --reader-bg: #1e1e22;
+  --reader-text: #d0d0d6;
+  --reader-accent: #e50914;
+}
+
+/* Aplicar el tema al fondo del capítulo */
+body[data-reader-theme] .chapter-shell,
+body[data-reader-theme] .reader-c {
+  background: var(--reader-bg);
+}
+
+body[data-reader-theme] .chapter-body,
+body[data-reader-theme] .reader-body-c {
+  color: var(--reader-text);
+}
+
+body[data-reader-theme] .chapter-title-c,
+body[data-reader-theme] .chapter-story-link,
+body[data-reader-theme] .reader-title-c {
+  color: var(--reader-text);
+}
+
+body[data-reader-theme] .chapter-story-link {
+  color: var(--reader-accent);
+}
+
+body[data-reader-theme] .chapter-note {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--reader-text);
+}
+
+body[data-reader-theme="parchment"] .chapter-note {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+/* Cuando el tema es neutral, el fondo del capítulo NO es negro puro
+   sino un gris suave y agradable */
+body[data-reader-theme="neutral"] {
+  --bg-main: #1e1e22;
+  --bg-elevated: #25252a;
+  --bg-surface: #2a2a30;
+}
+
+/* Redondear el fondo del capítulo */
+.chapter-shell {
+  border-radius: 0;
+}
+
+@media (min-width: 720px) {
+  body[data-reader-theme] .chapter-shell {
+    border-radius: var(--radius-lg);
+    margin-top: 24px;
+    margin-bottom: 24px;
+  }
+}
+
+/* ============ NUEVOS ESTILOS PARA EL MODAL DE AJUSTES ============ */
+
+/* Ajustar los 4 segmentos de tema ahora que son 4 en lugar de 3 */
+.rs-segment[data-pref="theme"] {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.rs-segment[data-pref="theme"] .rs-seg-btn {
+  font-size: 12px;
+  padding: 10px 6px;
+}
+
+@media (max-width: 500px) {
+  .rs-segment[data-pref="theme"] .rs-seg-btn {
+    font-size: 11px;
+    padding: 10px 4px;
+  }
+}
