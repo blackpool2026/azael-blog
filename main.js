@@ -1,7 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Con toggle likes/vistas, anti-copia, modo
-   enfoque corregido y sin tiempo de lectura
+   Temas de lectura mejorados + migración
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -116,10 +115,24 @@ function render404(cont, titulo = 'Contenido no encontrado', msg = 'El enlace qu
   if (window.lucide) lucide.createIcons();
 }
 
-const READER_PREFS = { fontFamily: 'serif', fontSize: 18, lineHeight: 1.8, theme: 'oled' };
+const READER_PREFS = { fontFamily: 'serif', fontSize: 18, lineHeight: 1.6, theme: 'neutral' };
 
 function loadReaderPrefs() {
-  try { Object.assign(READER_PREFS, JSON.parse(localStorage.getItem('azael-reader-prefs') || '{}')); } catch {}
+  try {
+    const saved = JSON.parse(localStorage.getItem('azael-reader-prefs') || '{}');
+
+    // Migrar temas antiguos a nuevos
+    const migracion = {
+      'oled': 'obsidian',
+      'night': 'midnight',
+      'sepia': 'parchment',
+    };
+    if (saved.theme && migracion[saved.theme]) {
+      saved.theme = migracion[saved.theme];
+    }
+
+    Object.assign(READER_PREFS, saved);
+  } catch {}
 }
 function saveReaderPrefs() {
   localStorage.setItem('azael-reader-prefs', JSON.stringify(READER_PREFS));
@@ -1035,7 +1048,6 @@ async function cargarLikeBoton(tipo, id) {
       dioLike = !!myLike;
     }
 
-    // Contar likes totales
     let totalLikes = 0;
     let queryCount = db.from('likes').select('id', { count: 'exact', head: true });
     if (tipo === 'story') {
@@ -1046,7 +1058,6 @@ async function cargarLikeBoton(tipo, id) {
     const { count } = await queryCount;
     totalLikes = count || 0;
 
-    // Contar vistas (solo si el toggle está activado)
     let totalVistas = 0;
     if (SITE_SETTINGS.show_views) {
       try {
@@ -1609,17 +1620,18 @@ function abrirReaderSettings() {
         <div class="rs-group">
           <label class="rs-label">Interlineado</label>
           <div class="rs-segment" data-pref="lineHeight">
-            <button data-value="1.5" class="rs-seg-btn">Compacto</button>
-            <button data-value="1.8" class="rs-seg-btn">Normal</button>
-            <button data-value="2" class="rs-seg-btn">Amplio</button>
+            <button data-value="1.4" class="rs-seg-btn">Compacto</button>
+            <button data-value="1.6" class="rs-seg-btn">Normal</button>
+            <button data-value="1.9" class="rs-seg-btn">Amplio</button>
           </div>
         </div>
         <div class="rs-group">
           <label class="rs-label">Tema de lectura</label>
           <div class="rs-segment" data-pref="theme">
-            <button data-value="oled" class="rs-seg-btn">OLED</button>
-            <button data-value="night" class="rs-seg-btn">Night</button>
-            <button data-value="sepia" class="rs-seg-btn">Sepia</button>
+            <button data-value="obsidian" class="rs-seg-btn">Obsidian</button>
+            <button data-value="midnight" class="rs-seg-btn">Midnight</button>
+            <button data-value="parchment" class="rs-seg-btn">Parchment</button>
+            <button data-value="neutral" class="rs-seg-btn">Neutral</button>
           </div>
         </div>
         <button class="btn btn-block" id="rsFullscreen">${ic('book-open', 18)} Modo lectura</button>
