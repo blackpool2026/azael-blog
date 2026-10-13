@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   FASE 4B: curvatura, grosor, opacidad
+   Temas mejorados + contador en vivo + editor compacto
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -98,6 +98,14 @@ function limpiarCachePublica() {
     }
     keys.forEach(k => sessionStorage.removeItem(k));
   } catch {}
+}
+
+function debounce(fn, delay) {
+  let timer = null;
+  return function (...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), delay);
+  };
 }
 
 /* ---------- DROPDOWN PERSONALIZADO ---------- */
@@ -704,6 +712,21 @@ function initEditor(toolbarId, editorId, counterId) {
     });
   });
 
+  // 🎯 Contador en tiempo real
+  const actualizarContadorDebounced = debounce(() => {
+    if (counterId) actualizarContador(editorId, counterId);
+  }, 100);
+
+  editor.addEventListener('input', () => {
+    actualizarContadorDebounced();
+    guardarBorrador(editorId);
+  });
+
+  editor.addEventListener('keyup', () => {
+    actualizarContadorDebounced();
+  });
+
+  // Pegar con estructura limpia
   editor.addEventListener('paste', (e) => {
     e.preventDefault();
     const html = e.clipboardData.getData('text/html');
@@ -720,14 +743,14 @@ function initEditor(toolbarId, editorId, counterId) {
       document.execCommand('insertHTML', false, `<p>${safe}</p>`);
     }
 
-    if (counterId) actualizarContador(editorId, counterId);
+    setTimeout(() => actualizarContadorDebounced(), 50);
     guardarBorrador(editorId);
   });
 
-  editor.addEventListener('input', () => {
-    if (counterId) actualizarContador(editorId, counterId);
-    guardarBorrador(editorId);
+  editor.addEventListener('cut', () => {
+    setTimeout(() => actualizarContadorDebounced(), 50);
   });
+
   setInterval(() => guardarBorrador(editorId), 30000);
 }
 
@@ -826,7 +849,6 @@ function limpiarHtmlPegado(html) {
   temp.appendChild(result);
   return temp.innerHTML;
 }
-
 async function insertarImagen(editor) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -2419,7 +2441,6 @@ async function abrirModalConexion(fromNode, toNode) {
   `;
   document.body.appendChild(modal);
 
-  // Dropdown personalizado para tipo
   const edgeTypeGroups = [
     {
       label: 'Tipos de relación',
