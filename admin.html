@@ -48,6 +48,11 @@
             <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
             Nueva entrada
           </button>
+          <button class="btn btn-ghost" id="btnNotificaciones" style="position:relative;">
+            <i data-lucide="bell" style="width:16px;height:16px;"></i>
+            Notificaciones
+            <span class="notif-badge" id="notifBadge" hidden>0</span>
+          </button>
           <button class="btn btn-ghost" id="btnRedes">
             <i data-lucide="share-2" style="width:16px;height:16px;"></i>
             Redes
@@ -510,6 +515,41 @@
             </div>
           </div>
           <div class="stats-list" id="storyStatsChapters"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- NOTIFICACIONES -->
+    <section class="admin-view" id="viewNotificaciones" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromNotificaciones">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Notificaciones</h1>
+          <p class="page-sub-c">Actividad reciente de tus lectores</p>
+        </div>
+
+        <div class="notif-toolbar">
+          <div class="notif-filters" id="notifFilters">
+            <button class="notif-filter active" data-filter="all">Todas</button>
+            <button class="notif-filter" data-filter="comment">Comentarios</button>
+            <button class="notif-filter" data-filter="like">Likes</button>
+            <button class="notif-filter" data-filter="user">Usuarios</button>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="btnMarkAllRead">
+            <i data-lucide="check-check" style="width:14px;height:14px;"></i>
+            Marcar todas como leídas
+          </button>
+        </div>
+
+        <div class="notif-list" id="notifList">
+          <div class="empty-c">
+            <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+            <div class="empty-title">Cargando…</div>
+          </div>
         </div>
       </div>
     </section>
