@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Con sistema de notificaciones integrado
+   Con género Espiritual + notificaciones integradas
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -758,18 +758,19 @@ function renderStories(data, grid) {
 }
 
 const GENEROS = [
-  { slug: 'romance',   label: 'Romance',         icon: 'heart' },
-  { slug: 'terror',    label: 'Terror',          icon: 'skull' },
-  { slug: 'comedia',   label: 'Comedia',         icon: 'smile' },
-  { slug: 'misterio',  label: 'Misterio',        icon: 'search' },
-  { slug: 'musica',    label: 'Música',          icon: 'music' },
-  { slug: 'violencia', label: 'Violencia',       icon: 'droplet' },
-  { slug: 'suspenso',  label: 'Suspenso',        icon: 'eye' },
-  { slug: 'aventura',  label: 'Aventura',        icon: 'compass' },
-  { slug: 'fantasia',  label: 'Fantasía',        icon: 'sparkles' },
-  { slug: 'ciencia',   label: 'Ciencia ficción', icon: 'rocket' },
-  { slug: 'drama',     label: 'Drama',           icon: 'theater' },
-  { slug: 'poesia',    label: 'Poesía',          icon: 'feather' },
+  { slug: 'romance',     label: 'Romance',         icon: 'heart' },
+  { slug: 'terror',      label: 'Terror',          icon: 'skull' },
+  { slug: 'comedia',     label: 'Comedia',         icon: 'smile' },
+  { slug: 'misterio',    label: 'Misterio',        icon: 'search' },
+  { slug: 'musica',      label: 'Música',          icon: 'music' },
+  { slug: 'violencia',   label: 'Violencia',       icon: 'droplet' },
+  { slug: 'suspenso',    label: 'Suspenso',        icon: 'eye' },
+  { slug: 'aventura',    label: 'Aventura',        icon: 'compass' },
+  { slug: 'fantasia',    label: 'Fantasía',        icon: 'sparkles' },
+  { slug: 'ciencia',     label: 'Ciencia ficción', icon: 'rocket' },
+  { slug: 'drama',       label: 'Drama',           icon: 'theater' },
+  { slug: 'poesia',      label: 'Poesía',          icon: 'feather' },
+  { slug: 'espiritual',  label: 'Espiritual',      icon: 'sparkle' },
 ];
 
 function cargarGeneros() {
