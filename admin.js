@@ -1,854 +1,3 @@
-/* ============================================
-   AZAEL BLOG — admin.js COMPLETO
-   Temas mejorados + contador en vivo + editor compacto
-   ============================================ */
-
-const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbGlkdXdpYXJyeXFjcXRpZ25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3OTU4MzgsImV4cCI6MjEwNjM3MTgzOH0.T6GZXQNjzRwhbuYuVx54vsdTNy2CTpEwCjnxED1KGaY';
-
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const THEME_KEY = 'azael-theme-v2';
-const DRAFT_KEY = 'azael-draft';
-
-let session = null;
-let currentStory = null;
-let currentChapter = null;
-let currentPost = null;
-let currentProfile = null;
-
-let currentTreeStory = null;
-let currentCharacter = null;
-let currentCharacterImageUrl = null;
-
-let characterRoleDropdown = null;
-let selectedRole = '';
-
-const PREDEFINED_ROLES = [
-  'Protagonista','Coprotagonista','Deuteragonista',
-  'Antagonista','Villano','Rival','Traidor',
-  'Padre','Madre','Hijo','Hija','Hermano','Hermana',
-  'Abuelo','Abuela','Tío','Tía','Primo','Prima',
-  'Sobrino','Sobrina','Cuñado','Cuñada','Suegro','Suegra',
-  'Padrastro','Madrastra','Hijastro','Hijastra','Familia',
-  'Pareja','Esposo','Esposa','Novio','Novia',
-  'Prometido','Prometida','Ex-pareja','Amante','Interés amoroso',
-  'Amigo','Amiga','Mejor amigo','Mejor amiga',
-  'Conocido','Vecino','Compañero','Compañera','Colega',
-  'Aliado','Cómplice',
-  'Mentor','Mentora','Maestro','Maestra',
-  'Alumno','Alumna','Aprendiz','Discípulo','Discípula',
-  'Jefe','Jefa','Empleado','Empleada','Subordinado',
-  'Socio','Socia','Benefactor','Benefactora',
-  'Mascota','Guía','Narrador','Secundario','Extra','Desconocido'
-];
-
-function esRolPersonalizado(role) {
-  if (!role) return false;
-  return !PREDEFINED_ROLES.includes(role);
-}
-
-function ic(name, size = 18) {
-  return `<i data-lucide="${name}" style="width:${size}px;height:${size}px;"></i>`;
-}
-
-function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem(THEME_KEY, t);
-}
-function initTheme() { applyTheme(localStorage.getItem(THEME_KEY) || 'dark'); }
-
-function showLoading() {
-  let el = document.getElementById('globalLoading');
-  if (!el) {
-    el = document.createElement('div');
-    el.id = 'globalLoading';
-    el.className = 'global-loading';
-    el.innerHTML = '<div class="spinner"></div>';
-    document.body.appendChild(el);
-  }
-  el.hidden = false;
-}
-function hideLoading() {
-  const el = document.getElementById('globalLoading');
-  if (el) el.hidden = true;
-}
-
-function toast(msg, type = 'info') {
-  const mount = document.getElementById('toast-mount');
-  if (!mount) return;
-  const el = document.createElement('div');
-  el.className = `toast toast-${type}`;
-  el.textContent = msg;
-  mount.appendChild(el);
-  requestAnimationFrame(() => el.classList.add('show'));
-  setTimeout(() => {
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 300);
-  }, 2500);
-}
-
-function limpiarCachePublica() {
-  try {
-    const keys = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const k = sessionStorage.key(i);
-      if (k && k.startsWith('azael-cache:')) keys.push(k);
-    }
-    keys.forEach(k => sessionStorage.removeItem(k));
-  } catch {}
-}
-
-function debounce(fn, delay) {
-  let timer = null;
-  return function (...args) {
-    clearTimeout(timer);
-    timer = setTimeout(() => fn.apply(this, args), delay);
-  };
-}
-
-/* ---------- DROPDOWN PERSONALIZADO ---------- */
-function crearDropdownPersonalizado(containerId, groups, opts = {}) {
-  const container = document.getElementById(containerId);
-  if (!container) return null;
-
-  let currentValue = opts.value || '';
-  const placeholder = opts.placeholder || '— Selecciona —';
-  const onChange = opts.onChange || (() => {});
-
-  container.innerHTML = '';
-  const dropdown = document.createElement('div');
-  dropdown.className = 'custom-dropdown';
-
-  dropdown.innerHTML = `
-    <button type="button" class="custom-dropdown-trigger">
-      <div class="custom-dropdown-trigger-content">
-        <span class="custom-dropdown-trigger-emoji" hidden></span>
-        <span class="custom-dropdown-trigger-text placeholder">${escapeHtml(placeholder)}</span>
-      </div>
-      <svg class="custom-dropdown-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="6 9 12 15 18 9"/>
-      </svg>
-    </button>
-    <div class="custom-dropdown-menu"></div>
-  `;
-
-  const trigger = dropdown.querySelector('.custom-dropdown-trigger');
-  const triggerEmoji = dropdown.querySelector('.custom-dropdown-trigger-emoji');
-  const triggerText = dropdown.querySelector('.custom-dropdown-trigger-text');
-  const menu = dropdown.querySelector('.custom-dropdown-menu');
-
-  groups.forEach(group => {
-    if (group.label) {
-      const groupEl = document.createElement('div');
-      groupEl.className = 'custom-dropdown-group';
-      groupEl.textContent = group.label;
-      menu.appendChild(groupEl);
-    }
-
-    group.options.forEach(opt => {
-      const optEl = document.createElement('div');
-      optEl.className = 'custom-dropdown-option';
-      if (opt.value === '__custom__') optEl.classList.add('custom-option');
-      optEl.dataset.value = opt.value;
-
-      optEl.innerHTML = `
-        ${opt.emoji ? `<span class="custom-dropdown-option-emoji">${opt.emoji}</span>` : ''}
-        <span class="custom-dropdown-option-label">${escapeHtml(opt.label)}</span>
-      `;
-
-      optEl.addEventListener('click', (e) => {
-        e.stopPropagation();
-        currentValue = opt.value;
-        actualizar();
-        dropdown.classList.remove('open');
-        onChange(opt.value, opt);
-      });
-
-      menu.appendChild(optEl);
-    });
-  });
-
-  function actualizar() {
-    let selectedOpt = null;
-    for (const group of groups) {
-      const found = group.options.find(o => o.value === currentValue);
-      if (found) { selectedOpt = found; break; }
-    }
-
-    if (selectedOpt) {
-      triggerText.textContent = selectedOpt.label;
-      triggerText.classList.remove('placeholder');
-      if (selectedOpt.emoji) {
-        triggerEmoji.textContent = selectedOpt.emoji;
-        triggerEmoji.hidden = false;
-      } else {
-        triggerEmoji.hidden = true;
-      }
-    } else {
-      triggerText.textContent = placeholder;
-      triggerText.classList.add('placeholder');
-      triggerEmoji.hidden = true;
-    }
-
-    menu.querySelectorAll('.custom-dropdown-option').forEach(opt => {
-      opt.classList.toggle('selected', opt.dataset.value === currentValue);
-    });
-  }
-
-  trigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    document.querySelectorAll('.custom-dropdown.open').forEach(d => {
-      if (d !== dropdown) d.classList.remove('open');
-    });
-    dropdown.classList.toggle('open');
-  });
-
-  document.addEventListener('click', () => {
-    dropdown.classList.remove('open');
-  });
-
-  container.appendChild(dropdown);
-  actualizar();
-
-  dropdown.setValue = (val) => {
-    currentValue = val;
-    actualizar();
-  };
-  dropdown.getValue = () => currentValue;
-
-  return dropdown;
-}
-
-/* ---------- INPUT MODAL ---------- */
-function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
-  return new Promise((resolve) => {
-    const modal = document.createElement('div');
-    modal.className = 'custom-input-overlay';
-    modal.innerHTML = `
-      <div class="custom-input-modal">
-        <div class="custom-input-icon">${ic(iconName, 26)}</div>
-        <h3 class="custom-input-title">${escapeHtml(title)}</h3>
-        ${desc ? `<p class="custom-input-desc">${escapeHtml(desc)}</p>` : ''}
-        <div class="custom-input-field">
-          <label for="customInputField">${escapeHtml(label)}</label>
-          <input type="${type}" id="customInputField" placeholder="${escapeHtml(placeholder || '')}" value="${escapeHtml(value)}" autocomplete="off" />
-          ${hint ? `<p class="custom-input-hint">${escapeHtml(hint)}</p>` : ''}
-        </div>
-        <div class="custom-input-actions">
-          <button class="btn btn-ghost" id="customInputCancel">Cancelar</button>
-          <button class="btn btn-primary" id="customInputOk">Aceptar</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-    if (window.lucide) lucide.createIcons();
-
-    const input = modal.querySelector('#customInputField');
-    const okBtn = modal.querySelector('#customInputOk');
-    const cancelBtn = modal.querySelector('#customInputCancel');
-
-    setTimeout(() => input.focus(), 100);
-
-    function close(value) {
-      modal.remove();
-      resolve(value);
-    }
-
-    okBtn.addEventListener('click', () => close(input.value.trim()));
-    cancelBtn.addEventListener('click', () => close(null));
-    modal.addEventListener('click', (e) => { if (e.target === modal) close(null); });
-
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); close(input.value.trim()); }
-      if (e.key === 'Escape') close(null);
-    });
-  });
-}
-
-function salirAlSitio() {
-  const ref = document.referrer || '';
-  if (ref && !ref.includes('admin.html')) {
-    try { window.history.back(); return; } catch {}
-  }
-  location.href = 'index.html';
-}
-
-/* ---------- HEADER ---------- */
-function inyectarHeader() {
-  const mount = document.getElementById('header-mount');
-  if (!mount) return;
-  mount.innerHTML = `
-    <header class="app-header">
-      <div class="app-header-inner">
-        <button class="admin-back-link" id="backBtn" title="Volver al sitio">
-          ${ic('arrow-left', 16)} <span>Sitio</span>
-        </button>
-        <h1 class="header-title">Panel</h1>
-        <div class="header-actions">
-          <button class="icon-action" id="themeToggle" aria-label="Tema">${ic('moon', 18)}</button>
-          <button class="icon-action" id="logoutBtn" aria-label="Cerrar sesión">${ic('log-out', 18)}</button>
-        </div>
-      </div>
-    </header>
-  `;
-  document.getElementById('backBtn').addEventListener('click', salirAlSitio);
-  document.getElementById('themeToggle').addEventListener('click', () => {
-    const cur = document.documentElement.getAttribute('data-theme');
-    applyTheme(cur === 'dark' ? 'light' : 'dark');
-  });
-  document.getElementById('logoutBtn').addEventListener('click', async () => {
-    if (!confirm('¿Cerrar sesión?')) return;
-    await db.auth.signOut();
-    location.replace('index.html');
-  });
-  if (window.lucide) lucide.createIcons();
-}
-
-/* ---------- MODAL AUTH ---------- */
-function inyectarAuthModal() {
-  const mount = document.getElementById('auth-mount');
-  if (!mount) return;
-  mount.innerHTML = `
-    <div class="modal-overlay-c" id="authModal" hidden>
-      <div class="modal-c">
-        <h2 class="modal-title-c">Acceso al panel</h2>
-        <p class="modal-sub-c">Inicia sesión con tu cuenta de autor.</p>
-        <form id="loginForm" class="auth-form-c">
-          <label>Correo <input type="email" id="loginEmail" required autocomplete="email" /></label>
-          <label>Contraseña <input type="password" id="loginPassword" required autocomplete="current-password" /></label>
-          <button type="submit" class="btn btn-primary btn-block">Entrar</button>
-          <p class="auth-error-c" id="loginError" hidden></p>
-        </form>
-        <button class="btn btn-ghost btn-block" id="backToSiteBtn" style="margin-top:12px;">Volver al sitio</button>
-      </div>
-    </div>
-  `;
-  document.getElementById('backToSiteBtn').addEventListener('click', salirAlSitio);
-  document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const err = document.getElementById('loginError');
-    err.hidden = true;
-    showLoading();
-    const { error } = await db.auth.signInWithPassword({
-      email: document.getElementById('loginEmail').value.trim(),
-      password: document.getElementById('loginPassword').value,
-    });
-    hideLoading();
-    if (error) { err.textContent = traducirError(error.message); err.hidden = false; return; }
-    toast('Sesión iniciada', 'ok');
-    setTimeout(() => location.reload(), 400);
-  });
-}
-
-function mostrarModalSinPermisos() {
-  let modal = document.getElementById('deniedModal');
-  if (!modal) {
-    modal = document.createElement('div');
-    modal.id = 'deniedModal';
-    modal.className = 'denied-overlay';
-    modal.innerHTML = `
-      <div class="denied-modal">
-        <div class="denied-icon">${ic('shield-off', 36)}</div>
-        <h2 class="denied-title">Acceso restringido</h2>
-        <p class="denied-msg">Esta cuenta no tiene permisos de autor para acceder al panel de escritor.</p>
-        <div class="denied-actions">
-          <button class="btn btn-primary" id="deniedBack">${ic('home', 16)} Volver al sitio</button>
-          <button class="btn btn-ghost" id="deniedLogout">${ic('log-out', 16)} Cerrar sesión</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-    document.getElementById('deniedBack').addEventListener('click', () => {
-      location.href = 'index.html';
-    });
-    document.getElementById('deniedLogout').addEventListener('click', async () => {
-      await db.auth.signOut();
-      location.href = 'index.html';
-    });
-    if (window.lucide) lucide.createIcons();
-  }
-  modal.hidden = false;
-  if (window.lucide) lucide.createIcons();
-}
-
-function showView(id) {
-  document.querySelectorAll('.admin-view').forEach(v => v.hidden = true);
-  document.getElementById(id)?.removeAttribute('hidden');
-  window.scrollTo({ top: 0, behavior: 'instant' });
-  if (window.lucide) lucide.createIcons();
-}
-
-async function verificarAutor() {
-  const { data: { session: s } } = await db.auth.getSession();
-  session = s;
-
-  if (!session) {
-    document.getElementById('authModal').hidden = false;
-    return false;
-  }
-
-  const { data: profile } = await db.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
-  currentProfile = profile;
-
-  if (!profile?.is_author) {
-    mostrarModalSinPermisos();
-    return false;
-  }
-
-  return true;
-}
-
-/* ---------- DASHBOARD ---------- */
-async function cargarDashboard() {
-  showLoading();
-  const [storiesRes, chaptersRes, postsRes] = await Promise.all([
-    db.from('stories').select('*').order('created_at', { ascending: false }),
-    db.from('chapters').select('id', { count: 'exact', head: true }),
-    db.from('blog_posts').select('id', { count: 'exact', head: true }),
-  ]);
-  hideLoading();
-
-  document.getElementById('statStories').textContent = storiesRes.data?.length ?? '0';
-  document.getElementById('statChapters').textContent = chaptersRes.count ?? '0';
-  document.getElementById('statPosts').textContent = postsRes.count ?? '0';
-
-  const storiesList = document.getElementById('adminStoriesList');
-  if (!storiesRes.data?.length) {
-    storiesList.innerHTML = emptyState('book', 'Sin historias', 'Crea tu primera historia.');
-  } else {
-    storiesList.innerHTML = storiesRes.data.map(s => `
-      <div class="admin-item">
-        <div class="admin-item-cover">
-          ${s.cover_url ? `<img src="${s.cover_url}" alt="" />` : escapeHtml(s.title.charAt(0))}
-        </div>
-        <div class="admin-item-body">
-          <div class="admin-item-title">${escapeHtml(s.title)}</div>
-          <div class="admin-item-meta">
-            ${s.is_featured ? '<span class="admin-badge admin-badge-accent">Destacada</span>' : ''}
-            <span>${escapeHtml(s.status || 'En curso')}</span>
-            ${s.is_published ? '<span class="admin-badge admin-badge-ok">Publicada</span>' : '<span class="admin-badge">Borrador</span>'}
-          </div>
-        </div>
-        <button class="admin-item-action" data-action="edit-story" data-id="${s.id}">${ic('edit-2', 16)}</button>
-      </div>
-    `).join('');
-  }
-
-  const postsList = document.getElementById('adminPostsList');
-  const postsRes2 = await db.from('blog_posts').select('*').order('created_at', { ascending: false });
-  if (!postsRes2.data?.length) {
-    postsList.innerHTML = emptyState('feather', 'Sin entradas', 'Escribe tu primera entrada.');
-  } else {
-    postsList.innerHTML = postsRes2.data.map(p => `
-      <div class="admin-item">
-        <div class="admin-item-body">
-          <div class="admin-item-title">${escapeHtml(p.title)}</div>
-          <div class="admin-item-meta">
-            <span>${new Date(p.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}</span>
-            ${p.published ? '<span class="admin-badge admin-badge-ok">Publicada</span>' : '<span class="admin-badge">Borrador</span>'}
-          </div>
-        </div>
-        <button class="admin-item-action" data-action="edit-post" data-id="${p.id}">${ic('edit-2', 16)}</button>
-      </div>
-    `).join('');
-  }
-
-  document.querySelectorAll('[data-action="edit-story"]').forEach(btn => {
-    btn.addEventListener('click', () => abrirStoryForm(btn.dataset.id));
-  });
-  document.querySelectorAll('[data-action="edit-post"]').forEach(btn => {
-    btn.addEventListener('click', () => abrirPostForm(btn.dataset.id));
-  });
-  if (window.lucide) lucide.createIcons();
-}
-
-/* ---------- STORY FORM ---------- */
-async function abrirStoryForm(id = null) {
-  currentStory = null;
-  document.getElementById('storyForm').reset();
-  document.getElementById('storyCoverBook').innerHTML = '<span id="storyCoverPlaceholder">A</span>';
-  document.getElementById('storyCoverBook').dataset.coverUrl = '';
-  document.getElementById('chaptersSection').hidden = true;
-  document.getElementById('storyDeleteBtn').hidden = true;
-  document.getElementById('storyViewTitle').textContent = 'Nueva historia';
-
-  if (id) {
-    showLoading();
-    const { data } = await db.from('stories').select('*').eq('id', id).maybeSingle();
-    hideLoading();
-    if (data) {
-      currentStory = data;
-      document.getElementById('storyTitle').value = data.title || '';
-      document.getElementById('storySynopsis').value = data.synopsis || '';
-      document.getElementById('storyGenre').value = data.genre || '';
-      document.getElementById('storyStatus').value = data.status || 'En emisión';
-      document.getElementById('storyDedication').value = data.dedication || '';
-      document.getElementById('storyFeatured').checked = !!data.is_featured;
-      document.getElementById('storyPublished').checked = data.is_published !== false;
-      if (data.cover_url) {
-        document.getElementById('storyCoverBook').innerHTML = `<img src="${data.cover_url}" alt="" />`;
-        document.getElementById('storyCoverBook').dataset.coverUrl = data.cover_url;
-      }
-      document.getElementById('storyViewTitle').textContent = 'Editar historia';
-      document.getElementById('storyDeleteBtn').hidden = false;
-      document.getElementById('chaptersSection').hidden = false;
-      cargarCapitulosAdmin(data.id);
-    }
-  }
-  showView('viewStory');
-}
-
-document.getElementById('storyCoverBtn').addEventListener('click', () => {
-  document.getElementById('storyCoverInput').click();
-});
-
-document.getElementById('storyCoverInput').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { toast('La imagen supera 5 MB', 'error'); return; }
-  showLoading();
-  try {
-    const ext = file.name.split('.').pop();
-    const filename = `covers/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { error: upErr } = await db.storage.from('media').upload(filename, file);
-    if (upErr) throw upErr;
-    const { data: pub } = db.storage.from('media').getPublicUrl(filename);
-    document.getElementById('storyCoverBook').innerHTML = `<img src="${pub.publicUrl}" alt="" />`;
-    document.getElementById('storyCoverBook').dataset.coverUrl = pub.publicUrl;
-    toast('Portada subida', 'ok');
-  } catch (err) { toast('Error al subir: ' + err.message, 'error'); }
-  hideLoading();
-});
-
-document.getElementById('storyForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const payload = {
-    user_id: session.user.id,
-    title: document.getElementById('storyTitle').value.trim(),
-    synopsis: document.getElementById('storySynopsis').value.trim(),
-    genre: document.getElementById('storyGenre').value,
-    status: document.getElementById('storyStatus').value,
-    dedication: document.getElementById('storyDedication').value.trim(),
-    is_featured: document.getElementById('storyFeatured').checked,
-    is_published: document.getElementById('storyPublished').checked,
-    cover_url: document.getElementById('storyCoverBook').dataset.coverUrl || currentStory?.cover_url || null,
-  };
-  if (payload.is_featured) {
-    await db.from('stories').update({ is_featured: false }).neq('id', currentStory?.id || '00000000-0000-0000-0000-000000000000');
-  }
-  showLoading();
-  let error, data;
-  if (currentStory) {
-    ({ error, data } = await db.from('stories').update(payload).eq('id', currentStory.id).select().maybeSingle());
-  } else {
-    ({ error, data } = await db.from('stories').insert(payload).select().maybeSingle());
-  }
-  hideLoading();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  currentStory = data;
-  toast('Historia guardada', 'ok');
-  limpiarCachePublica();
-  document.getElementById('storyViewTitle').textContent = 'Editar historia';
-  document.getElementById('storyDeleteBtn').hidden = false;
-  document.getElementById('chaptersSection').hidden = false;
-  cargarCapitulosAdmin(data.id);
-  cargarDashboard();
-});
-
-document.getElementById('storyDeleteBtn').addEventListener('click', async () => {
-  if (!currentStory) return;
-  if (!confirm(`¿Eliminar "${currentStory.title}"?`)) return;
-  showLoading();
-  const { error } = await db.from('stories').delete().eq('id', currentStory.id);
-  hideLoading();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast('Historia eliminada', 'ok');
-  limpiarCachePublica();
-  showView('viewDashboard');
-  cargarDashboard();
-});
-
-/* ---------- CAPÍTULOS ---------- */
-async function cargarCapitulosAdmin(storyId) {
-  const list = document.getElementById('chaptersList');
-  const { data } = await db.from('chapters')
-    .select('id, title, chapter_order, is_premium, created_at')
-    .eq('story_id', storyId).order('chapter_order', { ascending: true });
-  if (!data?.length) {
-    list.innerHTML = emptyState('book-open', 'Sin capítulos', 'Añade tu primer capítulo.');
-    return;
-  }
-  list.innerHTML = data.map((c, i) => `
-    <div class="admin-chapter-row">
-      <div class="admin-chapter-num">${String(c.chapter_order || i + 1).padStart(2, '0')}</div>
-      <div class="admin-chapter-body">
-        <div class="admin-chapter-title">${escapeHtml(c.title)}</div>
-        <div class="admin-chapter-meta">
-          ${c.is_premium ? '<span class="admin-badge admin-badge-accent">Premium</span>' : ''}
-        </div>
-      </div>
-      <div class="admin-chapter-actions">
-        <button class="admin-item-action" data-action="up" data-id="${c.id}">${ic('arrow-up', 14)}</button>
-        <button class="admin-item-action" data-action="down" data-id="${c.id}">${ic('arrow-down', 14)}</button>
-        <button class="admin-item-action" data-action="edit-chapter" data-id="${c.id}">${ic('edit-2', 16)}</button>
-      </div>
-    </div>
-  `).join('');
-  document.querySelectorAll('[data-action="edit-chapter"]').forEach(btn => {
-    btn.addEventListener('click', () => abrirChapterForm(btn.dataset.id));
-  });
-  document.querySelectorAll('[data-action="up"], [data-action="down"]').forEach(btn => {
-    btn.addEventListener('click', () => moverCapitulo(btn.dataset.id, btn.dataset.action, data));
-  });
-  if (window.lucide) lucide.createIcons();
-}
-
-async function moverCapitulo(id, direction, chapters) {
-  const idx = chapters.findIndex(c => c.id === id);
-  if (idx === -1) return;
-  const swapIdx = direction === 'up' ? idx - 1 : idx + 1;
-  if (swapIdx < 0 || swapIdx >= chapters.length) return;
-  const a = chapters[idx], b = chapters[swapIdx];
-  const orderA = a.chapter_order || idx + 1;
-  const orderB = b.chapter_order || swapIdx + 1;
-  await db.from('chapters').update({ chapter_order: orderB }).eq('id', a.id);
-  await db.from('chapters').update({ chapter_order: orderA }).eq('id', b.id);
-  cargarCapitulosAdmin(currentStory.id);
-}
-
-function abrirChapterForm(id = null) {
-  currentChapter = null;
-  document.getElementById('chapterForm').reset();
-  document.getElementById('chapterEditor').innerHTML = '';
-  document.getElementById('chapterDeleteBtn').hidden = true;
-  document.getElementById('chapterViewTitle').textContent = 'Nuevo capítulo';
-  document.getElementById('chapterOrder').value = 1;
-  actualizarContador('chapterEditor', 'edCounter');
-  if (id) {
-    showLoading();
-    db.from('chapters').select('*').eq('id', id).maybeSingle().then(({ data }) => {
-      hideLoading();
-      if (!data) return;
-      currentChapter = data;
-      document.getElementById('chapterTitle').value = data.title || '';
-      document.getElementById('chapterEditor').innerHTML = data.content || '';
-      document.getElementById('chapterNote').value = data.author_note || '';
-      document.getElementById('chapterOrder').value = data.chapter_order || 1;
-      document.getElementById('chapterPremium').checked = !!data.is_premium;
-      document.getElementById('chapterViewTitle').textContent = 'Editar capítulo';
-      document.getElementById('chapterDeleteBtn').hidden = false;
-      actualizarContador('chapterEditor', 'edCounter');
-    });
-  }
-  showView('viewChapter');
-  setTimeout(() => document.getElementById('chapterTitle')?.focus(), 100);
-}
-
-document.getElementById('chapterForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const content = document.getElementById('chapterEditor').innerHTML;
-  const payload = {
-    story_id: currentStory.id,
-    title: document.getElementById('chapterTitle').value.trim(),
-    content,
-    author_note: document.getElementById('chapterNote').value.trim(),
-    chapter_order: parseInt(document.getElementById('chapterOrder').value, 10) || 1,
-    is_premium: document.getElementById('chapterPremium').checked,
-  };
-  showLoading();
-  let error;
-  if (currentChapter) {
-    ({ error } = await db.from('chapters').update(payload).eq('id', currentChapter.id));
-  } else {
-    ({ error } = await db.from('chapters').insert(payload));
-  }
-  hideLoading();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast('Capítulo guardado', 'ok');
-  limpiarCachePublica();
-  localStorage.removeItem(DRAFT_KEY + ':chapter:' + (currentChapter?.id || 'new'));
-  setTimeout(() => { showView('viewStory'); cargarCapitulosAdmin(currentStory.id); }, 400);
-});
-
-document.getElementById('chapterDeleteBtn').addEventListener('click', async () => {
-  if (!currentChapter) return;
-  if (!confirm('¿Eliminar este capítulo?')) return;
-  showLoading();
-  const { error } = await db.from('chapters').delete().eq('id', currentChapter.id);
-  hideLoading();
-  if (error) { toast('Error: ' + error.message, 'error'); return; }
-  toast('Capítulo eliminado', 'ok');
-  limpiarCachePublica();
-  showView('viewStory');
-  cargarCapitulosAdmin(currentStory.id);
-});
-
-/* ---------- EDITOR ---------- */
-function initEditor(toolbarId, editorId, counterId) {
-  const toolbar = document.getElementById(toolbarId);
-  const editor = document.getElementById(editorId);
-  if (!toolbar || !editor) return;
-
-  toolbar.querySelectorAll('.ed-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      const cmd = btn.dataset.cmd;
-      editor.focus();
-      try {
-        switch (cmd) {
-          case 'bold': document.execCommand('bold'); break;
-          case 'italic': document.execCommand('italic'); break;
-          case 'h2': document.execCommand('formatBlock', false, 'H2'); break;
-          case 'h3': document.execCommand('formatBlock', false, 'H3'); break;
-          case 'quote': document.execCommand('formatBlock', false, 'BLOCKQUOTE'); break;
-          case 'hr': document.execCommand('insertHTML', false, '<hr>'); break;
-          case 'image': insertarImagen(editor); break;
-          case 'fullscreen': toggleFullscreen(); break;
-        }
-      } catch (err) { console.warn('cmd err', err); }
-      if (counterId) actualizarContador(editorId, counterId);
-    });
-  });
-
-  // 🎯 Contador en tiempo real
-  const actualizarContadorDebounced = debounce(() => {
-    if (counterId) actualizarContador(editorId, counterId);
-  }, 100);
-
-  editor.addEventListener('input', () => {
-    actualizarContadorDebounced();
-    guardarBorrador(editorId);
-  });
-
-  editor.addEventListener('keyup', () => {
-    actualizarContadorDebounced();
-  });
-
-  // Pegar con estructura limpia
-  editor.addEventListener('paste', (e) => {
-    e.preventDefault();
-    const html = e.clipboardData.getData('text/html');
-    const text = e.clipboardData.getData('text/plain');
-
-    if (html) {
-      const clean = limpiarHtmlPegado(html);
-      document.execCommand('insertHTML', false, clean);
-    } else {
-      const safe = escapeHtml(text)
-        .replace(/\r\n/g, '\n')
-        .replace(/\n{2,}/g, '</p><p>')
-        .replace(/\n/g, '<br>');
-      document.execCommand('insertHTML', false, `<p>${safe}</p>`);
-    }
-
-    setTimeout(() => actualizarContadorDebounced(), 50);
-    guardarBorrador(editorId);
-  });
-
-  editor.addEventListener('cut', () => {
-    setTimeout(() => actualizarContadorDebounced(), 50);
-  });
-
-  setInterval(() => guardarBorrador(editorId), 30000);
-}
-
-function limpiarHtmlPegado(html) {
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  const body = doc.body;
-
-  const ALLOWED = new Set([
-    'P', 'BR', 'HR',
-    'STRONG', 'B', 'EM', 'I', 'U', 'S', 'DEL', 'MARK', 'SUP', 'SUB',
-    'H1', 'H2', 'H3', 'H4', 'H5', 'H6',
-    'BLOCKQUOTE', 'PRE', 'CODE',
-    'UL', 'OL', 'LI',
-    'A', 'IMG',
-    'DIV', 'SPAN',
-  ]);
-
-  const REMOVE_WITH_CONTENT = new Set([
-    'SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'FORM',
-    'INPUT', 'TEXTAREA', 'SELECT', 'BUTTON', 'VIDEO', 'AUDIO',
-    'CANVAS', 'SVG', 'MATH', 'TEMPLATE', 'NOSCRIPT',
-  ]);
-
-  const ATTRS_BY_TAG = {
-    A: new Set(['href', 'title']),
-    IMG: new Set(['src', 'alt', 'title']),
-  };
-
-  function clean(node) {
-    if (node.nodeType === Node.TEXT_NODE) return node;
-    if (node.nodeType !== Node.ELEMENT_NODE) return null;
-
-    const tag = node.tagName;
-    if (REMOVE_WITH_CONTENT.has(tag)) return null;
-
-    if (!ALLOWED.has(tag)) {
-      const fragment = document.createDocumentFragment();
-      Array.from(node.childNodes).forEach(child => {
-        const cleaned = clean(child);
-        if (cleaned) fragment.appendChild(cleaned);
-      });
-      return fragment;
-    }
-
-    const newNode = document.createElement(tag);
-
-    const allowedAttrs = ATTRS_BY_TAG[tag];
-    if (allowedAttrs) {
-      allowedAttrs.forEach(attr => {
-        if (node.hasAttribute(attr)) {
-          const val = node.getAttribute(attr);
-          if (tag === 'A' && attr === 'href') {
-            if (/^\s*javascript:/i.test(val)) return;
-          }
-          newNode.setAttribute(attr, val);
-        }
-      });
-    }
-
-    Array.from(node.childNodes).forEach(child => {
-      const cleaned = clean(child);
-      if (cleaned) newNode.appendChild(cleaned);
-    });
-
-    if (tag === 'DIV' && !node.getAttribute('class')) {
-      if (newNode.children.length === 0 && newNode.textContent.trim()) {
-        const p = document.createElement('P');
-        p.innerHTML = newNode.innerHTML;
-        return p;
-      }
-      if (newNode.children.length > 0) return newNode;
-      return null;
-    }
-
-    if (tag === 'SPAN') {
-      const fragment = document.createDocumentFragment();
-      Array.from(newNode.childNodes).forEach(child => fragment.appendChild(child));
-      return fragment;
-    }
-
-    if ((tag === 'P' || /^H[1-6]$/.test(tag)) && !newNode.textContent.trim() && !newNode.querySelector('img,br')) {
-      return null;
-    }
-
-    return newNode;
-  }
-
-  const result = document.createDocumentFragment();
-  Array.from(body.childNodes).forEach(child => {
-    const cleaned = clean(child);
-    if (cleaned) result.appendChild(cleaned);
-  });
-
-  const temp = document.createElement('div');
-  temp.appendChild(result);
-  return temp.innerHTML;
-}
 async function insertarImagen(editor) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -1449,6 +598,218 @@ async function cargarStoryStats(storyId) {
   }
 
   hideLoading();
+}
+
+/* ---------- NOTIFICACIONES ---------- */
+let notifCurrentFilter = 'all';
+
+async function abrirNotificacionesView() {
+  showView('viewNotificaciones');
+  await cargarNotificaciones();
+}
+
+async function cargarNotificaciones() {
+  const list = document.getElementById('notifList');
+  showLoading();
+
+  try {
+    const { data, error } = await db.from('notifications')
+      .select(`
+        id, type, is_read, created_at, from_user_id, story_id, chapter_id, post_id,
+        stories(title),
+        chapters(title, stories(title)),
+        blog_posts(title)
+      `)
+      .eq('user_id', session.user.id)
+      .order('created_at', { ascending: false })
+      .limit(200);
+
+    hideLoading();
+
+    if (error) {
+      list.innerHTML = emptyState('alert-circle', 'Error', error.message);
+      return;
+    }
+
+    if (!data?.length) {
+      list.innerHTML = emptyState('bell', 'Sin notificaciones', 'Aquí verás la actividad de tus lectores.');
+      return;
+    }
+
+    const fromIds = [...new Set(data.map(n => n.from_user_id).filter(Boolean))];
+    let profilesMap = {};
+    if (fromIds.length) {
+      const { data: profiles } = await db
+        .from('profiles')
+        .select('id, username, avatar_url')
+        .in('id', fromIds);
+      profilesMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
+    }
+
+    let filtradas = data;
+    if (notifCurrentFilter === 'comment') {
+      filtradas = data.filter(n => n.type.startsWith('comment'));
+    } else if (notifCurrentFilter === 'like') {
+      filtradas = data.filter(n => n.type.startsWith('like'));
+    } else if (notifCurrentFilter === 'user') {
+      filtradas = data.filter(n => n.type === 'new_user');
+    }
+
+    if (!filtradas.length) {
+      list.innerHTML = emptyState('filter', 'Sin notificaciones', 'No hay notificaciones de este tipo.');
+      return;
+    }
+
+    list.innerHTML = filtradas.map(n => {
+      const from = profilesMap[n.from_user_id];
+      const fromName = from?.username || 'Un lector';
+      const fromAvatar = from?.avatar_url || null;
+      const fecha = tiempoRelativo(n.created_at);
+      const info = formatearNotificacion(n, fromName);
+      return `
+        <div class="notif-item ${n.is_read ? 'read' : 'unread'}" data-notif-id="${n.id}">
+          <div class="notif-avatar ${info.colorClass}">
+            ${fromAvatar
+              ? `<img src="${fromAvatar}" alt="" />`
+              : `<span>${escapeHtml(fromName.charAt(0).toUpperCase())}</span>`}
+            <div class="notif-icon-badge">${ic(info.iconName, 12)}</div>
+          </div>
+          <div class="notif-body">
+            <div class="notif-text">${info.texto}</div>
+            <div class="notif-meta">
+              <span>${fecha}</span>
+              ${!n.is_read ? '<span class="notif-dot"></span>' : ''}
+            </div>
+          </div>
+          <button class="notif-delete" data-notif-delete="${n.id}" title="Eliminar">
+            ${ic('x', 14)}
+          </button>
+        </div>
+      `;
+    }).join('');
+
+    document.querySelectorAll('[data-notif-delete]').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        await eliminarNotificacion(btn.dataset.notifDelete);
+      });
+    });
+
+    document.querySelectorAll('.notif-item').forEach(el => {
+      el.addEventListener('click', async () => {
+        const id = el.dataset.notifId;
+        await marcarNotificacionLeida(id);
+        const notif = data.find(n => n.id === id);
+        if (notif) {
+          if (notif.type === 'comment_chapter' && notif.story_id) {
+            location.href = `historia.html?id=${notif.story_id}`;
+          } else if (notif.type === 'comment_post' && notif.post_id) {
+            location.href = `post.html?id=${notif.post_id}`;
+          } else if (notif.type.startsWith('like') && notif.story_id) {
+            location.href = `historia.html?id=${notif.story_id}`;
+          }
+        }
+      });
+    });
+
+    if (window.lucide) lucide.createIcons();
+  } catch (err) {
+    console.error('Error cargando notificaciones:', err);
+    hideLoading();
+    list.innerHTML = emptyState('alert-circle', 'Error', err.message);
+  }
+}
+
+function formatearNotificacion(n, fromName) {
+  const N = `<strong>${escapeHtml(fromName)}</strong>`;
+  switch (n.type) {
+    case 'comment_chapter':
+      return {
+        texto: `${N} comentó en el capítulo <strong>${escapeHtml(n.chapters?.title || '?')}</strong> de <em>${escapeHtml(n.chapters?.stories?.title || '?')}</em>`,
+        iconName: 'message-circle',
+        colorClass: 'notif-blue',
+      };
+    case 'comment_post':
+      return {
+        texto: `${N} comentó en la entrada <strong>${escapeHtml(n.blog_posts?.title || '?')}</strong>`,
+        iconName: 'message-circle',
+        colorClass: 'notif-blue',
+      };
+    case 'like_story':
+      return {
+        texto: `${N} le dio me gusta a <strong>${escapeHtml(n.stories?.title || '?')}</strong>`,
+        iconName: 'heart',
+        colorClass: 'notif-red',
+      };
+    case 'like_chapter':
+      return {
+        texto: `${N} le dio me gusta al capítulo <strong>${escapeHtml(n.chapters?.title || '?')}</strong>`,
+        iconName: 'heart',
+        colorClass: 'notif-red',
+      };
+    case 'new_user':
+      return {
+        texto: `Se registró un nuevo lector: <strong>${escapeHtml(fromName)}</strong>`,
+        iconName: 'user-plus',
+        colorClass: 'notif-green',
+      };
+    default:
+      return {
+        texto: `Nueva notificación`,
+        iconName: 'bell',
+        colorClass: 'notif-gray',
+      };
+  }
+}
+
+async function marcarNotificacionLeida(id) {
+  try {
+    await db.from('notifications').update({ is_read: true }).eq('id', id);
+    actualizarBadgeNotificaciones();
+  } catch (e) { console.warn(e); }
+}
+
+async function eliminarNotificacion(id) {
+  try {
+    await db.from('notifications').delete().eq('id', id);
+    toast('Notificación eliminada', 'ok');
+    await cargarNotificaciones();
+    actualizarBadgeNotificaciones();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function actualizarBadgeNotificaciones() {
+  try {
+    const { count } = await db
+      .from('notifications')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', session.user.id)
+      .eq('is_read', false);
+
+    const badge = document.getElementById('notifBadge');
+    if (!badge) return;
+
+    if (count && count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.hidden = false;
+    } else {
+      badge.hidden = true;
+    }
+  } catch (e) { console.warn(e); }
+}
+
+async function marcarTodasLeidas() {
+  try {
+    showLoading();
+    await db.from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', session.user.id)
+      .eq('is_read', false);
+    hideLoading();
+    toast('Todas marcadas como leídas', 'ok');
+    await cargarNotificaciones();
+    actualizarBadgeNotificaciones();
+  } catch (e) { hideLoading(); toast('Error: ' + e.message, 'error'); }
 }
 
 /* ---------- AJUSTES DEL SITIO ---------- */
@@ -2816,6 +2177,7 @@ document.getElementById('bioSaveBtn').addEventListener('click', async () => {
 /* ---------- BOTONES NAV ---------- */
 document.getElementById('btnNewStory').addEventListener('click', () => abrirStoryForm(null));
 document.getElementById('btnNewPost').addEventListener('click', () => abrirPostForm(null));
+document.getElementById('btnNotificaciones')?.addEventListener('click', () => abrirNotificacionesView());
 document.getElementById('btnRedes').addEventListener('click', () => abrirRedesView());
 document.getElementById('btnBio').addEventListener('click', () => abrirBioView());
 document.getElementById('btnDonaciones').addEventListener('click', () => abrirDonacionesView());
@@ -2833,6 +2195,15 @@ document.getElementById('btnNewChapter').addEventListener('click', () => {
 });
 
 document.getElementById('btnNewCharacter')?.addEventListener('click', () => abrirCharacterForm(null));
+document.getElementById('btnMarkAllRead')?.addEventListener('click', () => marcarTodasLeidas());
+
+document.querySelectorAll('.notif-filter').forEach(btn => {
+  btn.addEventListener('click', () => {
+    notifCurrentFilter = btn.dataset.filter;
+    document.querySelectorAll('.notif-filter').forEach(b => b.classList.toggle('active', b === btn));
+    cargarNotificaciones();
+  });
+});
 
 document.getElementById('backFromStory').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromChapter').addEventListener('click', () => { showView('viewStory'); cargarCapitulosAdmin(currentStory.id); });
@@ -2842,6 +2213,7 @@ document.getElementById('backFromBio').addEventListener('click', () => { showVie
 document.getElementById('backFromDonaciones').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromStats').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromStoryStats').addEventListener('click', () => { showView('viewStats'); });
+document.getElementById('backFromNotificaciones')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromAjustes')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromArboles')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromArbol')?.addEventListener('click', () => { showView('viewArbolesEstante'); cargarEstante(); });
@@ -2894,6 +2266,7 @@ function emptyState(iconName, title, sub) {
     if (headerMount) headerMount.style.visibility = 'visible';
     if (pageMain) pageMain.style.visibility = 'visible';
     await cargarDashboard();
+    await actualizarBadgeNotificaciones();
   }
 
   const yearEl = document.getElementById('year');
