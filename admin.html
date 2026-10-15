@@ -21,7 +21,7 @@
       <div class="container">
         <div class="page-head-c">
           <h1 class="page-title-c">Panel de escritor</h1>
-          <p class="page-sub-c">Gestiona tus historias, capítulos y blog</p>
+          <p class="page-sub-c">Gestiona tus historias, capítulos y comunidad</p>
         </div>
 
         <div class="admin-stats">
@@ -39,44 +39,72 @@
           </div>
         </div>
 
-        <div class="admin-actions">
-          <button class="btn btn-primary" id="btnNewStory">
-            <i data-lucide="plus" style="width:16px;height:16px;"></i>
-            Nueva historia
-          </button>
-          <button class="btn btn-ghost" id="btnNewPost">
-            <i data-lucide="edit-3" style="width:16px;height:16px;"></i>
-            Nueva entrada
-          </button>
-          <button class="btn btn-ghost" id="btnNotificaciones" style="position:relative;">
-            <i data-lucide="bell" style="width:16px;height:16px;"></i>
-            Notificaciones
-            <span class="notif-badge" id="notifBadge" hidden>0</span>
-          </button>
-          <button class="btn btn-ghost" id="btnRedes">
-            <i data-lucide="share-2" style="width:16px;height:16px;"></i>
-            Redes
-          </button>
-          <button class="btn btn-ghost" id="btnBio">
-            <i data-lucide="user" style="width:16px;height:16px;"></i>
-            Biografía
-          </button>
-          <button class="btn btn-ghost" id="btnDonaciones">
-            <i data-lucide="heart-handshake" style="width:16px;height:16px;"></i>
-            Donaciones
-          </button>
-          <button class="btn btn-ghost" id="btnStats">
-            <i data-lucide="bar-chart-3" style="width:16px;height:16px;"></i>
-            Estadísticas
-          </button>
-          <button class="btn btn-ghost" id="btnAjustes">
-            <i data-lucide="settings" style="width:16px;height:16px;"></i>
-            Ajustes
-          </button>
-          <button class="btn btn-ghost" id="btnArboles">
-            <i data-lucide="network" style="width:16px;height:16px;"></i>
-            Árboles
-          </button>
+        <!-- ACCIONES AGRUPADAS POR CATEGORÍA -->
+        <div class="admin-actions-grouped">
+
+          <!-- CONTENIDO -->
+          <div class="admin-action-section">
+            <div class="admin-action-section-title">📚 Contenido</div>
+            <div class="admin-action-cards">
+              <button class="admin-action-card primary" id="btnNewStory">
+                <i data-lucide="plus" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Nueva historia</span>
+              </button>
+              <button class="admin-action-card primary" id="btnNewPost">
+                <i data-lucide="edit-3" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Nueva entrada</span>
+              </button>
+              <button class="admin-action-card" id="btnArboles">
+                <i data-lucide="network" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Árboles</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- COMUNIDAD -->
+          <div class="admin-action-section">
+            <div class="admin-action-section-title">👥 Comunidad</div>
+            <div class="admin-action-cards">
+              <button class="admin-action-card" id="btnNotificaciones" style="position:relative;">
+                <i data-lucide="bell" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Notificaciones</span>
+                <span class="notif-badge" id="notifBadge" hidden>0</span>
+              </button>
+              <button class="admin-action-card" id="btnReportes">
+                <i data-lucide="flag" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Reportes</span>
+                <span class="notif-badge" id="reportesBadge" hidden>0</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- PERSONALIZACIÓN -->
+          <div class="admin-action-section">
+            <div class="admin-action-section-title">⚙️ Personalización</div>
+            <div class="admin-action-cards">
+              <button class="admin-action-card" id="btnRedes">
+                <i data-lucide="share-2" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Redes</span>
+              </button>
+              <button class="admin-action-card" id="btnBio">
+                <i data-lucide="user" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Biografía</span>
+              </button>
+              <button class="admin-action-card" id="btnDonaciones">
+                <i data-lucide="heart-handshake" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Donaciones</span>
+              </button>
+              <button class="admin-action-card" id="btnStats">
+                <i data-lucide="bar-chart-3" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Estadísticas</span>
+              </button>
+              <button class="admin-action-card" id="btnAjustes">
+                <i data-lucide="settings" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Ajustes</span>
+              </button>
+            </div>
+          </div>
+
         </div>
 
         <section class="section">
@@ -152,6 +180,7 @@
                   <option>Misterio</option><option>Música</option><option>Violencia</option>
                   <option>Suspenso</option><option>Aventura</option><option>Fantasía</option>
                   <option>Ciencia ficción</option><option>Drama</option><option>Poesía</option>
+                  <option>Espiritual</option>
                 </select>
               </label>
 
@@ -550,6 +579,27 @@
             <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
             <div class="empty-title">Cargando…</div>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REPORTES (placeholder para FASE 3) -->
+    <section class="admin-view" id="viewReportes" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromReportes">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Reportes</h1>
+          <p class="page-sub-c">Gestiona los reportes de la comunidad</p>
+        </div>
+
+        <div class="empty-c">
+          <div class="empty-icon">${'' /* placeholder */}<i data-lucide="flag" style="width:48px;height:48px;"></i></div>
+          <div class="empty-title">Próximamente</div>
+          <div class="empty-sub">Esta sección se activará cuando el sistema de relatos esté disponible.</div>
         </div>
       </div>
     </section>
