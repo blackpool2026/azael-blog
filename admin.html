@@ -37,6 +37,10 @@
             <div class="admin-stat-label">Entradas</div>
             <div class="admin-stat-value" id="statPosts">—</div>
           </div>
+          <div class="admin-stat">
+            <div class="admin-stat-label">Relatos</div>
+            <div class="admin-stat-value" id="statRelatos">—</div>
+          </div>
         </div>
 
         <!-- ACCIONES AGRUPADAS POR CATEGORÍA -->
@@ -70,10 +74,14 @@
                 <span class="admin-action-label">Notificaciones</span>
                 <span class="notif-badge" id="notifBadge" hidden>0</span>
               </button>
-              <button class="admin-action-card" id="btnReportes">
+              <button class="admin-action-card" id="btnReportes" style="position:relative;">
                 <i data-lucide="flag" style="width:18px;height:18px;"></i>
                 <span class="admin-action-label">Reportes</span>
                 <span class="notif-badge" id="reportesBadge" hidden>0</span>
+              </button>
+              <button class="admin-action-card" id="btnRelatosAdmin">
+                <i data-lucide="pen-line" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Relatos</span>
               </button>
             </div>
           </div>
@@ -566,6 +574,7 @@
             <button class="notif-filter active" data-filter="all">Todas</button>
             <button class="notif-filter" data-filter="comment">Comentarios</button>
             <button class="notif-filter" data-filter="like">Likes</button>
+            <button class="notif-filter" data-filter="reaction">Reacciones</button>
             <button class="notif-filter" data-filter="user">Usuarios</button>
           </div>
           <button class="btn btn-ghost btn-sm" id="btnMarkAllRead">
@@ -583,7 +592,7 @@
       </div>
     </section>
 
-    <!-- REPORTES (placeholder para FASE 3) -->
+    <!-- REPORTES -->
     <section class="admin-view" id="viewReportes" hidden>
       <div class="container">
         <button class="btn-back" id="backFromReportes">
@@ -596,10 +605,47 @@
           <p class="page-sub-c">Gestiona los reportes de la comunidad</p>
         </div>
 
-        <div class="empty-c">
-          <div class="empty-icon">${'' /* placeholder */}<i data-lucide="flag" style="width:48px;height:48px;"></i></div>
-          <div class="empty-title">Próximamente</div>
-          <div class="empty-sub">Esta sección se activará cuando el sistema de relatos esté disponible.</div>
+        <div class="reportes-toolbar">
+          <div class="reportes-filters" id="reportesFilters">
+            <button class="reportes-filter active" data-filter="pending">Pendientes</button>
+            <button class="reportes-filter" data-filter="resolved">Resueltos</button>
+            <button class="reportes-filter" data-filter="dismissed">Descartados</button>
+            <button class="reportes-filter" data-filter="all">Todos</button>
+          </div>
+          <span class="reportes-count" id="reportesCount">—</span>
+        </div>
+
+        <div class="reportes-list" id="reportesList">
+          <div class="empty-c">
+            <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+            <div class="empty-title">Cargando…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RELATOS ADMIN -->
+    <section class="admin-view" id="viewRelatosAdmin" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromRelatosAdmin">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Relatos de la comunidad</h1>
+          <p class="page-sub-c">Modera los relatos publicados</p>
+        </div>
+
+        <div class="reportes-toolbar">
+          <span class="reportes-count" id="relatosAdminCount">—</span>
+        </div>
+
+        <div class="reportes-list" id="relatosAdminList">
+          <div class="empty-c">
+            <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+            <div class="empty-title">Cargando…</div>
+          </div>
         </div>
       </div>
     </section>
