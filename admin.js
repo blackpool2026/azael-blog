@@ -1,6 +1,6 @@
 /* ============================================
-   AZAEL BLOG — admin.js COMPLETO
-   Con fix de pegado respetando espacios entre párrafos
+   AZAEL BLOG — admin.js COMPLETO (FASE 2)
+   Añade: relatos, reportes, notificaciones relatos
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -24,6 +24,8 @@ let currentCharacterImageUrl = null;
 
 let characterRoleDropdown = null;
 let selectedRole = '';
+
+let reportesCurrentFilter = 'pending'; // ⭐ NUEVO
 
 const PREDEFINED_ROLES = [
   'Protagonista','Coprotagonista','Deuteragonista',
@@ -413,16 +415,18 @@ async function verificarAutor() {
 /* ---------- DASHBOARD ---------- */
 async function cargarDashboard() {
   showLoading();
-  const [storiesRes, chaptersRes, postsRes] = await Promise.all([
+  const [storiesRes, chaptersRes, postsRes, relatosRes] = await Promise.all([
     db.from('stories').select('*').order('created_at', { ascending: false }),
     db.from('chapters').select('id', { count: 'exact', head: true }),
     db.from('blog_posts').select('id', { count: 'exact', head: true }),
+    db.from('relatos').select('id', { count: 'exact', head: true }),
   ]);
   hideLoading();
 
   document.getElementById('statStories').textContent = storiesRes.data?.length ?? '0';
   document.getElementById('statChapters').textContent = chaptersRes.count ?? '0';
   document.getElementById('statPosts').textContent = postsRes.count ?? '0';
+  document.getElementById('statRelatos').textContent = relatosRes.count ?? '0';
 
   const storiesList = document.getElementById('adminStoriesList');
   if (!storiesRes.data?.length) {
@@ -744,7 +748,6 @@ function initEditor(toolbarId, editorId, counterId) {
       const clean = limpiarHtmlPegado(html);
       document.execCommand('insertHTML', false, clean);
     } else {
-      // Texto plano → convertir dobles saltos en párrafos, simples en <br>
       const safe = escapeHtml(text)
         .replace(/\r\n/g, '\n')
         .replace(/\n{2,}/g, '</p><p>')
@@ -763,7 +766,6 @@ function initEditor(toolbarId, editorId, counterId) {
   setInterval(() => guardarBorrador(editorId), 30000);
 }
 
-/* ---------- LIMPIAR HTML PEGADO (RESPETA PÁRRAFOS) ---------- */
 function limpiarHtmlPegado(html) {
   const parser = new DOMParser();
   const doc = parser.parseFromString(html, 'text/html');
@@ -799,7 +801,6 @@ function limpiarHtmlPegado(html) {
     if (REMOVE_WITH_CONTENT.has(tag)) return null;
 
     if (!ALLOWED.has(tag)) {
-      // Etiqueta no permitida → reemplazar por su contenido
       const fragment = document.createDocumentFragment();
       Array.from(node.childNodes).forEach(child => {
         const cleaned = clean(child);
@@ -808,7 +809,6 @@ function limpiarHtmlPegado(html) {
       return fragment;
     }
 
-    // Crear la nueva etiqueta limpia
     const newNode = document.createElement(tag);
 
     const allowedAttrs = ATTRS_BY_TAG[tag];
@@ -824,15 +824,12 @@ function limpiarHtmlPegado(html) {
       });
     }
 
-    // Procesar hijos
     Array.from(node.childNodes).forEach(child => {
       const cleaned = clean(child);
       if (cleaned) newNode.appendChild(cleaned);
     });
 
-    // 🎯 DIV y SPAN sin atributos importantes → reemplazar por su contenido o convertir a P
     if (tag === 'DIV' || tag === 'SPAN') {
-      // Si es un DIV con texto plano sin hijos de bloque → convertir a P
       if (tag === 'DIV' && !node.getAttribute('class') && !node.getAttribute('style')) {
         const hasBlockChildren = newNode.querySelector('p, h1, h2, h3, h4, h5, h6, blockquote, ul, ol, li, div');
         if (!hasBlockChildren) {
@@ -846,7 +843,6 @@ function limpiarHtmlPegado(html) {
         return newNode;
       }
 
-      // SPAN → reemplazar por su contenido
       if (tag === 'SPAN') {
         const fragment = document.createDocumentFragment();
         Array.from(newNode.childNodes).forEach(child => fragment.appendChild(child));
@@ -856,7 +852,6 @@ function limpiarHtmlPegado(html) {
       return newNode;
     }
 
-    // Limpiar párrafos vacíos
     if ((tag === 'P' || /^H[1-6]$/.test(tag)) && !newNode.textContent.trim() && !newNode.querySelector('img,br')) {
       return null;
     }
@@ -864,32 +859,22 @@ function limpiarHtmlPegado(html) {
     return newNode;
   }
 
-  // Procesar todos los hijos del body
   const result = document.createDocumentFragment();
   Array.from(body.childNodes).forEach(child => {
     const cleaned = clean(child);
     if (cleaned) result.appendChild(cleaned);
   });
 
-  // 🎯 Convertir el resultado a HTML
   const temp = document.createElement('div');
   temp.appendChild(result);
 
-  // 🎯 Post-procesamiento: convertir <br><br> en párrafos separados
   let htmlFinal = temp.innerHTML;
-
-  // Normalizar <br></br> a <br>
   htmlFinal = htmlFinal.replace(/<br\s*\/?>\s*<\/br>/gi, '<br>');
-
-  // Convertir <br><br> en cierre de párrafo y apertura de nuevo párrafo
-  // Solo si no está dentro de un <p> ya existente
   htmlFinal = htmlFinal.replace(/(<br\s*\/?>\s*){2,}/gi, '</p><p>');
-
-  // Si quedó texto suelto sin <p>, envolverlo
-  // Esto es un caso edge, mejor dejarlo así
 
   return htmlFinal;
 }
+
 async function insertarImagen(editor) {
   const input = document.createElement('input');
   input.type = 'file';
@@ -1507,7 +1492,7 @@ async function cargarNotificaciones() {
   try {
     const { data, error } = await db.from('notifications')
       .select(`
-        id, type, is_read, created_at, from_user_id, story_id, chapter_id, post_id,
+        id, type, is_read, created_at, from_user_id, story_id, chapter_id, post_id, relato_id,
         stories(title),
         chapters(title, stories(title)),
         blog_posts(title)
@@ -1538,11 +1523,21 @@ async function cargarNotificaciones() {
       profilesMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
     }
 
+    // ⭐ NUEVO: cargar títulos de relatos si hay notificaciones de relato
+    const relatoIds = [...new Set(data.map(n => n.relato_id).filter(Boolean))];
+    let relatosMap = {};
+    if (relatoIds.length) {
+      const { data: relatos } = await db.from('relatos').select('id, title').in('id', relatoIds);
+      relatosMap = Object.fromEntries((relatos || []).map(r => [r.id, r]));
+    }
+
     let filtradas = data;
     if (notifCurrentFilter === 'comment') {
       filtradas = data.filter(n => n.type.startsWith('comment'));
     } else if (notifCurrentFilter === 'like') {
       filtradas = data.filter(n => n.type.startsWith('like'));
+    } else if (notifCurrentFilter === 'reaction') {
+      filtradas = data.filter(n => n.type.startsWith('reaction'));
     } else if (notifCurrentFilter === 'user') {
       filtradas = data.filter(n => n.type === 'new_user');
     }
@@ -1557,7 +1552,7 @@ async function cargarNotificaciones() {
       const fromName = from?.username || 'Un lector';
       const fromAvatar = from?.avatar_url || null;
       const fecha = tiempoRelativo(n.created_at);
-      const info = formatearNotificacion(n, fromName);
+      const info = formatearNotificacion(n, fromName, relatosMap);
       return `
         <div class="notif-item ${n.is_read ? 'read' : 'unread'}" data-notif-id="${n.id}">
           <div class="notif-avatar ${info.colorClass}">
@@ -1597,6 +1592,10 @@ async function cargarNotificaciones() {
             location.href = `historia.html?id=${notif.story_id}`;
           } else if (notif.type === 'comment_post' && notif.post_id) {
             location.href = `post.html?id=${notif.post_id}`;
+          } else if (notif.type === 'comment_relato' && notif.relato_id) {
+            location.href = `relato.html?id=${notif.relato_id}`;
+          } else if (notif.type === 'reaction_relato' && notif.relato_id) {
+            location.href = `relato.html?id=${notif.relato_id}`;
           } else if (notif.type.startsWith('like') && notif.story_id) {
             location.href = `historia.html?id=${notif.story_id}`;
           }
@@ -1612,7 +1611,7 @@ async function cargarNotificaciones() {
   }
 }
 
-function formatearNotificacion(n, fromName) {
+function formatearNotificacion(n, fromName, relatosMap = {}) {
   const N = `<strong>${escapeHtml(fromName)}</strong>`;
   switch (n.type) {
     case 'comment_chapter':
@@ -1626,6 +1625,18 @@ function formatearNotificacion(n, fromName) {
         texto: `${N} comentó en la entrada <strong>${escapeHtml(n.blog_posts?.title || '?')}</strong>`,
         iconName: 'message-circle',
         colorClass: 'notif-blue',
+      };
+    case 'comment_relato':
+      return {
+        texto: `${N} comentó en el relato <strong>${escapeHtml(relatosMap[n.relato_id]?.title || '?')}</strong>`,
+        iconName: 'message-circle',
+        colorClass: 'notif-blue',
+      };
+    case 'reaction_relato':
+      return {
+        texto: `${N} reaccionó al relato <strong>${escapeHtml(relatosMap[n.relato_id]?.title || '?')}</strong>`,
+        iconName: 'smile',
+        colorClass: 'notif-green',
       };
     case 'like_story':
       return {
@@ -1704,6 +1715,262 @@ async function marcarTodasLeidas() {
   } catch (e) { hideLoading(); toast('Error: ' + e.message, 'error'); }
 }
 
+/* ============================================
+   REPORTES DE RELATOS ⭐ NUEVO
+   ============================================ */
+
+async function abrirReportesView() {
+  showView('viewReportes');
+  await cargarReportes();
+}
+
+async function cargarReportes() {
+  const list = document.getElementById('reportesList');
+  const countEl = document.getElementById('reportesCount');
+  if (!list) return;
+
+  showLoading();
+
+  try {
+    let query = db.from('relato_reports')
+      .select(`
+        id, reason, status, created_at, user_id, relato_id,
+        relatos(title, content, user_id)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (reportesCurrentFilter !== 'all') {
+      query = query.eq('status', reportesCurrentFilter);
+    }
+
+    const { data, error } = await query;
+    hideLoading();
+
+    if (error) {
+      list.innerHTML = emptyState('alert-circle', 'Error', error.message);
+      if (countEl) countEl.textContent = '—';
+      return;
+    }
+
+    if (!data?.length) {
+      list.innerHTML = emptyState('flag', 'Sin reportes', 'No hay reportes en esta categoría.');
+      if (countEl) countEl.textContent = '0 reportes';
+      return;
+    }
+
+    // Cargar perfiles de quien reportó
+    const userIds = [...new Set(data.map(r => r.user_id))];
+    const { data: perfiles } = await db.from('profiles').select('id, username').in('id', userIds);
+    const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
+
+    if (countEl) {
+      countEl.textContent = data.length === 1 ? '1 reporte' : `${data.length} reportes`;
+    }
+
+    list.innerHTML = data.map(r => {
+      const autor = perfilesMap[r.user_id] || {};
+      const nombre = autor.username || 'Lector';
+      const relato = r.relatos || {};
+      const preview = (relato.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 140);
+      const badgeClass = r.status === 'pending' ? 'pending' : r.status === 'resolved' ? 'resolved' : 'dismissed';
+      const badgeText = r.status === 'pending' ? 'Pendiente' : r.status === 'resolved' ? 'Resuelto' : 'Descartado';
+
+      return `
+        <div class="admin-report-item" data-report-id="${r.id}">
+          <div class="admin-report-head">
+            <div class="admin-report-title">
+              <a href="relato.html?id=${r.relato_id}" target="_blank">
+                ${escapeHtml(relato.title || 'Relato eliminado')}
+              </a>
+            </div>
+            <span class="admin-report-badge ${badgeClass}">${badgeText}</span>
+          </div>
+          <div class="admin-report-meta">
+            <span>Reportado por <strong>${escapeHtml(nombre)}</strong></span>
+            <span>·</span>
+            <span>${tiempoRelativo(r.created_at)}</span>
+          </div>
+          ${preview ? `<div class="admin-report-preview">${escapeHtml(preview)}…</div>` : ''}
+          <div class="admin-report-reason">
+            <strong>Motivo:</strong> ${escapeHtml(r.reason)}
+          </div>
+          <div class="admin-report-actions">
+            ${r.status === 'pending' ? `
+              <button class="btn btn-primary btn-sm" data-action="resolve" data-id="${r.id}">
+                ${ic('check', 14)} Marcar resuelto
+              </button>
+              <button class="btn btn-ghost btn-sm" data-action="dismiss" data-id="${r.id}">
+                ${ic('x', 14)} Descartar
+              </button>
+            ` : `
+              <button class="btn btn-ghost btn-sm" data-action="reopen" data-id="${r.id}">
+                ${ic('rotate-ccw', 14)} Reabrir
+              </button>
+            `}
+            <button class="btn btn-danger btn-sm" data-action="delete-relato" data-id="${r.id}" data-relato-id="${r.relato_id}">
+              ${ic('trash-2', 14)} Eliminar relato
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+
+    list.querySelectorAll('[data-action]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+        if (action === 'resolve') actualizarEstadoReporte(id, 'resolved');
+        else if (action === 'dismiss') actualizarEstadoReporte(id, 'dismissed');
+        else if (action === 'reopen') actualizarEstadoReporte(id, 'pending');
+        else if (action === 'delete-relato') eliminarRelatoDesdeReporte(btn.dataset.relatoId, id);
+      });
+    });
+  } catch (err) {
+    console.error('Error reportes:', err);
+    hideLoading();
+    list.innerHTML = emptyState('alert-circle', 'Error', err.message);
+  }
+}
+
+async function actualizarEstadoReporte(id, status) {
+  showLoading();
+  const { error } = await db.from('relato_reports').update({ status }).eq('id', id);
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Reporte actualizado', 'ok');
+  await cargarReportes();
+  actualizarBadgeReportes();
+}
+
+async function eliminarRelatoDesdeReporte(relatoId, reporteId) {
+  if (!confirm('¿Eliminar este relato? Se borrarán también sus comentarios y reacciones.')) return;
+  showLoading();
+  const { error } = await db.from('relatos').delete().eq('id', relatoId);
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+
+  await db.from('relato_reports').update({ status: 'resolved' }).eq('id', reporteId);
+  toast('Relato eliminado y reporte resuelto', 'ok');
+  limpiarCachePublica();
+  await cargarReportes();
+  actualizarBadgeReportes();
+}
+
+async function actualizarBadgeReportes() {
+  try {
+    const { count } = await db
+      .from('relato_reports')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+
+    const badge = document.getElementById('reportesBadge');
+    if (!badge) return;
+
+    if (count && count > 0) {
+      badge.textContent = count > 99 ? '99+' : String(count);
+      badge.hidden = false;
+    } else {
+      badge.hidden = true;
+    }
+  } catch (e) { console.warn(e); }
+}
+
+/* ============================================
+   RELATOS ADMIN (MODERACIÓN) ⭐ NUEVO
+   ============================================ */
+
+async function abrirRelatosAdminView() {
+  showView('viewRelatosAdmin');
+  await cargarRelatosAdmin();
+}
+
+async function cargarRelatosAdmin() {
+  const list = document.getElementById('relatosAdminList');
+  const countEl = document.getElementById('relatosAdminCount');
+  if (!list) return;
+
+  showLoading();
+
+  try {
+    const { data, error } = await db.from('relatos')
+      .select('id, title, content, user_id, created_at')
+      .order('created_at', { ascending: false })
+      .limit(100);
+
+    hideLoading();
+
+    if (error) {
+      list.innerHTML = emptyState('alert-circle', 'Error', error.message);
+      return;
+    }
+
+    if (!data?.length) {
+      list.innerHTML = emptyState('pen-line', 'Sin relatos', 'Aún no hay relatos publicados.');
+      if (countEl) countEl.textContent = '0 relatos';
+      return;
+    }
+
+    const userIds = [...new Set(data.map(r => r.user_id))];
+    const { data: perfiles } = await db.from('profiles').select('id, username').in('id', userIds);
+    const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
+
+    if (countEl) {
+      countEl.textContent = data.length === 1 ? '1 relato' : `${data.length} relatos`;
+    }
+
+    list.innerHTML = data.map(r => {
+      const autor = perfilesMap[r.user_id] || {};
+      const nombre = autor.username || 'Lector';
+      const preview = (r.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 160);
+
+      return `
+        <div class="admin-report-item">
+          <div class="admin-report-head">
+            <div class="admin-report-title">
+              <a href="relato.html?id=${r.id}" target="_blank">${escapeHtml(r.title)}</a>
+            </div>
+          </div>
+          <div class="admin-report-meta">
+            <span>Por <strong>${escapeHtml(nombre)}</strong></span>
+            <span>·</span>
+            <span>${tiempoRelativo(r.created_at)}</span>
+          </div>
+          <div class="admin-report-preview">${escapeHtml(preview)}…</div>
+          <div class="admin-report-actions">
+            <a class="btn btn-ghost btn-sm" href="relato.html?id=${r.id}" target="_blank">
+              ${ic('eye', 14)} Ver
+            </a>
+            <button class="btn btn-danger btn-sm" data-delete-relato-admin="${r.id}">
+              ${ic('trash-2', 14)} Eliminar
+            </button>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+
+    list.querySelectorAll('[data-delete-relato-admin]').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        if (!confirm('¿Eliminar este relato? Se borrarán también sus comentarios y reacciones.')) return;
+        showLoading();
+        const { error } = await db.from('relatos').delete().eq('id', btn.dataset.deleteRelatoAdmin);
+        hideLoading();
+        if (error) { toast('Error: ' + error.message, 'error'); return; }
+        toast('Relato eliminado', 'ok');
+        limpiarCachePublica();
+        await cargarRelatosAdmin();
+      });
+    });
+  } catch (err) {
+    console.error('Error relatos admin:', err);
+    hideLoading();
+    list.innerHTML = emptyState('alert-circle', 'Error', err.message);
+  }
+}
+
 /* ---------- AJUSTES DEL SITIO ---------- */
 async function abrirAjustesView() {
   showView('viewAjustes');
@@ -1748,7 +2015,7 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
 });
 
 /* ============================================
-   ÁRBOLES DE PERSONAJES
+   ÁRBOLES DE PERSONAJES (sin cambios)
    ============================================ */
 
 async function abrirArbolesEstante() {
@@ -2207,7 +2474,7 @@ document.getElementById('characterDeleteBtn')?.addEventListener('click', async (
 });
 
 /* ============================================
-   CANVAS VISUAL (drag & drop)
+   CANVAS VISUAL (drag & drop) — sin cambios
    ============================================ */
 
 let canvasState = {
@@ -2485,7 +2752,7 @@ function resetearVista() {
 }
 
 /* ============================================
-   CONECTORES
+   CONECTORES — sin cambios
    ============================================ */
 
 const RELATION_TYPES = {
@@ -3070,10 +3337,8 @@ document.getElementById('bioSaveBtn').addEventListener('click', async () => {
 document.getElementById('btnNewStory').addEventListener('click', () => abrirStoryForm(null));
 document.getElementById('btnNewPost').addEventListener('click', () => abrirPostForm(null));
 document.getElementById('btnNotificaciones')?.addEventListener('click', () => abrirNotificacionesView());
-document.getElementById('btnReportes')?.addEventListener('click', () => {
-  showView('viewReportes');
-  toast('Próximamente: sistema de reportes', 'info');
-});
+document.getElementById('btnReportes')?.addEventListener('click', () => abrirReportesView());
+document.getElementById('btnRelatosAdmin')?.addEventListener('click', () => abrirRelatosAdminView());
 document.getElementById('btnRedes').addEventListener('click', () => abrirRedesView());
 document.getElementById('btnBio').addEventListener('click', () => abrirBioView());
 document.getElementById('btnDonaciones').addEventListener('click', () => abrirDonacionesView());
@@ -3101,6 +3366,14 @@ document.querySelectorAll('.notif-filter').forEach(btn => {
   });
 });
 
+document.querySelectorAll('.reportes-filter').forEach(btn => {
+  btn.addEventListener('click', () => {
+    reportesCurrentFilter = btn.dataset.filter;
+    document.querySelectorAll('.reportes-filter').forEach(b => b.classList.toggle('active', b === btn));
+    cargarReportes();
+  });
+});
+
 document.getElementById('backFromStory').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromChapter').addEventListener('click', () => { showView('viewStory'); cargarCapitulosAdmin(currentStory.id); });
 document.getElementById('backFromPost').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
@@ -3111,6 +3384,7 @@ document.getElementById('backFromStats').addEventListener('click', () => { showV
 document.getElementById('backFromStoryStats').addEventListener('click', () => { showView('viewStats'); });
 document.getElementById('backFromNotificaciones')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromReportes')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromRelatosAdmin')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromAjustes')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromArboles')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromArbol')?.addEventListener('click', () => { showView('viewArbolesEstante'); cargarEstante(); });
@@ -3164,6 +3438,7 @@ function emptyState(iconName, title, sub) {
     if (pageMain) pageMain.style.visibility = 'visible';
     await cargarDashboard();
     await actualizarBadgeNotificaciones();
+    await actualizarBadgeReportes();
   }
 
   const yearEl = document.getElementById('year');
