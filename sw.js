@@ -1,9 +1,10 @@
 /* ============================================
    Service Worker — Azael Escritor
    PWA offline + cache para carga rápida
+   v19: añadidos relatos (HTML + SW actualizado)
    ============================================ */
 
-const CACHE_VERSION = 'azael-v17';
+const CACHE_VERSION = 'azael-v19';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
@@ -13,6 +14,7 @@ const STATIC_ASSETS = [
   '/index.html',
   '/historias.html',
   '/generos.html',
+  '/relatos.html',
   '/blog.html',
   '/redes.html',
   '/donaciones.html',
@@ -27,7 +29,7 @@ const STATIC_ASSETS = [
 ];
 
 /* ============================================
-   INSTALL — precachear archivos estáticos
+   INSTALL
    ============================================ */
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -39,7 +41,7 @@ self.addEventListener('install', (event) => {
 });
 
 /* ============================================
-   ACTIVATE — limpiar cachés viejas
+   ACTIVATE
    ============================================ */
 self.addEventListener('activate', (event) => {
   event.waitUntil(
@@ -54,16 +56,14 @@ self.addEventListener('activate', (event) => {
 });
 
 /* ============================================
-   FETCH — estrategias de red
+   FETCH
    ============================================ */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  /* Ignorar peticiones que no son GET */
   if (request.method !== 'GET') return;
 
-  /* Ignorar Supabase, Google Analytics y otros servicios externos */
   if (
     url.hostname.includes('supabase') ||
     url.hostname.includes('google-analytics') ||
@@ -75,7 +75,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  /* Estrategia: Network First para HTML (siempre intenta traer lo nuevo) */
   if (request.headers.get('accept')?.includes('text/html')) {
     event.respondWith(
       fetch(request)
@@ -89,7 +88,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  /* Estrategia: Cache First para el resto (CSS, JS, imágenes) */
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
@@ -105,7 +103,7 @@ self.addEventListener('fetch', (event) => {
 });
 
 /* ============================================
-   MENSAJE — permitir actualizar desde la app
+   MENSAJE
    ============================================ */
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
