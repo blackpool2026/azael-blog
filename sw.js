@@ -1,14 +1,12 @@
 /* ============================================
    Service Worker — Azael Escritor
-   PWA offline + cache para carga rápida
-   v19: añadidos relatos (HTML + SW actualizado)
+   v20: reportes de relatos + notificaciones
    ============================================ */
 
-const CACHE_VERSION = 'azael-v19';
+const CACHE_VERSION = 'azael-v20';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
-/* Archivos que se cachean al instalar (app shell) */
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -28,9 +26,6 @@ const STATIC_ASSETS = [
   '/manifest.json'
 ];
 
-/* ============================================
-   INSTALL
-   ============================================ */
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_STATIC)
@@ -40,9 +35,6 @@ self.addEventListener('install', (event) => {
   );
 });
 
-/* ============================================
-   ACTIVATE
-   ============================================ */
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
@@ -55,9 +47,6 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-/* ============================================
-   FETCH
-   ============================================ */
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -102,9 +91,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-/* ============================================
-   MENSAJE
-   ============================================ */
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') {
     self.skipWaiting();
