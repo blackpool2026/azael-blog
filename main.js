@@ -1,6 +1,6 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO (FASE 2)
-   Relatos de la comunidad integrados.
+   AZAEL BLOG — main.js COMPLETO (FASE 2 cerrada)
+   Incluye: relatos, búsqueda, paginación, compartir
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -15,6 +15,11 @@ const READ_HISTORY_KEY = 'azael-read-history';
 
 const RELATO_MAX_LENGTH = 20000;
 const RELATO_MIN_LENGTH = 100;
+const RELATOS_PAGE_SIZE = 12;
+
+let relatosCurrentPage = 1;
+let relatosAllData = null;
+let relatosSearchQuery = '';
 
 const REACCIONES_DISPONIBLES = [
   { emoji: '❤️', label: 'Me encanta' },
@@ -1030,7 +1035,8 @@ function activarBorradoComentarios(parentId, tipo) {
       showToast('Comentario eliminado', 'ok');
 
       if (tipo === 'post') await cargarComentarios(parentId);
-      else await cargarComentariosCapitulo(parentId);
+      else if (tipo === 'chapter') await cargarComentariosCapitulo(parentId);
+      else if (tipo === 'relato') await cargarComentariosRelato(parentId);
     });
   });
 }
@@ -1908,15 +1914,12 @@ async function cargarRelatos() {
   const count = document.getElementById('relatosCount');
   if (!grid) return;
 
-  const cached = cache.get('relatos:all');
-  if (cached) { renderRelatos(cached.relatos, cached.perfiles, grid, count, cached.reactionsCount, cached.commentsCount); return; }
-
   try {
     const { data: relatos, error } = await withTimeout(
       db.from('relatos')
         .select('id, title, content, user_id, created_at')
         .order('created_at', { ascending: false })
-        .limit(100),
+        .limit(200),
       10000
     );
 
@@ -1933,7 +1936,6 @@ async function cargarRelatos() {
       db.from('profiles').select('id, username, avatar_url').in('id', userIds),
       8000
     );
-
     const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     const relatoIds = relatos.map(r => r.id);
@@ -1952,9 +1954,10 @@ async function cargarRelatos() {
       commentsCount[c.relato_id] = (commentsCount[c.relato_id] || 0) + 1;
     });
 
-    const datos = { relatos, perfiles: perfilesMap, reactionsCount, commentsCount };
-    cache.set('relatos:all', datos);
-    renderRelatos(relatos, perfilesMap, grid, count, reactionsCount, commentsCount);
+    relatosAllData = { relatos, perfiles: perfilesMap, reactionsCount, commentsCount };
+    relatosCurrentPage = 1;
+    aplicarFiltroYRenderRelatos();
+
   } catch (e) {
     console.warn('Error cargando relatos:', e);
     grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión e intenta de nuevo.');
@@ -1963,11 +1966,51 @@ async function cargarRelatos() {
   }
 }
 
-function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, commentsCount = {}) {
-  if (count) {
-    count.textContent = relatos.length === 1 ? '1 relato' : `${relatos.length} relatos`;
+function aplicarFiltroYRenderRelatos() {
+  if (!relatosAllData) return;
+  const { relatos, perfiles, reactionsCount, commentsCount } = relatosAllData;
+  const query = relatosSearchQuery.toLowerCase().trim();
+
+  let filtrados = relatos;
+  if (query) {
+    filtrados = relatos.filter(r => {
+      const autor = perfiles[r.user_id] || {};
+      const nombre = (autor.username || '').toLowerCase();
+      return r.title.toLowerCase().includes(query) || nombre.includes(query);
+    });
   }
 
+  const totalPages = Math.ceil(filtrados.length / RELATOS_PAGE_SIZE);
+  if (relatosCurrentPage > totalPages && totalPages > 0) relatosCurrentPage = totalPages;
+  if (relatosCurrentPage < 1) relatosCurrentPage = 1;
+
+  const start = (relatosCurrentPage - 1) * RELATOS_PAGE_SIZE;
+  const pageData = filtrados.slice(start, start + RELATOS_PAGE_SIZE);
+
+  const grid = document.getElementById('relatosGrid');
+  const count = document.getElementById('relatosCount');
+
+  if (!filtrados.length) {
+    grid.innerHTML = emptyState('search', 'Sin resultados', 'Prueba con otro término de búsqueda.');
+    if (count) count.textContent = '0 relatos';
+    const pag = document.getElementById('relatosPagination');
+    if (pag) pag.innerHTML = '';
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  if (count) {
+    const total = filtrados.length;
+    count.textContent = query
+      ? `${total} ${total === 1 ? 'resultado' : 'resultados'} para "${relatosSearchQuery}"`
+      : (total === 1 ? '1 relato' : `${total} relatos`);
+  }
+
+  renderRelatos(pageData, perfiles, grid, count, reactionsCount, commentsCount);
+  renderPaginacion(totalPages, filtrados.length);
+}
+
+function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, commentsCount = {}) {
   grid.innerHTML = relatos.map(r => {
     const autor = perfilesMap[r.user_id] || {};
     const nombre = autor.username || 'Lector';
@@ -1998,6 +2041,52 @@ function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, c
   if (window.lucide) lucide.createIcons();
 }
 
+function renderPaginacion(totalPages, totalItems) {
+  let pag = document.getElementById('relatosPagination');
+  if (!pag) {
+    pag = document.createElement('div');
+    pag.id = 'relatosPagination';
+    pag.className = 'relatos-pagination';
+    document.getElementById('relatosGrid')?.parentElement?.appendChild(pag);
+  }
+
+  if (totalPages <= 1) {
+    pag.innerHTML = '';
+    return;
+  }
+
+  const btnPrev = `<button class="pagination-btn" data-page="${relatosCurrentPage - 1}" ${relatosCurrentPage === 1 ? 'disabled' : ''}>${ic('chevron-left', 14)}</button>`;
+  const btnNext = `<button class="pagination-btn" data-page="${relatosCurrentPage + 1}" ${relatosCurrentPage === totalPages ? 'disabled' : ''}>${ic('chevron-right', 14)}</button>`;
+
+  let pageButtons = '';
+  for (let i = 1; i <= totalPages; i++) {
+    if (
+      i === 1 ||
+      i === totalPages ||
+      (i >= relatosCurrentPage - 1 && i <= relatosCurrentPage + 1)
+    ) {
+      pageButtons += `<button class="pagination-btn ${i === relatosCurrentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
+    } else if (i === relatosCurrentPage - 2 || i === relatosCurrentPage + 2) {
+      pageButtons += `<span style="color:var(--text-tertiary);padding:0 4px;">…</span>`;
+    }
+  }
+
+  pag.innerHTML = btnPrev + pageButtons + btnNext;
+
+  pag.querySelectorAll('.pagination-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const page = parseInt(btn.dataset.page);
+      if (page >= 1 && page <= totalPages) {
+        relatosCurrentPage = page;
+        aplicarFiltroYRenderRelatos();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+  });
+
+  if (window.lucide) lucide.createIcons();
+}
+
 async function cargarRelatoDetalle() {
   const cont = document.getElementById('relatoContent');
   if (!cont) return;
@@ -2016,14 +2105,12 @@ async function cargarRelatoDetalle() {
       return;
     }
 
-    document.title = `${relato.title} — Azael Colina`;
-    const ht = document.querySelector('.header-title');
-    if (ht) ht.textContent = relato.title;
-
     const [{ data: autor }, { data: session }] = await Promise.all([
       withTimeout(db.from('profiles').select('id, username, avatar_url').eq('id', relato.user_id).maybeSingle(), 8000),
       db.auth.getSession(),
     ]);
+
+    actualizarMetaOG(relato, autor);
 
     const sessionUserId = session?.user?.id || null;
     const autorNombre = autor?.username || 'Lector';
@@ -2051,6 +2138,22 @@ async function cargarRelatoDetalle() {
 
         <div id="reactionsMount"></div>
 
+        <div class="relato-share-row">
+          <span class="relato-share-label">Compartir</span>
+          <button class="share-btn" id="shareRelatoNative">
+            ${ic('share-2', 14)} Compartir
+          </button>
+          <a class="share-btn" id="shareRelatoTwitter" target="_blank" rel="noopener noreferrer" href="#">
+            ${ic('twitter', 14)} Twitter / X
+          </a>
+          <a class="share-btn" id="shareRelatoWhatsapp" target="_blank" rel="noopener noreferrer" href="#">
+            ${ic('message-circle', 14)} WhatsApp
+          </a>
+          <button class="share-btn" id="shareRelatoCopy">
+            ${ic('copy', 14)} Copiar enlace
+          </button>
+        </div>
+
         <section class="chapter-comments-section">
           <div class="chapter-comments-head">
             <h2 class="chapter-comments-title">Comentarios</h2>
@@ -2069,6 +2172,30 @@ async function cargarRelatoDetalle() {
       abrirModalReportar(relato.id);
     });
 
+    // Botones de compartir
+    const relatoUrl = `${location.origin}/relato.html?id=${relato.id}`;
+    const relatoTexto = `"${relato.title}" — un relato de la comunidad en Azael Colina.`;
+
+    document.getElementById('shareRelatoNative')?.addEventListener('click', () => abrirCompartirRelato(relato));
+
+    document.getElementById('shareRelatoTwitter')?.setAttribute(
+      'href',
+      `https://twitter.com/intent/tweet?text=${encodeURIComponent(relatoTexto)}&url=${encodeURIComponent(relatoUrl)}`
+    );
+
+    document.getElementById('shareRelatoWhatsapp')?.setAttribute(
+      'href',
+      `https://wa.me/?text=${encodeURIComponent(relatoTexto + ' ' + relatoUrl)}`
+    );
+
+    document.getElementById('shareRelatoCopy')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(relatoUrl).then(() => {
+        showToast('Enlace copiado', 'ok');
+      }).catch(() => {
+        showToast('No se pudo copiar el enlace', 'error');
+      });
+    });
+
     await cargarReaccionesRelato(relato.id);
     await cargarComentariosRelato(relato.id);
     await prepararFormComentarioRelato(relato.id);
@@ -2076,6 +2203,66 @@ async function cargarRelatoDetalle() {
     console.error('Error cargando relato:', e);
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
   }
+}
+
+function abrirCompartirRelato(relato) {
+  const url = `${location.origin}/relato.html?id=${relato.id}`;
+  const texto = `"${relato.title}" — un relato de la comunidad en Azael Colina.`;
+
+  if (navigator.share) {
+    navigator.share({ title: relato.title, text: texto, url }).catch(() => {});
+    return;
+  }
+
+  navigator.clipboard.writeText(url).then(() => {
+    showToast('Enlace copiado al portapapeles', 'ok');
+  }).catch(() => {
+    abrirInputModal({
+      title: 'Compartir relato',
+      desc: 'Copia este enlace para compartirlo.',
+      label: 'Enlace',
+      value: url,
+      iconName: 'share-2',
+    });
+  });
+}
+
+function actualizarMetaOG(relato, autor) {
+  const setMeta = (prop, val) => {
+    let el = document.querySelector(`meta[property="${prop}"]`);
+    if (!el) {
+      el = document.createElement('meta');
+      el.setAttribute('property', prop);
+      document.head.appendChild(el);
+    }
+    el.setAttribute('content', val);
+  };
+  const setMetaName = (name, val) => {
+    let el = document.querySelector(`meta[name="${name}"]`);
+    if (!el) {
+      el = document.createElement('meta');
+      el.setAttribute('name', name);
+      document.head.appendChild(el);
+    }
+    el.setAttribute('content', val);
+  };
+
+  const excerpt = (relato.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 160);
+  const url = `${location.origin}/relato.html?id=${relato.id}`;
+
+  document.title = `${relato.title} — Azael Colina`;
+  setMetaName('description', excerpt);
+  setMeta('og:type', 'article');
+  setMeta('og:title', relato.title);
+  setMeta('og:description', excerpt);
+  setMeta('og:url', url);
+  setMeta('og:image', `${location.origin}/og-image.jpg`);
+  setMetaName('twitter:card', 'summary_large_image');
+  setMetaName('twitter:title', relato.title);
+  setMetaName('twitter:description', excerpt);
+
+  const ht = document.querySelector('.header-title');
+  if (ht) ht.textContent = relato.title;
 }
 
 async function cargarReaccionesRelato(relatoId) {
@@ -2155,11 +2342,14 @@ async function toggleReaccion(relatoId, emoji) {
 
       const { data: relato } = await db.from('relatos').select('user_id, title').eq('id', relatoId).maybeSingle();
       if (relato?.user_id && relato.user_id !== userId) {
-        await db.from('notifications').insert({
-          user_id: relato.user_id,
-          type: 'reaction_relato',
-          from_user_id: userId,
-        }).catch(() => {});
+        try {
+          await db.from('notifications').insert({
+            user_id: relato.user_id,
+            type: 'reaction_relato',
+            from_user_id: userId,
+            relato_id: relatoId,
+          });
+        } catch (e) { console.warn('Error notif reacción:', e); }
       }
     }
 
@@ -2203,32 +2393,10 @@ async function cargarComentariosRelato(relatoId) {
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
     activarVerMas();
-    activarBorradoComentariosRelato(relatoId);
+    activarBorradoComentarios(relatoId, 'relato');
   } catch (e) {
     list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
   }
-}
-
-function activarBorradoComentariosRelato(relatoId) {
-  document.querySelectorAll('[data-delete-comment]').forEach(btn => {
-    btn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const commentId = btn.dataset.deleteComment;
-      if (!confirm('¿Eliminar este comentario?')) return;
-
-      showLoading();
-      const { error } = await db.from('relato_comments').delete().eq('id', commentId);
-      hideLoading();
-
-      if (error) {
-        showToast('No se pudo eliminar: ' + error.message, 'error');
-        return;
-      }
-      showToast('Comentario eliminado', 'ok');
-      await cargarComentariosRelato(relatoId);
-    });
-  });
 }
 
 async function prepararFormComentarioRelato(relatoId) {
@@ -2279,17 +2447,21 @@ async function prepararFormComentarioRelato(relatoId) {
 
     const { data: relato } = await db.from('relatos').select('user_id').eq('id', relatoId).maybeSingle();
     if (relato?.user_id && relato.user_id !== session.user.id) {
-      await db.from('notifications').insert({
-        user_id: relato.user_id,
-        type: 'comment_relato',
-        from_user_id: session.user.id,
-      }).catch(() => {});
+      try {
+        await db.from('notifications').insert({
+          user_id: relato.user_id,
+          type: 'comment_relato',
+          from_user_id: session.user.id,
+          relato_id: relatoId,
+        });
+      } catch (e) { console.warn('Error notif comentario:', e); }
     }
 
     await cargarComentariosRelato(relatoId);
   });
 }
 
+/* ---------- MIS RELATOS ---------- */
 async function cargarMisRelatos() {
   const cont = document.getElementById('misRelatosContent');
   if (!cont) return;
@@ -2604,7 +2776,7 @@ async function abrirModalReportar(relatoId) {
   showToast('Reporte enviado. Gracias por ayudar.', 'ok');
 }
 
-/* ---------- MODAL INPUT GENÉRICO (para reportes) ---------- */
+/* ---------- MODAL INPUT GENÉRICO ---------- */
 function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
   return new Promise((resolve) => {
     const modal = document.createElement('div');
@@ -2667,6 +2839,18 @@ function dispararContenidoSegunPath() {
     cargarGeneros();
   } else if (path === 'relatos.html') {
     cargarRelatos();
+    const searchInput = document.getElementById('relatosSearchInput');
+    if (searchInput) {
+      let searchTimer = null;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          relatosSearchQuery = e.target.value;
+          relatosCurrentPage = 1;
+          aplicarFiltroYRenderRelatos();
+        }, 250);
+      });
+    }
   } else if (path === 'relato.html') {
     cargarRelatoDetalle();
   } else if (path === 'mis-relatos.html') {
