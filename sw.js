@@ -1,9 +1,9 @@
 /* ============================================
    Service Worker — Azael Escritor
-   v20: reportes de relatos + notificaciones
+   v21: cierre Fase 2 (búsqueda + compartir + paginación)
    ============================================ */
 
-const CACHE_VERSION = 'azael-v20';
+const CACHE_VERSION = 'azael-v21';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
