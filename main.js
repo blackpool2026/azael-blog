@@ -1,6 +1,6 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO (FASE 2 cerrada)
-   Incluye: relatos, búsqueda, paginación, compartir
+   AZAEL BLOG — main.js COMPLETO
+   FASE 3: perfiles públicos + seguidores
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -351,6 +351,7 @@ const PAGE_TITLES = {
   'historia.html': 'Historia',
   'capitulo.html': 'Leyendo',
   'donaciones.html': 'Donaciones',
+  'perfil.html': 'Perfil',
 };
 
 function inyectarHeader() {
@@ -417,6 +418,7 @@ function inyectarDrawer() {
         <a href="biografia.html" class="drawer-link ${path === 'biografia.html' ? 'active' : ''}">
           ${ic('user')} <span>Biografía</span>
         </a>
+        <div id="drawerSessionLinks"></div>
       </nav>
       <div class="drawer-footer">
         <button class="drawer-user-btn" id="drawerAuthBtn">
@@ -441,7 +443,29 @@ function inyectarDrawer() {
       if (window.__showLoginView) window.__showLoginView();
     }
   });
+
   if (window.lucide) lucide.createIcons();
+  actualizarDrawerSessionLinks();
+}
+
+function actualizarDrawerSessionLinks() {
+  const mount = document.getElementById('drawerSessionLinks');
+  if (!mount) return;
+  db.auth.getSession().then(({ data: { session } }) => {
+    if (session?.user) {
+      mount.innerHTML = `
+        <a href="perfil.html?id=${session.user.id}" class="drawer-link">
+          ${ic('user-circle')} <span>Mi perfil</span>
+        </a>
+        <a href="mis-relatos.html" class="drawer-link">
+          ${ic('pen-line')} <span>Mis relatos</span>
+        </a>
+      `;
+      if (window.lucide) lucide.createIcons();
+    } else {
+      mount.innerHTML = '';
+    }
+  });
 }
 
 function inyectarAuthModal() {
@@ -520,6 +544,7 @@ function inyectarAuthModal() {
     authModal.hidden = true;
     loginForm.reset();
     cache.clear();
+    actualizarDrawerSessionLinks();
     setTimeout(() => location.reload(), 500);
   });
 
@@ -552,12 +577,14 @@ function inyectarAuthModal() {
     authModal.hidden = true;
     registerForm.reset();
     cache.clear();
+    actualizarDrawerSessionLinks();
     setTimeout(() => location.reload(), 500);
   });
 
   db.auth.onAuthStateChange((_event, session) => {
     const label = document.getElementById('drawerAuthLabel');
     if (label) label.textContent = session?.user ? 'Cerrar sesión' : 'Iniciar sesión';
+    actualizarDrawerSessionLinks();
   });
 
   if (window.lucide) lucide.createIcons();
@@ -976,12 +1003,13 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
   const badge = p.is_author ? '<span class="comment-badge-c">Autor</span>' : '';
   const texto = escapeHtml(c.content);
   const esMio = sessionUserId && c.user_id === sessionUserId;
+  const autorLink = `<a href="perfil.html?id=${c.user_id}" style="color:inherit;text-decoration:none;">${autor}</a>`;
 
   return `
     <div class="comment-c comment-c-new" data-comment-id="${c.id}">
       <div class="comment-head-c comment-head-c-new">
         <div class="comment-author-c">
-          ${autor} ${badge}
+          ${autorLink} ${badge}
         </div>
         <div class="comment-actions-c">
           <span class="comment-date-c">${fecha}</span>
@@ -2023,7 +2051,7 @@ function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, c
       <a class="relato-card" href="relato.html?id=${r.id}">
         <div class="relato-card-title">${escapeHtml(r.title)}</div>
         <div class="relato-card-author">
-          Por <strong>${escapeHtml(nombre)}</strong>
+          Por <strong><a href="perfil.html?id=${r.user_id}" style="color:inherit;text-decoration:none;">${escapeHtml(nombre)}</a></strong>
         </div>
         <div class="relato-card-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 180 ? '…' : ''}</div>
         <div class="relato-card-more">
@@ -2121,10 +2149,10 @@ async function cargarRelatoDetalle() {
         <header class="relato-header">
           <h1 class="relato-title">${escapeHtml(relato.title)}</h1>
           <div class="relato-author-info">
-            <div class="relato-author-avatar">
+            <a href="perfil.html?id=${relato.user_id}" class="relato-author-avatar" style="text-decoration:none;">
               ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : escapeHtml(autorNombre.charAt(0).toUpperCase())}
-            </div>
-            <span>Por <span class="relato-author-name">${escapeHtml(autorNombre)}</span></span>
+            </a>
+            <span>Por <a href="perfil.html?id=${relato.user_id}" class="relato-author-name" style="text-decoration:none;">${escapeHtml(autorNombre)}</a></span>
             <span class="relato-author-date">· ${tiempoRelativo(relato.created_at)}</span>
             ${sessionUserId && sessionUserId !== relato.user_id ? `
               <button class="report-btn" id="btnReportarRelato">
@@ -2172,7 +2200,6 @@ async function cargarRelatoDetalle() {
       abrirModalReportar(relato.id);
     });
 
-    // Botones de compartir
     const relatoUrl = `${location.origin}/relato.html?id=${relato.id}`;
     const relatoTexto = `"${relato.title}" — un relato de la comunidad en Azael Colina.`;
 
@@ -2776,6 +2803,197 @@ async function abrirModalReportar(relatoId) {
   showToast('Reporte enviado. Gracias por ayudar.', 'ok');
 }
 
+/* ============================================
+   FASE 3 — PERFILES PÚBLICOS + SEGUIDORES
+   ============================================ */
+
+async function cargarPerfilPublico() {
+  const cont = document.getElementById('perfilContent');
+  if (!cont) return;
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) {
+    cont.innerHTML = `<div class="container"><p class="empty-state">Perfil no encontrado.</p></div>`;
+    return;
+  }
+
+  try {
+    const { data: perfil, error } = await withTimeout(
+      db.from('profiles')
+        .select('id, username, bio, bio_public, avatar_url, website, location, is_author, created_at')
+        .eq('id', id)
+        .maybeSingle(),
+      10000
+    );
+
+    if (error || !perfil) {
+      cont.innerHTML = `
+        <div class="container">
+          <div class="empty-c">
+            <div class="empty-icon">${ic('user-x', 48)}</div>
+            <div class="empty-title">Perfil no encontrado</div>
+            <div class="empty-sub">Puede que el usuario haya eliminado su cuenta.</div>
+            <div style="margin-top:20px;"><a href="index.html" class="btn btn-primary">Volver al inicio</a></div>
+          </div>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    document.title = `${perfil.username || 'Perfil'} — Azael Colina`;
+
+    const [{ data: relatos }, { data: followers }, { data: following }, { data: session }, { data: isFollowingData }] = await Promise.all([
+      withTimeout(db.from('relatos').select('id, title, content, created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(20), 8000),
+      db.rpc('count_followers', { user_id_param: id }),
+      db.rpc('count_following', { user_id_param: id }),
+      db.auth.getSession(),
+      db.auth.getSession().then(({ data: { session: s } }) => s?.user
+        ? db.from('follows').select('id').eq('follower_id', s.user.id).eq('following_id', id).maybeSingle()
+        : { data: null }
+      ),
+    ]);
+
+    const sessionUserId = session?.user?.id || null;
+    const esPropio = sessionUserId === perfil.id;
+    const siguiendo = !!isFollowingData;
+    const bioTexto = perfil.bio_public || perfil.bio || 'Sin biografía.';
+
+    cont.innerHTML = `
+      <section class="page-head-c">
+        <div class="container">
+          <h1 class="page-title-c">Perfil de ${escapeHtml(perfil.username || 'Lector')}</h1>
+          <p class="page-sub-c">${perfil.is_author ? 'Autor' : 'Lector'} en Azael Colina</p>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <div class="perfil-card">
+            <div class="perfil-avatar-wrap">
+              <div class="perfil-avatar">
+                ${perfil.avatar_url
+                  ? `<img src="${perfil.avatar_url}" alt="" />`
+                  : escapeHtml((perfil.username || 'L').charAt(0).toUpperCase())}
+              </div>
+              ${perfil.is_author ? `<span class="perfil-badge-autor">Autor</span>` : ''}
+            </div>
+
+            <div class="perfil-body">
+              <h2 class="perfil-name">${escapeHtml(perfil.username || 'Lector')}</h2>
+
+              <div class="perfil-stats">
+                <div class="perfil-stat">
+                  <div class="perfil-stat-value">${followers || 0}</div>
+                  <div class="perfil-stat-label">Seguidores</div>
+                </div>
+                <div class="perfil-stat">
+                  <div class="perfil-stat-value">${following || 0}</div>
+                  <div class="perfil-stat-label">Siguiendo</div>
+                </div>
+                <div class="perfil-stat">
+                  <div class="perfil-stat-value">${relatos?.length || 0}</div>
+                  <div class="perfil-stat-label">Relatos</div>
+                </div>
+              </div>
+
+              ${bioTexto ? `<div class="perfil-bio">${escapeHtml(bioTexto)}</div>` : ''}
+
+              <div class="perfil-meta-extra">
+                ${perfil.location ? `<span>${ic('map-pin', 14)} ${escapeHtml(perfil.location)}</span>` : ''}
+                ${perfil.website ? `<a href="${escapeHtml(perfil.website)}" target="_blank" rel="noopener noreferrer">${ic('link', 14)} ${escapeHtml(perfil.website)}</a>` : ''}
+              </div>
+
+              <div class="perfil-actions">
+                ${esPropio
+                  ? `<a href="biografia.html" class="btn btn-ghost">${ic('edit-2', 14)} Editar biografía</a>`
+                  : sessionUserId
+                    ? `<button class="btn ${siguiendo ? 'btn-ghost' : 'btn-primary'}" id="btnFollow">
+                        ${siguiendo ? ic('user-check', 14) : ic('user-plus', 14)}
+                        ${siguiendo ? 'Siguiendo' : 'Seguir'}
+                      </button>`
+                    : `<button class="btn btn-primary" id="btnFollowLogin">${ic('user-plus', 14)} Seguir</button>`
+                }
+              </div>
+            </div>
+          </div>
+
+          <div class="section" style="margin-top:32px;">
+            <div class="section-head">
+              <div>
+                <h2 class="section-title">Relatos publicados</h2>
+                <p class="section-sub">${relatos?.length === 1 ? '1 relato' : `${relatos?.length || 0} relatos`}</p>
+              </div>
+            </div>
+            <div class="relatos-grid">
+              ${relatos?.length
+                ? relatos.map(r => {
+                    const excerpt = (r.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 160);
+                    return `
+                      <a class="relato-card" href="relato.html?id=${r.id}">
+                        <div class="relato-card-title">${escapeHtml(r.title)}</div>
+                        <div class="relato-card-excerpt">${escapeHtml(excerpt)}…</div>
+                        <div class="relato-card-more">Leer relato ${ic('arrow-right', 14)}</div>
+                      </a>
+                    `;
+                  }).join('')
+                : `<div class="empty-c" style="grid-column:1/-1;"><div class="empty-icon">${ic('pen-line', 48)}</div><div class="empty-title">Sin relatos aún</div><div class="empty-sub">Este lector todavía no ha publicado nada.</div></div>`
+              }
+            </div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    if (window.lucide) lucide.createIcons();
+
+    document.getElementById('btnFollow')?.addEventListener('click', async () => {
+      await toggleFollow(perfil.id, siguiendo);
+      await cargarPerfilPublico();
+    });
+
+    document.getElementById('btnFollowLogin')?.addEventListener('click', () => {
+      document.getElementById('authModal').hidden = false;
+      window.__showLoginView?.();
+    });
+  } catch (e) {
+    console.error('Error cargando perfil:', e);
+    cont.innerHTML = `<div class="container"><p class="empty-state">No se pudo cargar el perfil.</p></div>`;
+  }
+}
+
+async function toggleFollow(targetId, estaSiguiendo) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.user) {
+    showToast('Inicia sesión para seguir', 'info');
+    return;
+  }
+
+  const userId = session.user.id;
+  if (userId === targetId) {
+    showToast('No puedes seguirte a ti mismo', 'info');
+    return;
+  }
+
+  try {
+    if (estaSiguiendo) {
+      await db.from('follows').delete().eq('follower_id', userId).eq('following_id', targetId);
+      showToast('Has dejado de seguir a este lector', 'info');
+    } else {
+      const { error } = await db.from('follows').insert({ follower_id: userId, following_id: targetId });
+      if (error) {
+        if (error.code === '23505') showToast('Ya sigues a este lector', 'info');
+        else throw error;
+      } else {
+        showToast('Ahora sigues a este lector', 'ok');
+      }
+    }
+  } catch (e) {
+    console.error('Error follow:', e);
+    showToast('No se pudo actualizar el seguimiento', 'error');
+  }
+}
+
 /* ---------- MODAL INPUT GENÉRICO ---------- */
 function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
   return new Promise((resolve) => {
@@ -2869,6 +3087,8 @@ function dispararContenidoSegunPath() {
     cargarHistoriaDetalle();
   } else if (path === 'capitulo.html') {
     cargarCapitulo();
+  } else if (path === 'perfil.html') {
+    cargarPerfilPublico();
   }
 }
 
