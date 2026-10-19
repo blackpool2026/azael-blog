@@ -1,9 +1,9 @@
 /* ============================================
    Service Worker — Azael Escritor
-   v21: cierre Fase 2 (búsqueda + compartir + paginación)
+   v22: perfiles públicos + seguidores
    ============================================ */
 
-const CACHE_VERSION = 'azael-v21';
+const CACHE_VERSION = 'azael-v22';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
@@ -17,6 +17,7 @@ const STATIC_ASSETS = [
   '/redes.html',
   '/donaciones.html',
   '/biografia.html',
+  '/perfil.html',
   '/styles.css',
   '/main.js',
   '/favicon.svg',
