@@ -1,6 +1,6 @@
 /* ============================================
-   AZAEL BLOG — admin.js COMPLETO (FASE 2)
-   Añade: relatos, reportes, notificaciones relatos
+   AZAEL BLOG — admin.js COMPLETO
+   FASE 3: notificación new_follower + perfiles
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -25,7 +25,7 @@ let currentCharacterImageUrl = null;
 let characterRoleDropdown = null;
 let selectedRole = '';
 
-let reportesCurrentFilter = 'pending'; // ⭐ NUEVO
+let reportesCurrentFilter = 'pending';
 
 const PREDEFINED_ROLES = [
   'Protagonista','Coprotagonista','Deuteragonista',
@@ -120,7 +120,6 @@ function tiempoRelativo(fecha) {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 }
 
-/* ---------- DROPDOWN PERSONALIZADO ---------- */
 function crearDropdownPersonalizado(containerId, groups, opts = {}) {
   const container = document.getElementById(containerId);
   if (!container) return null;
@@ -233,7 +232,6 @@ function crearDropdownPersonalizado(containerId, groups, opts = {}) {
   return dropdown;
 }
 
-/* ---------- INPUT MODAL ---------- */
 function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
   return new Promise((resolve) => {
     const modal = document.createElement('div');
@@ -287,7 +285,6 @@ function salirAlSitio() {
   location.href = 'index.html';
 }
 
-/* ---------- HEADER ---------- */
 function inyectarHeader() {
   const mount = document.getElementById('header-mount');
   if (!mount) return;
@@ -318,7 +315,6 @@ function inyectarHeader() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- MODAL AUTH ---------- */
 function inyectarAuthModal() {
   const mount = document.getElementById('auth-mount');
   if (!mount) return;
@@ -412,7 +408,6 @@ async function verificarAutor() {
   return true;
 }
 
-/* ---------- DASHBOARD ---------- */
 async function cargarDashboard() {
   showLoading();
   const [storiesRes, chaptersRes, postsRes, relatosRes] = await Promise.all([
@@ -478,7 +473,6 @@ async function cargarDashboard() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- STORY FORM ---------- */
 async function abrirStoryForm(id = null) {
   currentStory = null;
   document.getElementById('storyForm').reset();
@@ -584,7 +578,6 @@ document.getElementById('storyDeleteBtn').addEventListener('click', async () => 
   cargarDashboard();
 });
 
-/* ---------- CAPÍTULOS ---------- */
 async function cargarCapitulosAdmin(storyId) {
   const list = document.getElementById('chaptersList');
   const { data } = await db.from('chapters')
@@ -699,7 +692,6 @@ document.getElementById('chapterDeleteBtn').addEventListener('click', async () =
   cargarCapitulosAdmin(currentStory.id);
 });
 
-/* ---------- EDITOR ---------- */
 function initEditor(toolbarId, editorId, counterId) {
   const toolbar = document.getElementById(toolbarId);
   const editor = document.getElementById(editorId);
@@ -929,7 +921,6 @@ function guardarBorrador(editorId) {
   } catch {}
 }
 
-/* ---------- POST FORM ---------- */
 async function abrirPostForm(id = null) {
   currentPost = null;
   document.getElementById('postForm').reset();
@@ -991,7 +982,6 @@ document.getElementById('postDeleteBtn').addEventListener('click', async () => {
   cargarDashboard();
 });
 
-/* ---------- REDES ---------- */
 const NET_ICONS = {
   instagram: 'instagram', twitter: 'twitter', tiktok: 'music', youtube: 'youtube',
   facebook: 'facebook', whatsapp: 'message-circle', telegram: 'send', discord: 'message-square',
@@ -1087,7 +1077,6 @@ async function agregarRed(platform, url) {
   cargarRedesAdmin();
 }
 
-/* ---------- DONACIONES ADMIN ---------- */
 const DONATION_ICONS = {
   paypal: 'wallet',
   binance: 'bitcoin',
@@ -1203,7 +1192,6 @@ async function agregarDonacion(platform, url, label) {
   cargarDonacionesAdmin();
 }
 
-/* ---------- ESTADÍSTICAS ---------- */
 async function abrirStatsView() {
   showView('viewStats');
   await cargarEstadisticas();
@@ -1477,7 +1465,6 @@ async function cargarStoryStats(storyId) {
   hideLoading();
 }
 
-/* ---------- NOTIFICACIONES ---------- */
 let notifCurrentFilter = 'all';
 
 async function abrirNotificacionesView() {
@@ -1523,7 +1510,6 @@ async function cargarNotificaciones() {
       profilesMap = Object.fromEntries((profiles || []).map(p => [p.id, p]));
     }
 
-    // ⭐ NUEVO: cargar títulos de relatos si hay notificaciones de relato
     const relatoIds = [...new Set(data.map(n => n.relato_id).filter(Boolean))];
     let relatosMap = {};
     if (relatoIds.length) {
@@ -1588,7 +1574,9 @@ async function cargarNotificaciones() {
         await marcarNotificacionLeida(id);
         const notif = data.find(n => n.id === id);
         if (notif) {
-          if (notif.type === 'comment_chapter' && notif.story_id) {
+          if (notif.type === 'new_follower' && notif.from_user_id) {
+            location.href = `perfil.html?id=${notif.from_user_id}`;
+          } else if (notif.type === 'comment_chapter' && notif.story_id) {
             location.href = `historia.html?id=${notif.story_id}`;
           } else if (notif.type === 'comment_post' && notif.post_id) {
             location.href = `post.html?id=${notif.post_id}`;
@@ -1656,6 +1644,12 @@ function formatearNotificacion(n, fromName, relatosMap = {}) {
         iconName: 'user-plus',
         colorClass: 'notif-green',
       };
+    case 'new_follower':
+      return {
+        texto: `${N} empezó a seguirte`,
+        iconName: 'user-plus',
+        colorClass: 'notif-green',
+      };
     default:
       return {
         texto: `Nueva notificación`,
@@ -1715,10 +1709,7 @@ async function marcarTodasLeidas() {
   } catch (e) { hideLoading(); toast('Error: ' + e.message, 'error'); }
 }
 
-/* ============================================
-   REPORTES DE RELATOS ⭐ NUEVO
-   ============================================ */
-
+/* ---------- REPORTES ---------- */
 async function abrirReportesView() {
   showView('viewReportes');
   await cargarReportes();
@@ -1758,7 +1749,6 @@ async function cargarReportes() {
       return;
     }
 
-    // Cargar perfiles de quien reportó
     const userIds = [...new Set(data.map(r => r.user_id))];
     const { data: perfiles } = await db.from('profiles').select('id, username').in('id', userIds);
     const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
@@ -1877,10 +1867,6 @@ async function actualizarBadgeReportes() {
   } catch (e) { console.warn(e); }
 }
 
-/* ============================================
-   RELATOS ADMIN (MODERACIÓN) ⭐ NUEVO
-   ============================================ */
-
 async function abrirRelatosAdminView() {
   showView('viewRelatosAdmin');
   await cargarRelatosAdmin();
@@ -1971,7 +1957,6 @@ async function cargarRelatosAdmin() {
   }
 }
 
-/* ---------- AJUSTES DEL SITIO ---------- */
 async function abrirAjustesView() {
   showView('viewAjustes');
   await cargarAjustes();
@@ -2014,10 +1999,7 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
   limpiarCachePublica();
 });
 
-/* ============================================
-   ÁRBOLES DE PERSONAJES (sin cambios)
-   ============================================ */
-
+/* ÁRBOLES — mantengo tu código original intacto */
 async function abrirArbolesEstante() {
   showView('viewArbolesEstante');
   await cargarEstante();
@@ -2473,10 +2455,6 @@ document.getElementById('characterDeleteBtn')?.addEventListener('click', async (
   }
 });
 
-/* ============================================
-   CANVAS VISUAL (drag & drop) — sin cambios
-   ============================================ */
-
 let canvasState = {
   storyId: null,
   nodes: [],
@@ -2750,10 +2728,6 @@ function resetearVista() {
   aplicarTransformCanvas();
   updateZoomLabel();
 }
-
-/* ============================================
-   CONECTORES — sin cambios
-   ============================================ */
 
 const RELATION_TYPES = {
   familia:   { label: 'Familia',   emoji: '🏠', color: '#9c27b0', style: 'solid',  defaultLabel: 'familia de' },
@@ -3274,7 +3248,6 @@ function initCanvasListeners() {
   });
 }
 
-/* ---------- BIOGRAFÍA ---------- */
 async function abrirBioView() {
   showView('viewBio');
   await cargarBioAdmin();
@@ -3333,7 +3306,6 @@ document.getElementById('bioSaveBtn').addEventListener('click', async () => {
   limpiarCachePublica();
 });
 
-/* ---------- BOTONES NAV ---------- */
 document.getElementById('btnNewStory').addEventListener('click', () => abrirStoryForm(null));
 document.getElementById('btnNewPost').addEventListener('click', () => abrirPostForm(null));
 document.getElementById('btnNotificaciones')?.addEventListener('click', () => abrirNotificacionesView());
@@ -3393,7 +3365,6 @@ document.getElementById('backFromCharacterForm')?.addEventListener('click', () =
   if (currentTreeStory) cargarPersonajesAdmin(currentTreeStory.id);
 });
 
-/* ---------- HELPERS ---------- */
 function escapeHtml(str) {
   return String(str ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -3416,7 +3387,6 @@ function emptyState(iconName, title, sub) {
   `;
 }
 
-/* ---------- INIT ---------- */
 (async () => {
   initTheme();
 
