@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   FASE 3: notificación new_follower + perfiles
+   FASE 3.5: relatos admin + toggle público
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -17,6 +17,7 @@ let currentStory = null;
 let currentChapter = null;
 let currentPost = null;
 let currentProfile = null;
+let currentRelatoAdmin = null; // NUEVO
 
 let currentTreeStory = null;
 let currentCharacter = null;
@@ -408,6 +409,7 @@ async function verificarAutor() {
   return true;
 }
 
+/* ---------- DASHBOARD ---------- */
 async function cargarDashboard() {
   showLoading();
   const [storiesRes, chaptersRes, postsRes, relatosRes] = await Promise.all([
@@ -473,6 +475,7 @@ async function cargarDashboard() {
   if (window.lucide) lucide.createIcons();
 }
 
+/* ---------- STORY FORM ---------- */
 async function abrirStoryForm(id = null) {
   currentStory = null;
   document.getElementById('storyForm').reset();
@@ -578,6 +581,7 @@ document.getElementById('storyDeleteBtn').addEventListener('click', async () => 
   cargarDashboard();
 });
 
+/* ---------- CAPÍTULOS ---------- */
 async function cargarCapitulosAdmin(storyId) {
   const list = document.getElementById('chaptersList');
   const { data } = await db.from('chapters')
@@ -692,6 +696,7 @@ document.getElementById('chapterDeleteBtn').addEventListener('click', async () =
   cargarCapitulosAdmin(currentStory.id);
 });
 
+/* ---------- EDITOR ---------- */
 function initEditor(toolbarId, editorId, counterId) {
   const toolbar = document.getElementById(toolbarId);
   const editor = document.getElementById(editorId);
@@ -921,6 +926,80 @@ function guardarBorrador(editorId) {
   } catch {}
 }
 
+/* ---------- RELATO ADMIN (NUEVO) ---------- */
+async function abrirRelatoAdminForm(id = null) {
+  currentRelatoAdmin = null;
+  document.getElementById('relatoAdminForm').reset();
+  document.getElementById('relatoAdminDeleteBtn').hidden = true;
+  document.getElementById('relatoAdminViewTitle').textContent = 'Nuevo relato';
+  document.getElementById('relatoAdminCharCount').textContent = '0 / 20000';
+
+  if (id) {
+    showLoading();
+    const { data } = await db.from('relatos').select('*').eq('id', id).maybeSingle();
+    hideLoading();
+    if (data) {
+      currentRelatoAdmin = data;
+      document.getElementById('relatoAdminTitle').value = data.title || '';
+      document.getElementById('relatoAdminContent').value = data.content || '';
+      document.getElementById('relatoAdminDeleteBtn').hidden = false;
+      document.getElementById('relatoAdminViewTitle').textContent = 'Editar relato';
+      document.getElementById('relatoAdminCharCount').textContent = `${(data.content || '').length} / 20000`;
+    }
+  }
+  showView('viewRelatoAdmin');
+  setTimeout(() => document.getElementById('relatoAdminTitle')?.focus(), 100);
+}
+
+document.getElementById('relatoAdminContent')?.addEventListener('input', (e) => {
+  const counter = document.getElementById('relatoAdminCharCount');
+  if (counter) counter.textContent = `${e.target.value.length} / 20000`;
+});
+
+document.getElementById('relatoAdminForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = document.getElementById('relatoAdminTitle').value.trim();
+  const content = document.getElementById('relatoAdminContent').value.trim();
+
+  if (!title || title.length < 3) { toast('El título es demasiado corto', 'error'); return; }
+  if (content.length < 100) { toast('El contenido debe tener al menos 100 caracteres', 'error'); return; }
+
+  const payload = {
+    user_id: session.user.id,
+    title,
+    content,
+    updated_at: new Date().toISOString(),
+  };
+
+  showLoading();
+  let error;
+  if (currentRelatoAdmin) {
+    ({ error } = await db.from('relatos').update(payload).eq('id', currentRelatoAdmin.id));
+  } else {
+    ({ error } = await db.from('relatos').insert(payload));
+  }
+  hideLoading();
+
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast(currentRelatoAdmin ? 'Relato actualizado' : 'Relato publicado', 'ok');
+  limpiarCachePublica();
+  setTimeout(() => { showView('viewDashboard'); cargarDashboard(); }, 400);
+});
+
+document.getElementById('relatoAdminDeleteBtn')?.addEventListener('click', async () => {
+  if (!currentRelatoAdmin) return;
+  if (!confirm(`¿Eliminar "${currentRelatoAdmin.title}"?`)) return;
+  showLoading();
+  const { error } = await db.from('relatos').delete().eq('id', currentRelatoAdmin.id);
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Relato eliminado', 'ok');
+  limpiarCachePublica();
+  showView('viewDashboard');
+  cargarDashboard();
+});
+
+/* ---------- POST FORM ---------- */
 async function abrirPostForm(id = null) {
   currentPost = null;
   document.getElementById('postForm').reset();
@@ -982,6 +1061,7 @@ document.getElementById('postDeleteBtn').addEventListener('click', async () => {
   cargarDashboard();
 });
 
+/* ---------- REDES ---------- */
 const NET_ICONS = {
   instagram: 'instagram', twitter: 'twitter', tiktok: 'music', youtube: 'youtube',
   facebook: 'facebook', whatsapp: 'message-circle', telegram: 'send', discord: 'message-square',
@@ -1077,6 +1157,7 @@ async function agregarRed(platform, url) {
   cargarRedesAdmin();
 }
 
+/* ---------- DONACIONES ADMIN ---------- */
 const DONATION_ICONS = {
   paypal: 'wallet',
   binance: 'bitcoin',
@@ -1192,6 +1273,7 @@ async function agregarDonacion(platform, url, label) {
   cargarDonacionesAdmin();
 }
 
+/* ---------- ESTADÍSTICAS ---------- */
 async function abrirStatsView() {
   showView('viewStats');
   await cargarEstadisticas();
@@ -1465,6 +1547,7 @@ async function cargarStoryStats(storyId) {
   hideLoading();
 }
 
+/* ---------- NOTIFICACIONES ---------- */
 let notifCurrentFilter = 'all';
 
 async function abrirNotificacionesView() {
@@ -1928,6 +2011,9 @@ async function cargarRelatosAdmin() {
             <a class="btn btn-ghost btn-sm" href="relato.html?id=${r.id}" target="_blank">
               ${ic('eye', 14)} Ver
             </a>
+            <button class="btn btn-ghost btn-sm" data-action="edit-relato-admin" data-id="${r.id}">
+              ${ic('edit-2', 14)} Editar
+            </button>
             <button class="btn btn-danger btn-sm" data-delete-relato-admin="${r.id}">
               ${ic('trash-2', 14)} Eliminar
             </button>
@@ -1937,6 +2023,10 @@ async function cargarRelatosAdmin() {
     }).join('');
 
     if (window.lucide) lucide.createIcons();
+
+    list.querySelectorAll('[data-action="edit-relato-admin"]').forEach(btn => {
+      btn.addEventListener('click', () => abrirRelatoAdminForm(btn.dataset.id));
+    });
 
     list.querySelectorAll('[data-delete-relato-admin]').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -1957,6 +2047,7 @@ async function cargarRelatosAdmin() {
   }
 }
 
+/* ---------- AJUSTES DEL SITIO ---------- */
 async function abrirAjustesView() {
   showView('viewAjustes');
   await cargarAjustes();
@@ -1966,7 +2057,7 @@ async function cargarAjustes() {
   showLoading();
   const { data, error } = await db
     .from('site_settings')
-    .select('show_likes, show_views')
+    .select('show_likes, show_views, show_relatos_btn')
     .eq('id', 1)
     .maybeSingle();
   hideLoading();
@@ -1978,16 +2069,18 @@ async function cargarAjustes() {
 
   document.getElementById('toggleShowLikes').checked = !!data.show_likes;
   document.getElementById('toggleShowViews').checked = !!data.show_views;
+  document.getElementById('toggleShowRelatosBtn').checked = data.show_relatos_btn !== false;
 }
 
 document.getElementById('saveSettingsBtn')?.addEventListener('click', async () => {
   const show_likes = document.getElementById('toggleShowLikes').checked;
   const show_views = document.getElementById('toggleShowViews').checked;
+  const show_relatos_btn = document.getElementById('toggleShowRelatosBtn').checked;
 
   showLoading();
   const { error } = await db
     .from('site_settings')
-    .update({ show_likes, show_views, updated_at: new Date().toISOString() })
+    .update({ show_likes, show_views, show_relatos_btn, updated_at: new Date().toISOString() })
     .eq('id', 1);
   hideLoading();
 
@@ -1999,7 +2092,10 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
   limpiarCachePublica();
 });
 
-/* ÁRBOLES — mantengo tu código original intacto */
+/* ============================================
+   ÁRBOLES DE PERSONAJES
+   ============================================ */
+
 async function abrirArbolesEstante() {
   showView('viewArbolesEstante');
   await cargarEstante();
@@ -3308,6 +3404,7 @@ document.getElementById('bioSaveBtn').addEventListener('click', async () => {
 
 document.getElementById('btnNewStory').addEventListener('click', () => abrirStoryForm(null));
 document.getElementById('btnNewPost').addEventListener('click', () => abrirPostForm(null));
+document.getElementById('btnNewRelatoAdmin')?.addEventListener('click', () => abrirRelatoAdminForm(null));
 document.getElementById('btnNotificaciones')?.addEventListener('click', () => abrirNotificacionesView());
 document.getElementById('btnReportes')?.addEventListener('click', () => abrirReportesView());
 document.getElementById('btnRelatosAdmin')?.addEventListener('click', () => abrirRelatosAdminView());
@@ -3349,6 +3446,7 @@ document.querySelectorAll('.reportes-filter').forEach(btn => {
 document.getElementById('backFromStory').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromChapter').addEventListener('click', () => { showView('viewStory'); cargarCapitulosAdmin(currentStory.id); });
 document.getElementById('backFromPost').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromRelatoAdmin')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromRedes').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromBio').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromDonaciones').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
