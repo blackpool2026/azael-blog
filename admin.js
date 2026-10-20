@@ -17,7 +17,7 @@ let currentStory = null;
 let currentChapter = null;
 let currentPost = null;
 let currentProfile = null;
-let currentRelatoAdmin = null; // NUEVO
+let currentRelatoAdmin = null; 
 
 let currentTreeStory = null;
 let currentCharacter = null;
@@ -926,7 +926,7 @@ function guardarBorrador(editorId) {
   } catch {}
 }
 
-/* ---------- RELATO ADMIN (NUEVO) ---------- */
+/* ---------- RELATO ADMIN ---------- */
 async function abrirRelatoAdminForm(id = null) {
   currentRelatoAdmin = null;
   document.getElementById('relatoAdminForm').reset();
@@ -1547,7 +1547,6 @@ async function cargarStoryStats(storyId) {
   hideLoading();
 }
 
-/* ---------- NOTIFICACIONES ---------- */
 let notifCurrentFilter = 'all';
 
 async function abrirNotificacionesView() {
@@ -2095,7 +2094,6 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
 /* ============================================
    ÁRBOLES DE PERSONAJES
    ============================================ */
-
 async function abrirArbolesEstante() {
   showView('viewArbolesEstante');
   await cargarEstante();
@@ -2104,88 +2102,47 @@ async function abrirArbolesEstante() {
 async function cargarEstante() {
   const shelf = document.getElementById('treesShelf');
   showLoading();
-
-  const { data: stories, error } = await db
-    .from('stories')
-    .select('id, title, cover_url, genre, status, synopsis')
-    .order('created_at', { ascending: false });
-
+  const { data: stories, error } = await db.from('stories').select('id, title, cover_url, genre, status, synopsis').order('created_at', { ascending: false });
   hideLoading();
+  if (error || !stories?.length) { shelf.innerHTML = emptyState('book', 'Sin historias', 'Crea una historia para empezar.'); return; }
 
-  if (error || !stories?.length) {
-    shelf.innerHTML = emptyState('book', 'Sin historias', 'Crea una historia para empezar.');
-    return;
-  }
-
-  const { data: nodes } = await db
-    .from('character_nodes')
-    .select('story_id');
-
+  const { data: nodes } = await db.from('character_nodes').select('story_id');
   const countByStory = {};
-  (nodes || []).forEach(n => {
-    countByStory[n.story_id] = (countByStory[n.story_id] || 0) + 1;
-  });
+  (nodes || []).forEach(n => { countByStory[n.story_id] = (countByStory[n.story_id] || 0) + 1; });
 
   shelf.innerHTML = stories.map(s => {
     const count = countByStory[s.id] || 0;
     return `
       <button class="tree-shelf-card" data-story-id="${s.id}">
-        <div class="tree-shelf-cover">
-          ${s.cover_url
-            ? `<img src="${s.cover_url}" alt="" loading="lazy" />`
-            : `<span>${escapeHtml(s.title.charAt(0))}</span>`}
-        </div>
+        <div class="tree-shelf-cover">${s.cover_url ? `<img src="${s.cover_url}" alt="" loading="lazy" />` : `<span>${escapeHtml(s.title.charAt(0))}</span>`}</div>
         <div class="tree-shelf-info">
           <div class="tree-shelf-title">${escapeHtml(s.title)}</div>
-          <div class="tree-shelf-meta">
-            ${s.genre ? `<span>${escapeHtml(s.genre)}</span>` : ''}
-            <span>·</span>
-            <span>${count} ${count === 1 ? 'personaje' : 'personajes'}</span>
-          </div>
+          <div class="tree-shelf-meta">${s.genre ? `<span>${escapeHtml(s.genre)}</span>` : ''}<span>·</span><span>${count} ${count === 1 ? 'personaje' : 'personajes'}</span></div>
         </div>
       </button>
     `;
   }).join('');
-
-  document.querySelectorAll('.tree-shelf-card').forEach(card => {
-    card.addEventListener('click', () => abrirArbolLibro(card.dataset.storyId));
-  });
-
+  document.querySelectorAll('.tree-shelf-card').forEach(card => card.addEventListener('click', () => abrirArbolLibro(card.dataset.storyId)));
   if (window.lucide) lucide.createIcons();
 }
 
 async function abrirArbolLibro(storyId) {
   showLoading();
-  const { data: story } = await db
-    .from('stories')
-    .select('id, title, cover_url, genre, status, synopsis')
-    .eq('id', storyId)
-    .maybeSingle();
+  const { data: story } = await db.from('stories').select('id, title, cover_url, genre, status, synopsis').eq('id', storyId).maybeSingle();
   hideLoading();
-
   if (!story) { toast('Historia no encontrada', 'error'); return; }
-
   currentTreeStory = story;
-
   const header = document.getElementById('arbolBookHeader');
   header.innerHTML = `
     <div class="arbol-book-header">
-      <div class="arbol-book-cover">
-        ${story.cover_url
-          ? `<img src="${story.cover_url}" alt="" />`
-          : `<span>${escapeHtml(story.title.charAt(0))}</span>`}
-      </div>
+      <div class="arbol-book-cover">${story.cover_url ? `<img src="${story.cover_url}" alt="" />` : `<span>${escapeHtml(story.title.charAt(0))}</span>`}</div>
       <div class="arbol-book-info">
-        <div class="story-badges">
-          ${story.genre ? `<span class="badge badge-genre">${escapeHtml(story.genre)}</span>` : ''}
-          <span class="badge badge-status">${escapeHtml(story.status || 'En curso')}</span>
-        </div>
+        <div class="story-badges">${story.genre ? `<span class="badge badge-genre">${escapeHtml(story.genre)}</span>` : ''}<span class="badge badge-status">${escapeHtml(story.status || 'En curso')}</span></div>
         <h1 class="story-h1" style="margin-top:8px;">${escapeHtml(story.title)}</h1>
         ${story.synopsis ? `<p class="story-synopsis-c" style="margin-top:8px;">${escapeHtml(story.synopsis)}</p>` : ''}
       </div>
     </div>
   `;
-
   showView('viewArbol');
   await cargarPersonajesAdmin(story.id);
 }
@@ -2193,51 +2150,23 @@ async function abrirArbolLibro(storyId) {
 async function cargarPersonajesAdmin(storyId) {
   const list = document.getElementById('charactersAdminList');
   showLoading();
-
-  const { data, error } = await db
-    .from('character_nodes')
-    .select('*')
-    .eq('story_id', storyId)
-    .order('created_at', { ascending: true });
-
+  const { data, error } = await db.from('character_nodes').select('*').eq('story_id', storyId).order('created_at', { ascending: true });
   hideLoading();
-
-  if (error) {
-    list.innerHTML = emptyState('alert-circle', 'Error', error.message);
-    return;
-  }
-
-  if (!data?.length) {
-    list.innerHTML = emptyState('users', 'Sin personajes', 'Añade el primer personaje de esta historia.');
-    return;
-  }
+  if (error) { list.innerHTML = emptyState('alert-circle', 'Error', error.message); return; }
+  if (!data?.length) { list.innerHTML = emptyState('users', 'Sin personajes', 'Añade el primer personaje de esta historia.'); return; }
 
   list.innerHTML = data.map(c => `
     <div class="character-admin-card">
-      <div class="character-admin-avatar">
-        ${c.image_url
-          ? `<img src="${c.image_url}" alt="" onerror="this.parentElement.innerHTML='<span>${escapeHtml(c.emoji || '👤')}</span>';" />`
-          : `<span>${escapeHtml(c.emoji || '👤')}</span>`}
-      </div>
+      <div class="character-admin-avatar">${c.image_url ? `<img src="${c.image_url}" alt="" onerror="this.parentElement.innerHTML='<span>${escapeHtml(c.emoji || '👤')}</span>';" />` : `<span>${escapeHtml(c.emoji || '👤')}</span>`}</div>
       <div class="character-admin-body">
-        <div class="character-admin-name">
-          ${escapeHtml(c.name)}
-          ${c.alias ? `<span class="character-admin-alias">"${escapeHtml(c.alias)}"</span>` : ''}
-        </div>
-        <div class="character-admin-meta">
-          ${c.role ? `<span class="character-admin-role">${escapeHtml(c.role)}</span>` : ''}
-          ${c.age ? `<span>· ${escapeHtml(c.age)} años</span>` : ''}
-        </div>
+        <div class="character-admin-name">${escapeHtml(c.name)} ${c.alias ? `<span class="character-admin-alias">"${escapeHtml(c.alias)}"</span>` : ''}</div>
+        <div class="character-admin-meta">${c.role ? `<span class="character-admin-role">${escapeHtml(c.role)}</span>` : ''}${c.age ? `<span>· ${escapeHtml(c.age)} años</span>` : ''}</div>
         ${c.description ? `<div class="character-admin-desc">${escapeHtml(c.description)}</div>` : ''}
       </div>
       <button class="admin-item-action" data-char-edit="${c.id}" title="Editar">${ic('edit-2', 16)}</button>
     </div>
   `).join('');
-
-  document.querySelectorAll('[data-char-edit]').forEach(btn => {
-    btn.addEventListener('click', () => abrirCharacterForm(btn.dataset.charEdit));
-  });
-
+  document.querySelectorAll('[data-char-edit]').forEach(btn => btn.addEventListener('click', () => abrirCharacterForm(btn.dataset.charEdit)));
   if (window.lucide) lucide.createIcons();
 }
 
@@ -2255,122 +2184,14 @@ function abrirCharacterForm(id = null) {
   actualizarAvatarPreview('👤', null);
 
   const roleGroups = [
-    {
-      label: 'Protagonistas',
-      options: [
-        { value: 'Protagonista', label: 'Protagonista', emoji: '⭐' },
-        { value: 'Coprotagonista', label: 'Coprotagonista', emoji: '⭐' },
-        { value: 'Deuteragonista', label: 'Deuteragonista', emoji: '⭐' },
-      ],
-    },
-    {
-      label: 'Antagonistas',
-      options: [
-        { value: 'Antagonista', label: 'Antagonista', emoji: '😈' },
-        { value: 'Villano', label: 'Villano', emoji: '👹' },
-        { value: 'Rival', label: 'Rival', emoji: '⚔️' },
-        { value: 'Traidor', label: 'Traidor', emoji: '🗡️' },
-      ],
-    },
-    {
-      label: 'Familia',
-      options: [
-        { value: 'Padre', label: 'Padre', emoji: '👨' },
-        { value: 'Madre', label: 'Madre', emoji: '👩' },
-        { value: 'Hijo', label: 'Hijo', emoji: '👦' },
-        { value: 'Hija', label: 'Hija', emoji: '👧' },
-        { value: 'Hermano', label: 'Hermano', emoji: '👦' },
-        { value: 'Hermana', label: 'Hermana', emoji: '👧' },
-        { value: 'Abuelo', label: 'Abuelo', emoji: '👴' },
-        { value: 'Abuela', label: 'Abuela', emoji: '👵' },
-        { value: 'Tío', label: 'Tío', emoji: '🧔' },
-        { value: 'Tía', label: 'Tía', emoji: '👩' },
-        { value: 'Primo', label: 'Primo', emoji: '👦' },
-        { value: 'Prima', label: 'Prima', emoji: '👧' },
-        { value: 'Sobrino', label: 'Sobrino', emoji: '👦' },
-        { value: 'Sobrina', label: 'Sobrina', emoji: '👧' },
-        { value: 'Cuñado', label: 'Cuñado', emoji: '🧔' },
-        { value: 'Cuñada', label: 'Cuñada', emoji: '👩' },
-        { value: 'Suegro', label: 'Suegro', emoji: '👴' },
-        { value: 'Suegra', label: 'Suegra', emoji: '👵' },
-        { value: 'Padrastro', label: 'Padrastro', emoji: '👨' },
-        { value: 'Madrastra', label: 'Madrastra', emoji: '👩' },
-        { value: 'Hijastro', label: 'Hijastro', emoji: '👦' },
-        { value: 'Hijastra', label: 'Hijastra', emoji: '👧' },
-        { value: 'Familia', label: 'Familia', emoji: '🏠' },
-      ],
-    },
-    {
-      label: 'Pareja',
-      options: [
-        { value: 'Pareja', label: 'Pareja', emoji: '💕' },
-        { value: 'Esposo', label: 'Esposo', emoji: '💍' },
-        { value: 'Esposa', label: 'Esposa', emoji: '💍' },
-        { value: 'Novio', label: 'Novio', emoji: '💑' },
-        { value: 'Novia', label: 'Novia', emoji: '💑' },
-        { value: 'Prometido', label: 'Prometido', emoji: '💍' },
-        { value: 'Prometida', label: 'Prometida', emoji: '💍' },
-        { value: 'Ex-pareja', label: 'Ex-pareja', emoji: '💔' },
-        { value: 'Amante', label: 'Amante', emoji: '💋' },
-        { value: 'Interés amoroso', label: 'Interés amoroso', emoji: '💖' },
-      ],
-    },
-    {
-      label: 'Social',
-      options: [
-        { value: 'Amigo', label: 'Amigo', emoji: '🤝' },
-        { value: 'Amiga', label: 'Amiga', emoji: '🤝' },
-        { value: 'Mejor amigo', label: 'Mejor amigo', emoji: '🫂' },
-        { value: 'Mejor amiga', label: 'Mejor amiga', emoji: '🫂' },
-        { value: 'Conocido', label: 'Conocido', emoji: '👋' },
-        { value: 'Vecino', label: 'Vecino', emoji: '🏘️' },
-        { value: 'Compañero', label: 'Compañero', emoji: '👥' },
-        { value: 'Compañera', label: 'Compañera', emoji: '👥' },
-        { value: 'Colega', label: 'Colega', emoji: '👔' },
-        { value: 'Aliado', label: 'Aliado', emoji: '🛡️' },
-        { value: 'Cómplice', label: 'Cómplice', emoji: '🎭' },
-      ],
-    },
-    {
-      label: 'Mentor / Alumno',
-      options: [
-        { value: 'Mentor', label: 'Mentor', emoji: '🎓' },
-        { value: 'Mentora', label: 'Mentora', emoji: '🎓' },
-        { value: 'Maestro', label: 'Maestro', emoji: '📚' },
-        { value: 'Maestra', label: 'Maestra', emoji: '📚' },
-        { value: 'Alumno', label: 'Alumno', emoji: '🎒' },
-        { value: 'Alumna', label: 'Alumna', emoji: '🎒' },
-        { value: 'Aprendiz', label: 'Aprendiz', emoji: '🔰' },
-        { value: 'Discípulo', label: 'Discípulo', emoji: '📖' },
-        { value: 'Discípula', label: 'Discípula', emoji: '📖' },
-      ],
-    },
-    {
-      label: 'Trabajo',
-      options: [
-        { value: 'Jefe', label: 'Jefe', emoji: '👔' },
-        { value: 'Jefa', label: 'Jefa', emoji: '👔' },
-        { value: 'Empleado', label: 'Empleado', emoji: '💼' },
-        { value: 'Empleada', label: 'Empleada', emoji: '💼' },
-        { value: 'Subordinado', label: 'Subordinado', emoji: '📋' },
-        { value: 'Socio', label: 'Socio', emoji: '🤝' },
-        { value: 'Socia', label: 'Socia', emoji: '🤝' },
-        { value: 'Benefactor', label: 'Benefactor', emoji: '🎁' },
-        { value: 'Benefactora', label: 'Benefactora', emoji: '🎁' },
-      ],
-    },
-    {
-      label: 'Otros',
-      options: [
-        { value: 'Mascota', label: 'Mascota', emoji: '🐾' },
-        { value: 'Guía', label: 'Guía', emoji: '🧭' },
-        { value: 'Narrador', label: 'Narrador', emoji: '📖' },
-        { value: 'Secundario', label: 'Secundario', emoji: '👤' },
-        { value: 'Extra', label: 'Extra', emoji: '👤' },
-        { value: 'Desconocido', label: 'Desconocido', emoji: '❓' },
-        { value: '__custom__', label: 'Otro (personalizado)', emoji: '✏️' },
-      ],
-    },
+    { label: 'Protagonistas', options: [{ value: 'Protagonista', label: 'Protagonista', emoji: '⭐' }, { value: 'Coprotagonista', label: 'Coprotagonista', emoji: '⭐' }, { value: 'Deuteragonista', label: 'Deuteragonista', emoji: '⭐' }] },
+    { label: 'Antagonistas', options: [{ value: 'Antagonista', label: 'Antagonista', emoji: '😈' }, { value: 'Villano', label: 'Villano', emoji: '👹' }, { value: 'Rival', label: 'Rival', emoji: '⚔️' }, { value: 'Traidor', label: 'Traidor', emoji: '🗡️' }] },
+    { label: 'Familia', options: [{ value: 'Padre', label: 'Padre', emoji: '👨' }, { value: 'Madre', label: 'Madre', emoji: '👩' }, { value: 'Hijo', label: 'Hijo', emoji: '👦' }, { value: 'Hija', label: 'Hija', emoji: '👧' }, { value: 'Hermano', label: 'Hermano', emoji: '👦' }, { value: 'Hermana', label: 'Hermana', emoji: '👧' }, { value: 'Abuelo', label: 'Abuelo', emoji: '👴' }, { value: 'Abuela', label: 'Abuela', emoji: '👵' }, { value: 'Tío', label: 'Tío', emoji: '🧔' }, { value: 'Tía', label: 'Tía', emoji: '👩' }, { value: 'Primo', label: 'Primo', emoji: '👦' }, { value: 'Prima', label: 'Prima', emoji: '👧' }, { value: 'Sobrino', label: 'Sobrino', emoji: '👦' }, { value: 'Sobrina', label: 'Sobrina', emoji: '👧' }, { value: 'Cuñado', label: 'Cuñado', emoji: '🧔' }, { value: 'Cuñada', label: 'Cuñada', emoji: '👩' }, { value: 'Suegro', label: 'Suegro', emoji: '👴' }, { value: 'Suegra', label: 'Suegra', emoji: '👵' }, { value: 'Padrastro', label: 'Padrastro', emoji: '👨' }, { value: 'Madrastra', label: 'Madrastra', emoji: '👩' }, { value: 'Hijastro', label: 'Hijastro', emoji: '👦' }, { value: 'Hijastra', label: 'Hijastra', emoji: '👧' }, { value: 'Familia', label: 'Familia', emoji: '🏠' }] },
+    { label: 'Pareja', options: [{ value: 'Pareja', label: 'Pareja', emoji: '💕' }, { value: 'Esposo', label: 'Esposo', emoji: '💍' }, { value: 'Esposa', label: 'Esposa', emoji: '💍' }, { value: 'Novio', label: 'Novio', emoji: '💑' }, { value: 'Novia', label: 'Novia', emoji: '💑' }, { value: 'Prometido', label: 'Prometido', emoji: '💍' }, { value: 'Prometida', label: 'Prometida', emoji: '💍' }, { value: 'Ex-pareja', label: 'Ex-pareja', emoji: '💔' }, { value: 'Amante', label: 'Amante', emoji: '💋' }, { value: 'Interés amoroso', label: 'Interés amoroso', emoji: '💖' }] },
+    { label: 'Social', options: [{ value: 'Amigo', label: 'Amigo', emoji: '🤝' }, { value: 'Amiga', label: 'Amiga', emoji: '🤝' }, { value: 'Mejor amigo', label: 'Mejor amigo', emoji: '🫂' }, { value: 'Mejor amiga', label: 'Mejor amiga', emoji: '🫂' }, { value: 'Conocido', label: 'Conocido', emoji: '👋' }, { value: 'Vecino', label: 'Vecino', emoji: '🏘️' }, { value: 'Compañero', label: 'Compañero', emoji: '👥' }, { value: 'Compañera', label: 'Compañera', emoji: '👥' }, { value: 'Colega', label: 'Colega', emoji: '👔' }, { value: 'Aliado', label: 'Aliado', emoji: '🛡️' }, { value: 'Cómplice', label: 'Cómplice', emoji: '🎭' }] },
+    { label: 'Mentor / Alumno', options: [{ value: 'Mentor', label: 'Mentor', emoji: '🎓' }, { value: 'Mentora', label: 'Mentora', emoji: '🎓' }, { value: 'Maestro', label: 'Maestro', emoji: '📚' }, { value: 'Maestra', label: 'Maestra', emoji: '📚' }, { value: 'Alumno', label: 'Alumno', emoji: '🎒' }, { value: 'Alumna', label: 'Alumna', emoji: '🎒' }, { value: 'Aprendiz', label: 'Aprendiz', emoji: '🔰' }, { value: 'Discípulo', label: 'Discípulo', emoji: '📖' }, { value: 'Discípula', label: 'Discípula', emoji: '📖' }] },
+    { label: 'Trabajo', options: [{ value: 'Jefe', label: 'Jefe', emoji: '👔' }, { value: 'Jefa', label: 'Jefa', emoji: '👔' }, { value: 'Empleado', label: 'Empleado', emoji: '💼' }, { value: 'Empleada', label: 'Empleada', emoji: '💼' }, { value: 'Subordinado', label: 'Subordinado', emoji: '📋' }, { value: 'Socio', label: 'Socio', emoji: '🤝' }, { value: 'Socia', label: 'Socia', emoji: '🤝' }, { value: 'Benefactor', label: 'Benefactor', emoji: '🎁' }, { value: 'Benefactora', label: 'Benefactora', emoji: '🎁' }] },
+    { label: 'Otros', options: [{ value: 'Mascota', label: 'Mascota', emoji: '🐾' }, { value: 'Guía', label: 'Guía', emoji: '🧭' }, { value: 'Narrador', label: 'Narrador', emoji: '📖' }, { value: 'Secundario', label: 'Secundario', emoji: '👤' }, { value: 'Extra', label: 'Extra', emoji: '👤' }, { value: 'Desconocido', label: 'Desconocido', emoji: '❓' }, { value: '__custom__', label: 'Otro (personalizado)', emoji: '✏️' }] },
   ];
 
   characterRoleDropdown = crearDropdownPersonalizado('characterRoleDropdownMount', roleGroups, {
@@ -2381,13 +2202,8 @@ function abrirCharacterForm(id = null) {
       const field = document.getElementById('customRoleField');
       const input = document.getElementById('characterCustomRole');
       if (!field || !input) return;
-      if (value === '__custom__') {
-        field.hidden = false;
-        setTimeout(() => input.focus(), 100);
-      } else {
-        field.hidden = true;
-        input.value = '';
-      }
+      if (value === '__custom__') { field.hidden = false; setTimeout(() => input.focus(), 100); }
+      else { field.hidden = true; input.value = ''; }
     },
   });
 
@@ -2403,43 +2219,27 @@ function abrirCharacterForm(id = null) {
       document.getElementById('characterAge').value = data.age || '';
       document.getElementById('characterEmoji').value = data.emoji || '👤';
       document.getElementById('characterDescription').value = data.description || '';
-
       const role = data.role || '';
-      if (esRolPersonalizado(role)) {
-        selectedRole = '__custom__';
-        document.getElementById('characterCustomRole').value = role;
-        document.getElementById('customRoleField').hidden = false;
-      } else {
-        selectedRole = role;
-        document.getElementById('customRoleField').hidden = true;
-      }
+      if (esRolPersonalizado(role)) { selectedRole = '__custom__'; document.getElementById('characterCustomRole').value = role; document.getElementById('customRoleField').hidden = false; }
+      else { selectedRole = role; document.getElementById('customRoleField').hidden = true; }
       if (characterRoleDropdown) characterRoleDropdown.setValue(selectedRole);
-
       document.getElementById('characterFormTitle').textContent = 'Editar personaje';
       document.getElementById('characterDeleteBtn').hidden = false;
       actualizarAvatarPreview(data.emoji || '👤', data.image_url);
-      if (data.image_url) {
-        document.getElementById('characterRemoveImageBtn').hidden = false;
-      }
+      if (data.image_url) document.getElementById('characterRemoveImageBtn').hidden = false;
     });
   }
-
   showView('viewCharacterForm');
   setTimeout(() => document.getElementById('characterName')?.focus(), 100);
 }
 
 function actualizarAvatarPreview(emoji, imageUrl) {
   const preview = document.getElementById('characterAvatarPreview');
-  if (imageUrl) {
-    preview.innerHTML = `<img src="${imageUrl}" alt="" />`;
-  } else {
-    preview.innerHTML = `<span>${escapeHtml(emoji || '👤')}</span>`;
-  }
+  if (imageUrl) preview.innerHTML = `<img src="${imageUrl}" alt="" />`;
+  else preview.innerHTML = `<span>${escapeHtml(emoji || '👤')}</span>`;
 }
 
-document.getElementById('characterAvatarBtn')?.addEventListener('click', () => {
-  document.getElementById('characterAvatarInput').click();
-});
+document.getElementById('characterAvatarBtn')?.addEventListener('click', () => document.getElementById('characterAvatarInput').click());
 
 document.getElementById('characterAvatarInput')?.addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -2470,11 +2270,7 @@ document.getElementById('characterRemoveImageBtn')?.addEventListener('click', ()
   toast('Imagen quitada', 'info');
 });
 
-document.getElementById('characterEmoji')?.addEventListener('input', (e) => {
-  if (!currentCharacterImageUrl) {
-    actualizarAvatarPreview(e.target.value || '👤', null);
-  }
-});
+document.getElementById('characterEmoji')?.addEventListener('input', (e) => { if (!currentCharacterImageUrl) actualizarAvatarPreview(e.target.value || '👤', null); });
 
 document.getElementById('characterForm')?.addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -2483,13 +2279,8 @@ document.getElementById('characterForm')?.addEventListener('submit', async (e) =
   let finalRole = '';
   if (selectedRole === '__custom__') {
     finalRole = document.getElementById('characterCustomRole').value.trim();
-    if (!finalRole) {
-      toast('Escribe el rol personalizado o elige otro', 'error');
-      return;
-    }
-  } else {
-    finalRole = selectedRole;
-  }
+    if (!finalRole) { toast('Escribe el rol personalizado o elige otro', 'error'); return; }
+  } else { finalRole = selectedRole; }
 
   const payload = {
     story_id: currentTreeStory.id,
@@ -2523,12 +2314,8 @@ document.getElementById('characterForm')?.addEventListener('submit', async (e) =
   limpiarCachePublica();
 
   setTimeout(() => {
-    if (vinoDeCanvas) {
-      abrirCanvasArbol(currentTreeStory.id);
-    } else {
-      showView('viewArbol');
-      cargarPersonajesAdmin(currentTreeStory.id);
-    }
+    if (vinoDeCanvas) abrirCanvasArbol(currentTreeStory.id);
+    else { showView('viewArbol'); cargarPersonajesAdmin(currentTreeStory.id); }
   }, 400);
 });
 
@@ -2542,64 +2329,22 @@ document.getElementById('characterDeleteBtn')?.addEventListener('click', async (
   if (error) { toast('Error: ' + error.message, 'error'); return; }
   toast('Personaje eliminado', 'ok');
   limpiarCachePublica();
-
-  if (vinoDeCanvas) {
-    abrirCanvasArbol(currentTreeStory.id);
-  } else {
-    showView('viewArbol');
-    cargarPersonajesAdmin(currentTreeStory.id);
-  }
+  if (vinoDeCanvas) abrirCanvasArbol(currentTreeStory.id);
+  else { showView('viewArbol'); cargarPersonajesAdmin(currentTreeStory.id); }
 });
 
-let canvasState = {
-  storyId: null,
-  nodes: [],
-  edges: [],
-  zoom: 1,
-  panX: 0,
-  panY: 0,
-  isPanning: false,
-  panStartX: 0,
-  panStartY: 0,
-  draggingNode: null,
-  dragStartPointerX: 0,
-  dragStartPointerY: 0,
-  dragStartNodeX: 0,
-  dragStartNodeY: 0,
-  dirtyNodes: new Set(),
-  saveTimer: null,
-};
+let canvasState = { storyId: null, nodes: [], edges: [], zoom: 1, panX: 0, panY: 0, isPanning: false, panStartX: 0, panStartY: 0, draggingNode: null, dragStartPointerX: 0, dragStartPointerY: 0, dragStartNodeX: 0, dragStartNodeY: 0, dirtyNodes: new Set(), saveTimer: null };
 
 async function abrirCanvasArbol(storyId) {
   showLoading();
-
-  const { data: story } = await db
-    .from('stories')
-    .select('id, title, cover_url')
-    .eq('id', storyId)
-    .maybeSingle();
-
+  const { data: story } = await db.from('stories').select('id, title, cover_url').eq('id', storyId).maybeSingle();
   if (!story) { hideLoading(); toast('Historia no encontrada', 'error'); return; }
-
-  const { data: nodes } = await db
-    .from('character_nodes')
-    .select('*')
-    .eq('story_id', storyId)
-    .order('created_at', { ascending: true });
-
-  const { data: edges } = await db
-    .from('character_edges')
-    .select('*')
-    .eq('story_id', storyId);
-
+  const { data: nodes } = await db.from('character_nodes').select('*').eq('story_id', storyId).order('created_at', { ascending: true });
+  const { data: edges } = await db.from('character_edges').select('*').eq('story_id', storyId);
   hideLoading();
 
   canvasState.storyId = storyId;
-  canvasState.nodes = (nodes || []).map(n => ({
-    ...n,
-    x: Number(n.x) || 400,
-    y: Number(n.y) || 200,
-  }));
+  canvasState.nodes = (nodes || []).map(n => ({ ...n, x: Number(n.x) || 400, y: Number(n.y) || 200 }));
   canvasState.edges = edges || [];
   canvasState.zoom = 1;
   canvasState.panX = 0;
@@ -2607,11 +2352,8 @@ async function abrirCanvasArbol(storyId) {
   canvasState.dirtyNodes.clear();
 
   desactivarModoConectar();
-
   document.getElementById('canvasBookTitle').textContent = story.title;
-  document.getElementById('canvasCharCount').textContent =
-    `${canvasState.nodes.length} ${canvasState.nodes.length === 1 ? 'personaje' : 'personajes'}`;
-
+  document.getElementById('canvasCharCount').textContent = `${canvasState.nodes.length} ${canvasState.nodes.length === 1 ? 'personaje' : 'personajes'}`;
   showView('viewArbolCanvas');
   renderizarCanvas();
   dibujarEdges();
@@ -2623,41 +2365,18 @@ function renderizarCanvas() {
   const world = document.getElementById('arbolCanvasWorld');
   const nodesEl = document.getElementById('arbolCanvasNodes');
   if (!world || !nodesEl) return;
-
   world.style.transform = `translate(${canvasState.panX}px, ${canvasState.panY}px) scale(${canvasState.zoom})`;
-
   if (!canvasState.nodes.length) {
-    nodesEl.innerHTML = `
-      <div class="canvas-empty">
-        <div class="canvas-empty-icon">👤</div>
-        <div class="canvas-empty-title">Sin personajes</div>
-        <div class="canvas-empty-sub">Toca "Añadir" para crear el primero</div>
-      </div>
-    `;
+    nodesEl.innerHTML = `<div class="canvas-empty"><div class="canvas-empty-icon">👤</div><div class="canvas-empty-title">Sin personajes</div><div class="canvas-empty-sub">Toca "Añadir" para crear el primero</div></div>`;
     return;
   }
-
   nodesEl.innerHTML = canvasState.nodes.map(n => {
-    const avatar = n.image_url
-      ? `<img src="${n.image_url}" alt="" draggable="false" />`
-      : `<span>${escapeHtml(n.emoji || '👤')}</span>`;
-    return `
-      <div class="canvas-node"
-           data-node-id="${n.id}"
-           style="left: ${n.x}px; top: ${n.y}px;">
-        <div class="canvas-node-avatar">${avatar}</div>
-        <div class="canvas-node-name">${escapeHtml(n.name)}</div>
-        ${n.role ? `<div class="canvas-node-role">${escapeHtml(n.role)}</div>` : ''}
-      </div>
-    `;
+    const avatar = n.image_url ? `<img src="${n.image_url}" alt="" draggable="false" />` : `<span>${escapeHtml(n.emoji || '👤')}</span>`;
+    return `<div class="canvas-node" data-node-id="${n.id}" style="left: ${n.x}px; top: ${n.y}px;"><div class="canvas-node-avatar">${avatar}</div><div class="canvas-node-name">${escapeHtml(n.name)}</div>${n.role ? `<div class="canvas-node-role">${escapeHtml(n.role)}</div>` : ''}</div>`;
   }).join('');
-
   nodesEl.querySelectorAll('.canvas-node').forEach(el => {
     el.addEventListener('pointerdown', iniciarDragNode);
-    el.addEventListener('dblclick', () => {
-      const id = el.dataset.nodeId;
-      abrirCharacterForm(id);
-    });
+    el.addEventListener('dblclick', () => { const id = el.dataset.nodeId; abrirCharacterForm(id); });
     el.addEventListener('click', (e) => {
       if (connectState.active) {
         e.stopPropagation();
@@ -2671,24 +2390,16 @@ function renderizarCanvas() {
 function iniciarDragNode(e) {
   if (e.target.closest('button')) return;
   if (connectState.active) return;
-
   const el = e.currentTarget;
   const id = el.dataset.nodeId;
   const node = canvasState.nodes.find(n => n.id === id);
   if (!node) return;
-
-  e.preventDefault();
-  e.stopPropagation();
-
+  e.preventDefault(); e.stopPropagation();
   canvasState.draggingNode = node;
-  canvasState.dragStartPointerX = e.clientX;
-  canvasState.dragStartPointerY = e.clientY;
-  canvasState.dragStartNodeX = node.x;
-  canvasState.dragStartNodeY = node.y;
-
+  canvasState.dragStartPointerX = e.clientX; canvasState.dragStartPointerY = e.clientY;
+  canvasState.dragStartNodeX = node.x; canvasState.dragStartNodeY = node.y;
   el.classList.add('dragging');
   try { el.setPointerCapture(e.pointerId); } catch {}
-
   document.addEventListener('pointermove', moverDragNode);
   document.addEventListener('pointerup', terminarDragNode);
   document.addEventListener('pointercancel', terminarDragNode);
@@ -2697,85 +2408,51 @@ function iniciarDragNode(e) {
 function moverDragNode(e) {
   if (!canvasState.draggingNode) return;
   e.preventDefault();
-
   const node = canvasState.draggingNode;
   const el = document.querySelector(`.canvas-node[data-node-id="${node.id}"]`);
   if (!el) return;
-
   const dx = (e.clientX - canvasState.dragStartPointerX) / canvasState.zoom;
   const dy = (e.clientY - canvasState.dragStartPointerY) / canvasState.zoom;
-
-  const newX = Math.max(0, canvasState.dragStartNodeX + dx);
-  const newY = Math.max(0, canvasState.dragStartNodeY + dy);
-
-  node.x = newX;
-  node.y = newY;
-
-  el.style.left = newX + 'px';
-  el.style.top = newY + 'px';
-
+  node.x = Math.max(0, canvasState.dragStartNodeX + dx);
+  node.y = Math.max(0, canvasState.dragStartNodeY + dy);
+  el.style.left = node.x + 'px'; el.style.top = node.y + 'px';
   canvasState.dirtyNodes.add(node.id);
-
   if (canvasState.edges.length) dibujarEdges();
 }
 
 function terminarDragNode(e) {
   if (!canvasState.draggingNode) return;
-
   const el = document.querySelector(`.canvas-node[data-node-id="${canvasState.draggingNode.id}"]`);
-  if (el) {
-    el.classList.remove('dragging');
-    try { el.releasePointerCapture(e.pointerId); } catch {}
-  }
-
+  if (el) { el.classList.remove('dragging'); try { el.releasePointerCapture(e.pointerId); } catch {} }
   canvasState.draggingNode = null;
   document.removeEventListener('pointermove', moverDragNode);
   document.removeEventListener('pointerup', terminarDragNode);
   document.removeEventListener('pointercancel', terminarDragNode);
-
   programarGuardarPosiciones();
 }
 
-function programarGuardarPosiciones() {
-  clearTimeout(canvasState.saveTimer);
-  canvasState.saveTimer = setTimeout(guardarPosiciones, 500);
-}
+function programarGuardarPosiciones() { clearTimeout(canvasState.saveTimer); canvasState.saveTimer = setTimeout(guardarPosiciones, 500); }
 
 async function guardarPosiciones() {
   if (!canvasState.dirtyNodes.size) return;
-
   const ids = [...canvasState.dirtyNodes];
   canvasState.dirtyNodes.clear();
-
   try {
     const updates = ids.map(id => {
       const n = canvasState.nodes.find(x => x.id === id);
-      if (!n) return null;
-      return db.from('character_nodes')
-        .update({ x: Math.round(n.x), y: Math.round(n.y) })
-        .eq('id', id);
+      return n ? db.from('character_nodes').update({ x: Math.round(n.x), y: Math.round(n.y) }).eq('id', id) : null;
     }).filter(Boolean);
-
     await Promise.all(updates);
-    console.log(`[Canvas] ${ids.length} posiciones guardadas`);
-  } catch (e) {
-    console.warn('Error guardando posiciones:', e);
-    toast('No se pudieron guardar las posiciones', 'error');
-  }
+  } catch (e) { console.warn('Error guardando posiciones:', e); toast('No se pudieron guardar las posiciones', 'error'); }
 }
 
 function iniciarPanCanvas(e) {
-  if (e.target.closest('.canvas-node')) return;
-  if (connectState.active) return;
+  if (e.target.closest('.canvas-node') || connectState.active) return;
   if (e.button !== undefined && e.button !== 0) return;
-
   canvasState.isPanning = true;
   canvasState.panStartX = e.clientX - canvasState.panX;
   canvasState.panStartY = e.clientY - canvasState.panY;
-
-  const viewport = document.getElementById('arbolCanvasViewport');
-  viewport?.classList.add('panning');
-
+  document.getElementById('arbolCanvasViewport')?.classList.add('panning');
   document.addEventListener('pointermove', moverPanCanvas);
   document.addEventListener('pointerup', terminarPanCanvas);
   document.addEventListener('pointercancel', terminarPanCanvas);
@@ -2790,8 +2467,7 @@ function moverPanCanvas(e) {
 
 function terminarPanCanvas() {
   canvasState.isPanning = false;
-  const viewport = document.getElementById('arbolCanvasViewport');
-  viewport?.classList.remove('panning');
+  document.getElementById('arbolCanvasViewport')?.classList.remove('panning');
   document.removeEventListener('pointermove', moverPanCanvas);
   document.removeEventListener('pointerup', terminarPanCanvas);
   document.removeEventListener('pointercancel', terminarPanCanvas);
@@ -2799,31 +2475,11 @@ function terminarPanCanvas() {
 
 function aplicarTransformCanvas() {
   const world = document.getElementById('arbolCanvasWorld');
-  if (world) {
-    world.style.transform = `translate(${canvasState.panX}px, ${canvasState.panY}px) scale(${canvasState.zoom})`;
-  }
+  if (world) world.style.transform = `translate(${canvasState.panX}px, ${canvasState.panY}px) scale(${canvasState.zoom})`;
 }
-
-function cambiarZoom(delta) {
-  const nuevo = Math.min(2, Math.max(0.3, canvasState.zoom + delta));
-  if (nuevo === canvasState.zoom) return;
-  canvasState.zoom = nuevo;
-  aplicarTransformCanvas();
-  updateZoomLabel();
-}
-
-function updateZoomLabel() {
-  const label = document.getElementById('canvasZoomLabel');
-  if (label) label.textContent = Math.round(canvasState.zoom * 100) + '%';
-}
-
-function resetearVista() {
-  canvasState.zoom = 1;
-  canvasState.panX = 0;
-  canvasState.panY = 0;
-  aplicarTransformCanvas();
-  updateZoomLabel();
-}
+function cambiarZoom(delta) { const nuevo = Math.min(2, Math.max(0.3, canvasState.zoom + delta)); if (nuevo === canvasState.zoom) return; canvasState.zoom = nuevo; aplicarTransformCanvas(); updateZoomLabel(); }
+function updateZoomLabel() { const label = document.getElementById('canvasZoomLabel'); if (label) label.textContent = Math.round(canvasState.zoom * 100) + '%'; }
+function resetearVista() { canvasState.zoom = 1; canvasState.panX = 0; canvasState.panY = 0; aplicarTransformCanvas(); updateZoomLabel(); }
 
 const RELATION_TYPES = {
   familia:   { label: 'Familia',   emoji: '🏠', color: '#9c27b0', style: 'solid',  defaultLabel: 'familia de' },
@@ -2837,94 +2493,52 @@ const RELATION_TYPES = {
   otro:      { label: 'Otro',      emoji: '🔗', color: '#6a6a78', style: 'solid',  defaultLabel: '' },
 };
 
-let connectState = {
-  active: false,
-  fromNode: null,
-};
+let connectState = { active: false, fromNode: null };
 
 function activarModoConectar() {
-  if (canvasState.nodes.length < 2) {
-    toast('Necesitas al menos 2 personajes para conectar', 'info');
-    return;
-  }
+  if (canvasState.nodes.length < 2) { toast('Necesitas al menos 2 personajes para conectar', 'info'); return; }
   connectState.active = true;
   connectState.fromNode = null;
-
   document.getElementById('canvasHintDefault').hidden = true;
   document.getElementById('canvasHintConnect').hidden = false;
   document.getElementById('canvasHintConnectText').textContent = 'Selecciona el primer personaje';
   document.getElementById('canvasConnectBtn').classList.add('active');
   document.getElementById('arbolCanvasViewport')?.classList.add('connect-mode');
-
   toast('Modo conectar activado. Toca el primer personaje.', 'info');
 }
 
 function desactivarModoConectar() {
   connectState.active = false;
   connectState.fromNode = null;
-
   document.getElementById('canvasHintDefault').hidden = false;
   document.getElementById('canvasHintConnect').hidden = true;
   document.getElementById('canvasConnectBtn')?.classList.remove('active');
   document.getElementById('arbolCanvasViewport')?.classList.remove('connect-mode');
-
-  document.querySelectorAll('.canvas-node.selecting-from, .canvas-node.selecting-to').forEach(el => {
-    el.classList.remove('selecting-from', 'selecting-to');
-  });
+  document.querySelectorAll('.canvas-node.selecting-from, .canvas-node.selecting-to').forEach(el => el.classList.remove('selecting-from', 'selecting-to'));
 }
 
 function handleNodeClickForConnect(node) {
   if (!connectState.active) return;
-
   if (!connectState.fromNode) {
     connectState.fromNode = node;
     document.getElementById('canvasHintConnectText').textContent = `Desde: ${node.name}. Toca el segundo personaje.`;
-
     const el = document.querySelector(`.canvas-node[data-node-id="${node.id}"]`);
     if (el) el.classList.add('selecting-from');
-
-    document.querySelectorAll('.canvas-node').forEach(other => {
-      if (other.dataset.nodeId !== node.id) other.classList.add('selecting-to');
-    });
+    document.querySelectorAll('.canvas-node').forEach(other => { if (other.dataset.nodeId !== node.id) other.classList.add('selecting-to'); });
   } else {
-    if (connectState.fromNode.id === node.id) {
-      toast('No puedes conectar un personaje consigo mismo', 'error');
-      return;
-    }
-
+    if (connectState.fromNode.id === node.id) { toast('No puedes conectar un personaje consigo mismo', 'error'); return; }
     const fromNode = connectState.fromNode;
-
-    document.querySelectorAll('.canvas-node.selecting-from, .canvas-node.selecting-to').forEach(el => {
-      el.classList.remove('selecting-from', 'selecting-to');
-    });
-
+    document.querySelectorAll('.canvas-node.selecting-from, .canvas-node.selecting-to').forEach(el => el.classList.remove('selecting-from', 'selecting-to'));
     abrirModalConexion(fromNode, node);
-
     connectState.fromNode = null;
     document.getElementById('canvasHintConnectText').textContent = 'Selecciona el primer personaje';
   }
 }
 
 async function abrirModalConexion(fromNode, toNode) {
-  const existing = canvasState.edges.find(e =>
-    (e.from_node_id === fromNode.id && e.to_node_id === toNode.id) ||
-    (e.from_node_id === toNode.id && e.to_node_id === fromNode.id)
-  );
-
+  const existing = canvasState.edges.find(e => (e.from_node_id === fromNode.id && e.to_node_id === toNode.id) || (e.from_node_id === toNode.id && e.to_node_id === fromNode.id));
   const isEditing = !!existing;
-  const edgeData = existing || {
-    from_node_id: fromNode.id,
-    to_node_id: toNode.id,
-    relation_type: 'otro',
-    relation_label: '',
-    line_color: RELATION_TYPES.otro.color,
-    line_style: RELATION_TYPES.otro.style,
-    line_width: 2,
-    arrow_start: false,
-    arrow_end: false,
-    curve_offset: 0,
-    line_opacity: 1,
-  };
+  const edgeData = existing || { from_node_id: fromNode.id, to_node_id: toNode.id, relation_type: 'otro', relation_label: '', line_color: RELATION_TYPES.otro.color, line_style: RELATION_TYPES.otro.style, line_width: 2, arrow_start: false, arrow_end: false, curve_offset: 0, line_opacity: 1 };
 
   const modal = document.createElement('div');
   modal.className = 'custom-input-overlay';
@@ -2933,118 +2547,28 @@ async function abrirModalConexion(fromNode, toNode) {
     <div class="custom-input-modal edge-modal">
       <h3 class="custom-input-title">${isEditing ? 'Editar conexión' : 'Nueva conexión'}</h3>
       <p class="custom-input-desc" style="display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;">
-        <span class="edge-modal-node-preview">
-          <span class="edge-modal-avatar">${fromNode.image_url ? `<img src="${fromNode.image_url}" alt="" />` : escapeHtml(fromNode.emoji || '👤')}</span>
-          <span>${escapeHtml(fromNode.name)}</span>
-        </span>
+        <span class="edge-modal-node-preview"><span class="edge-modal-avatar">${fromNode.image_url ? `<img src="${fromNode.image_url}" alt="" />` : escapeHtml(fromNode.emoji || '👤')}</span><span>${escapeHtml(fromNode.name)}</span></span>
         <span style="color:var(--accent-color);">↔</span>
-        <span class="edge-modal-node-preview">
-          <span class="edge-modal-avatar">${toNode.image_url ? `<img src="${toNode.image_url}" alt="" />` : escapeHtml(toNode.emoji || '👤')}</span>
-          <span>${escapeHtml(toNode.name)}</span>
-        </span>
+        <span class="edge-modal-node-preview"><span class="edge-modal-avatar">${toNode.image_url ? `<img src="${toNode.image_url}" alt="" />` : escapeHtml(toNode.emoji || '👤')}</span><span>${escapeHtml(toNode.name)}</span></span>
       </p>
-
       <div class="custom-input-fields-scroll">
-        <div class="custom-input-field">
-          <label>Tipo de relación</label>
-          <div id="edgeTypeDropdownMount"></div>
-        </div>
-
-        <div class="custom-input-field">
-          <label>Etiqueta (texto sobre la línea)</label>
-          <input type="text" id="edgeLabelInput" maxlength="60" placeholder="Ej: padre de, amigo de…" value="${escapeHtml(edgeData.relation_label || '')}" />
-        </div>
-
-        <div class="custom-input-field">
-          <label>Color de la línea</label>
-          <div class="edge-color-picker">
-            <input type="color" id="edgeColorInput" value="${edgeData.line_color || '#e50914'}" />
-            <div class="edge-color-presets">
-              ${Object.entries(RELATION_TYPES).map(([key, t]) => `
-                <button type="button" class="edge-color-preset" data-color="${t.color}" style="background:${t.color};" title="${t.label}"></button>
-              `).join('')}
-            </div>
-          </div>
-        </div>
-
-        <div class="custom-input-field">
-          <label>Estilo de línea</label>
-          <div class="edge-style-picker">
-            <button type="button" class="edge-style-btn ${edgeData.line_style === 'solid' ? 'active' : ''}" data-style="solid">
-              <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2"/></svg>
-            </button>
-            <button type="button" class="edge-style-btn ${edgeData.line_style === 'dashed' ? 'active' : ''}" data-style="dashed">
-              <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="6,4"/></svg>
-            </button>
-            <button type="button" class="edge-style-btn ${edgeData.line_style === 'dotted' ? 'active' : ''}" data-style="dotted">
-              <svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2,4"/></svg>
-            </button>
-          </div>
-        </div>
-
-        <div class="custom-input-field">
-          <label>Flechas</label>
-          <div class="edge-arrows-picker">
-            <label class="admin-check">
-              <input type="checkbox" id="edgeArrowStart" ${edgeData.arrow_start ? 'checked' : ''} />
-              <span>Al inicio</span>
-            </label>
-            <label class="admin-check">
-              <input type="checkbox" id="edgeArrowEnd" ${edgeData.arrow_end ? 'checked' : ''} />
-              <span>Al final</span>
-            </label>
-          </div>
-        </div>
-
-        <div class="custom-input-field">
-          <label>Grosor de línea</label>
-          <div class="edge-slider-row">
-            <input type="range" id="edgeWidthInput" min="1" max="6" step="0.5" value="${edgeData.line_width || 2}" />
-            <span class="edge-slider-value" id="edgeWidthValue">${edgeData.line_width || 2}px</span>
-          </div>
-        </div>
-
-        <div class="custom-input-field">
-          <label>Opacidad</label>
-          <div class="edge-slider-row">
-            <input type="range" id="edgeOpacityInput" min="0.2" max="1" step="0.05" value="${edgeData.line_opacity || 1}" />
-            <span class="edge-slider-value" id="edgeOpacityValue">${Math.round((edgeData.line_opacity || 1) * 100)}%</span>
-          </div>
-        </div>
-
-        <div class="custom-input-field">
-          <label>Curvatura</label>
-          <div class="edge-slider-row">
-            <input type="range" id="edgeCurveInput" min="-100" max="100" step="5" value="${edgeData.curve_offset || 0}" />
-            <span class="edge-slider-value" id="edgeCurveValue">${edgeData.curve_offset || 0}</span>
-          </div>
-          <p class="custom-input-hint">0 = recta · Valores negativos/positivos curvan la línea</p>
-        </div>
+        <div class="custom-input-field"><label>Tipo de relación</label><div id="edgeTypeDropdownMount"></div></div>
+        <div class="custom-input-field"><label>Etiqueta (texto sobre la línea)</label><input type="text" id="edgeLabelInput" maxlength="60" placeholder="Ej: padre de, amigo de…" value="${escapeHtml(edgeData.relation_label || '')}" /></div>
+        <div class="custom-input-field"><label>Color de la línea</label><div class="edge-color-picker"><input type="color" id="edgeColorInput" value="${edgeData.line_color || '#e50914'}" /><div class="edge-color-presets">${Object.entries(RELATION_TYPES).map(([key, t]) => `<button type="button" class="edge-color-preset" data-color="${t.color}" style="background:${t.color};" title="${t.label}"></button>`).join('')}</div></div></div>
+        <div class="custom-input-field"><label>Estilo de línea</label><div class="edge-style-picker"><button type="button" class="edge-style-btn ${edgeData.line_style === 'solid' ? 'active' : ''}" data-style="solid"><svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2"/></svg></button><button type="button" class="edge-style-btn ${edgeData.line_style === 'dashed' ? 'active' : ''}" data-style="dashed"><svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="6,4"/></svg></button><button type="button" class="edge-style-btn ${edgeData.line_style === 'dotted' ? 'active' : ''}" data-style="dotted"><svg width="40" height="10"><line x1="0" y1="5" x2="40" y2="5" stroke="currentColor" stroke-width="2" stroke-dasharray="2,4"/></svg></button></div></div>
+        <div class="custom-input-field"><label>Flechas</label><div class="edge-arrows-picker"><label class="admin-check"><input type="checkbox" id="edgeArrowStart" ${edgeData.arrow_start ? 'checked' : ''} /><span>Al inicio</span></label><label class="admin-check"><input type="checkbox" id="edgeArrowEnd" ${edgeData.arrow_end ? 'checked' : ''} /><span>Al final</span></label></div></div>
+        <div class="custom-input-field"><label>Grosor de línea</label><div class="edge-slider-row"><input type="range" id="edgeWidthInput" min="1" max="6" step="0.5" value="${edgeData.line_width || 2}" /><span class="edge-slider-value" id="edgeWidthValue">${edgeData.line_width || 2}px</span></div></div>
+        <div class="custom-input-field"><label>Opacidad</label><div class="edge-slider-row"><input type="range" id="edgeOpacityInput" min="0.2" max="1" step="0.05" value="${edgeData.line_opacity || 1}" /><span class="edge-slider-value" id="edgeOpacityValue">${Math.round((edgeData.line_opacity || 1) * 100)}%</span></div></div>
+        <div class="custom-input-field"><label>Curvatura</label><div class="edge-slider-row"><input type="range" id="edgeCurveInput" min="-100" max="100" step="5" value="${edgeData.curve_offset || 0}" /><span class="edge-slider-value" id="edgeCurveValue">${edgeData.curve_offset || 0}</span></div><p class="custom-input-hint">0 = recta · Valores negativos/positivos curvan la línea</p></div>
       </div>
-
-      <div class="custom-input-actions">
-        ${isEditing ? `<button class="btn btn-ghost" id="edgeDeleteBtn" style="color:#ff6b6b;">Eliminar</button>` : ''}
-        <button class="btn btn-ghost" id="edgeCancelBtn">Cancelar</button>
-        <button class="btn btn-primary" id="edgeSaveBtn">${isEditing ? 'Guardar' : 'Crear conexión'}</button>
-      </div>
+      <div class="custom-input-actions">${isEditing ? `<button class="btn btn-ghost" id="edgeDeleteBtn" style="color:#ff6b6b;">Eliminar</button>` : ''}<button class="btn btn-ghost" id="edgeCancelBtn">Cancelar</button><button class="btn btn-primary" id="edgeSaveBtn">${isEditing ? 'Guardar' : 'Crear conexión'}</button></div>
     </div>
   `;
   document.body.appendChild(modal);
 
-  const edgeTypeGroups = [
-    {
-      label: 'Tipos de relación',
-      options: Object.entries(RELATION_TYPES).map(([key, t]) => ({
-        value: key,
-        label: t.label,
-        emoji: t.emoji,
-      })),
-    },
-  ];
-
+  const edgeTypeGroups = [{ label: 'Tipos de relación', options: Object.entries(RELATION_TYPES).map(([key, t]) => ({ value: key, label: t.label, emoji: t.emoji })) }];
   let selectedType = edgeData.relation_type || 'otro';
   let selectedStyle = edgeData.line_style || 'solid';
-
   const labelInput = modal.querySelector('#edgeLabelInput');
   const colorInput = modal.querySelector('#edgeColorInput');
   const styleBtns = modal.querySelectorAll('.edge-style-btn');
@@ -3058,15 +2582,9 @@ async function abrirModalConexion(fromNode, toNode) {
   const curveInput = modal.querySelector('#edgeCurveInput');
   const curveValue = modal.querySelector('#edgeCurveValue');
 
-  widthInput.addEventListener('input', () => {
-    widthValue.textContent = widthInput.value + 'px';
-  });
-  opacityInput.addEventListener('input', () => {
-    opacityValue.textContent = Math.round(parseFloat(opacityInput.value) * 100) + '%';
-  });
-  curveInput.addEventListener('input', () => {
-    curveValue.textContent = curveInput.value;
-  });
+  widthInput.addEventListener('input', () => { widthValue.textContent = widthInput.value + 'px'; });
+  opacityInput.addEventListener('input', () => { opacityValue.textContent = Math.round(parseFloat(opacityInput.value) * 100) + '%'; });
+  curveInput.addEventListener('input', () => { curveValue.textContent = curveInput.value; });
 
   crearDropdownPersonalizado('edgeTypeDropdownMount', edgeTypeGroups, {
     value: selectedType,
@@ -3078,30 +2596,13 @@ async function abrirModalConexion(fromNode, toNode) {
       colorInput.value = t.color;
       selectedStyle = t.style;
       styleBtns.forEach(b => b.classList.toggle('active', b.dataset.style === t.style));
-      if (!labelInput.value.trim() || labelInput.dataset.auto === '1') {
-        labelInput.value = t.defaultLabel;
-        labelInput.dataset.auto = '1';
-      }
+      if (!labelInput.value.trim() || labelInput.dataset.auto === '1') { labelInput.value = t.defaultLabel; labelInput.dataset.auto = '1'; }
     },
   });
 
-  labelInput.addEventListener('input', () => {
-    labelInput.dataset.auto = '0';
-  });
-
-  styleBtns.forEach(btn => {
-    btn.addEventListener('click', () => {
-      selectedStyle = btn.dataset.style;
-      styleBtns.forEach(b => b.classList.toggle('active', b === btn));
-    });
-  });
-
-  colorPresets.forEach(btn => {
-    btn.addEventListener('click', () => {
-      colorInput.value = btn.dataset.color;
-    });
-  });
-
+  labelInput.addEventListener('input', () => { labelInput.dataset.auto = '0'; });
+  styleBtns.forEach(btn => { btn.addEventListener('click', () => { selectedStyle = btn.dataset.style; styleBtns.forEach(b => b.classList.toggle('active', b === btn)); }); });
+  colorPresets.forEach(btn => { btn.addEventListener('click', () => { colorInput.value = btn.dataset.color; }); });
   modal.querySelector('#edgeCancelBtn').addEventListener('click', () => modal.remove());
 
   modal.querySelector('#edgeDeleteBtn')?.addEventListener('click', async () => {
@@ -3112,35 +2613,19 @@ async function abrirModalConexion(fromNode, toNode) {
 
   modal.querySelector('#edgeSaveBtn').addEventListener('click', async () => {
     const payload = {
-      story_id: canvasState.storyId,
-      user_id: session.user.id,
-      from_node_id: fromNode.id,
-      to_node_id: toNode.id,
-      relation_type: selectedType,
-      relation_label: labelInput.value.trim(),
-      line_color: colorInput.value,
-      line_style: selectedStyle,
-      line_width: parseFloat(widthInput.value) || 2,
-      arrow_start: arrowStart.checked,
-      arrow_end: arrowEnd.checked,
-      curve_offset: parseFloat(curveInput.value) || 0,
-      line_opacity: parseFloat(opacityInput.value) || 1,
-      is_custom_style: true,
+      story_id: canvasState.storyId, user_id: session.user.id, from_node_id: fromNode.id, to_node_id: toNode.id,
+      relation_type: selectedType, relation_label: labelInput.value.trim(), line_color: colorInput.value, line_style: selectedStyle,
+      line_width: parseFloat(widthInput.value) || 2, arrow_start: arrowStart.checked, arrow_end: arrowEnd.checked,
+      curve_offset: parseFloat(curveInput.value) || 0, line_opacity: parseFloat(opacityInput.value) || 1, is_custom_style: true,
     };
-
     showLoading();
     let error;
-    if (isEditing) {
-      ({ error } = await db.from('character_edges').update(payload).eq('id', existing.id));
-    } else {
-      ({ error } = await db.from('character_edges').insert(payload));
-    }
+    if (isEditing) ({ error } = await db.from('character_edges').update(payload).eq('id', existing.id));
+    else ({ error } = await db.from('character_edges').insert(payload));
     hideLoading();
-
     if (error) { toast('Error: ' + error.message, 'error'); return; }
     toast(isEditing ? 'Conexión actualizada' : 'Conexión creada', 'ok');
     modal.remove();
-
     await recargarEdges();
   });
 }
@@ -3155,10 +2640,7 @@ async function eliminarConexion(edgeId) {
 }
 
 async function recargarEdges() {
-  const { data } = await db
-    .from('character_edges')
-    .select('*')
-    .eq('story_id', canvasState.storyId);
+  const { data } = await db.from('character_edges').select('*').eq('story_id', canvasState.storyId);
   canvasState.edges = data || [];
   dibujarEdges();
 }
@@ -3166,125 +2648,50 @@ async function recargarEdges() {
 function dibujarEdges() {
   const svg = document.getElementById('arbolCanvasSvg');
   if (!svg) return;
-
-  const NODE_W = 130;
-  const NODE_H = 130;
-
-  svg.innerHTML = `
-    <defs>
-      <marker id="arrowEnd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-        <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" />
-      </marker>
-      <marker id="arrowStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto">
-        <path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" />
-      </marker>
-    </defs>
-  `;
+  const NODE_W = 130, NODE_H = 130;
+  svg.innerHTML = `<defs><marker id="arrowEnd" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke" /></marker><marker id="arrowStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M 10 0 L 0 5 L 10 10 z" fill="context-stroke" /></marker></defs>`;
 
   canvasState.edges.forEach(edge => {
     const from = canvasState.nodes.find(n => n.id === edge.from_node_id);
     const to = canvasState.nodes.find(n => n.id === edge.to_node_id);
     if (!from || !to) return;
-
-    const fromCX = from.x + NODE_W / 2;
-    const fromCY = from.y + NODE_H / 2;
-    const toCX = to.x + NODE_W / 2;
-    const toCY = to.y + NODE_H / 2;
-
+    const fromCX = from.x + NODE_W / 2, fromCY = from.y + NODE_H / 2, toCX = to.x + NODE_W / 2, toCY = to.y + NODE_H / 2;
     const angle = Math.atan2(toCY - fromCY, toCX - fromCX);
-    const radiusX = NODE_W / 2;
-    const radiusY = NODE_H / 2;
-
-    const fromX = fromCX + Math.cos(angle) * radiusX * 0.85;
-    const fromY = fromCY + Math.sin(angle) * radiusY * 0.85;
-    const toX = toCX - Math.cos(angle) * radiusX * 0.85;
-    const toY = toCY - Math.sin(angle) * radiusY * 0.85;
-
+    const radiusX = NODE_W / 2, radiusY = NODE_H / 2;
+    const fromX = fromCX + Math.cos(angle) * radiusX * 0.85, fromY = fromCY + Math.sin(angle) * radiusY * 0.85;
+    const toX = toCX - Math.cos(angle) * radiusX * 0.85, toY = toCY - Math.sin(angle) * radiusY * 0.85;
     const color = edge.line_color || '#e50914';
     const style = edge.line_style || 'solid';
     const width = parseFloat(edge.line_width) || 2;
     const opacity = parseFloat(edge.line_opacity) || 1;
     const curveOffset = parseFloat(edge.curve_offset) || 0;
-
     let dashAttr = '';
     if (style === 'dashed') dashAttr = `stroke-dasharray="${width * 4},${width * 3}"`;
     else if (style === 'dotted') dashAttr = `stroke-dasharray="${width},${width * 3}"`;
-
     const markerStart = edge.arrow_start ? 'marker-start="url(#arrowStart)"' : '';
     const markerEnd = edge.arrow_end ? 'marker-end="url(#arrowEnd)"' : '';
-
-    let pathD;
-    let labelX, labelY;
+    let pathD, labelX, labelY;
 
     if (curveOffset === 0) {
       pathD = `M ${fromX} ${fromY} L ${toX} ${toY}`;
-      labelX = (fromX + toX) / 2;
-      labelY = (fromY + toY) / 2;
+      labelX = (fromX + toX) / 2; labelY = (fromY + toY) / 2;
     } else {
-      const midX = (fromX + toX) / 2;
-      const midY = (fromY + toY) / 2;
-
-      const dx = toX - fromX;
-      const dy = toY - fromY;
+      const midX = (fromX + toX) / 2, midY = (fromY + toY) / 2;
+      const dx = toX - fromX, dy = toY - fromY;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const perpX = -dy / len;
-      const perpY = dx / len;
-
-      const cpX = midX + perpX * curveOffset;
-      const cpY = midY + perpY * curveOffset;
-
+      const perpX = -dy / len, perpY = dx / len;
+      const cpX = midX + perpX * curveOffset, cpY = midY + perpY * curveOffset;
       pathD = `M ${fromX} ${fromY} Q ${cpX} ${cpY} ${toX} ${toY}`;
-
       labelX = 0.25 * fromX + 0.5 * cpX + 0.25 * toX;
       labelY = 0.25 * fromY + 0.5 * cpY + 0.25 * toY;
     }
 
-    svg.insertAdjacentHTML('beforeend', `
-      <path
-        d="${pathD}"
-        stroke="${color}"
-        stroke-width="${width}"
-        stroke-opacity="${opacity}"
-        ${dashAttr}
-        ${markerStart}
-        ${markerEnd}
-        stroke-linecap="round"
-        fill="none"
-        data-edge-id="${edge.id}"
-        class="canvas-edge-line"
-        style="cursor: pointer; pointer-events: stroke;"
-      />
-    `);
+    svg.insertAdjacentHTML('beforeend', `<path d="${pathD}" stroke="${color}" stroke-width="${width}" stroke-opacity="${opacity}" ${dashAttr} ${markerStart} ${markerEnd} stroke-linecap="round" fill="none" data-edge-id="${edge.id}" class="canvas-edge-line" style="cursor: pointer; pointer-events: stroke;" />`);
 
     if (edge.relation_label && edge.relation_label.trim()) {
       const labelWidth = edge.relation_label.length * 6.5 + 16;
       const labelHeight = 20;
-
-      svg.insertAdjacentHTML('beforeend', `
-        <g class="canvas-edge-label-group" data-edge-id="${edge.id}" style="cursor: pointer;">
-          <rect
-            x="${labelX - labelWidth / 2}"
-            y="${labelY - labelHeight / 2}"
-            width="${labelWidth}"
-            height="${labelHeight}"
-            rx="10"
-            fill="var(--bg-elevated)"
-            stroke="${color}"
-            stroke-width="1.5"
-            opacity="0.95"
-          />
-          <text
-            x="${labelX}"
-            y="${labelY + 4}"
-            text-anchor="middle"
-            font-family="Inter, sans-serif"
-            font-size="11"
-            font-weight="600"
-            fill="${color}"
-            style="user-select: none; pointer-events: none;"
-          >${escapeHtml(edge.relation_label)}</text>
-        </g>
-      `);
+      svg.insertAdjacentHTML('beforeend', `<g class="canvas-edge-label-group" data-edge-id="${edge.id}" style="cursor: pointer;"><rect x="${labelX - labelWidth / 2}" y="${labelY - labelHeight / 2}" width="${labelWidth}" height="${labelHeight}" rx="10" fill="var(--bg-elevated)" stroke="${color}" stroke-width="1.5" opacity="0.95" /><text x="${labelX}" y="${labelY + 4}" text-anchor="middle" font-family="Inter, sans-serif" font-size="11" font-weight="600" fill="${color}" style="user-select: none; pointer-events: none;">${escapeHtml(edge.relation_label)}</text></g>`);
     }
   });
 
@@ -3304,44 +2711,17 @@ function dibujarEdges() {
 function initCanvasListeners() {
   const viewport = document.getElementById('arbolCanvasViewport');
   if (viewport) {
-    viewport.addEventListener('pointerdown', (e) => {
-      if (!e.target.closest('.canvas-node') && !connectState.active) {
-        iniciarPanCanvas(e);
-      }
-    });
-    viewport.addEventListener('touchmove', (e) => {
-      if (canvasState.draggingNode || canvasState.isPanning) {
-        e.preventDefault();
-      }
-    }, { passive: false });
+    viewport.addEventListener('pointerdown', (e) => { if (!e.target.closest('.canvas-node') && !connectState.active) iniciarPanCanvas(e); });
+    viewport.addEventListener('touchmove', (e) => { if (canvasState.draggingNode || canvasState.isPanning) e.preventDefault(); }, { passive: false });
   }
-
   document.getElementById('canvasZoomIn')?.addEventListener('click', () => cambiarZoom(0.15));
   document.getElementById('canvasZoomOut')?.addEventListener('click', () => cambiarZoom(-0.15));
   document.getElementById('canvasResetView')?.addEventListener('click', resetearVista);
-
   document.getElementById('canvasAddChar')?.addEventListener('click', () => abrirCharacterForm(null));
-  document.getElementById('canvasBackBtn')?.addEventListener('click', () => {
-    showView('viewArbol');
-    if (currentTreeStory) cargarPersonajesAdmin(currentTreeStory.id);
-  });
-
-  document.getElementById('btnOpenCanvas')?.addEventListener('click', () => {
-    if (currentTreeStory) abrirCanvasArbol(currentTreeStory.id);
-  });
-
-  document.getElementById('canvasConnectBtn')?.addEventListener('click', () => {
-    if (connectState.active) {
-      desactivarModoConectar();
-      toast('Modo conectar desactivado', 'info');
-    } else {
-      activarModoConectar();
-    }
-  });
-
-  document.getElementById('canvasCancelConnect')?.addEventListener('click', () => {
-    desactivarModoConectar();
-  });
+  document.getElementById('canvasBackBtn')?.addEventListener('click', () => { showView('viewArbol'); if (currentTreeStory) cargarPersonajesAdmin(currentTreeStory.id); });
+  document.getElementById('btnOpenCanvas')?.addEventListener('click', () => { if (currentTreeStory) abrirCanvasArbol(currentTreeStory.id); });
+  document.getElementById('canvasConnectBtn')?.addEventListener('click', () => { if (connectState.active) { desactivarModoConectar(); toast('Modo conectar desactivado', 'info'); } else activarModoConectar(); });
+  document.getElementById('canvasCancelConnect')?.addEventListener('click', () => desactivarModoConectar());
 }
 
 async function abrirBioView() {
@@ -3355,19 +2735,13 @@ async function cargarBioAdmin() {
   hideLoading();
   if (error || !data) { toast('No se pudo cargar el perfil', 'error'); return; }
   currentProfile = data;
-
   document.getElementById('bioUsername').value = data.username || '';
   document.getElementById('bioText').value = data.bio || '';
-
   const preview = document.getElementById('bioAvatarPreview');
-  preview.innerHTML = data.avatar_url
-    ? `<img src="${data.avatar_url}" alt="" />`
-    : escapeHtml((data.username || 'A').charAt(0).toUpperCase());
+  preview.innerHTML = data.avatar_url ? `<img src="${data.avatar_url}" alt="" />` : escapeHtml((data.username || 'A').charAt(0).toUpperCase());
 }
 
-document.getElementById('bioAvatarBtn').addEventListener('click', () => {
-  document.getElementById('bioAvatarInput').click();
-});
+document.getElementById('bioAvatarBtn').addEventListener('click', () => document.getElementById('bioAvatarInput').click());
 
 document.getElementById('bioAvatarInput').addEventListener('change', async (e) => {
   const file = e.target.files[0];
@@ -3468,31 +2842,21 @@ function escapeHtml(str) {
     .replace(/&/g, '&amp;').replace(/</g, '&lt;')
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
-
 function traducirError(msg) {
   const m = (msg || '').toLowerCase();
   if (m.includes('invalid login')) return 'Correo o contraseña incorrectos.';
   return msg || 'Error inesperado';
 }
-
 function emptyState(iconName, title, sub) {
-  return `
-    <div class="empty-c">
-      <div class="empty-icon">${ic(iconName, 48)}</div>
-      <div class="empty-title">${escapeHtml(title)}</div>
-      <div class="empty-sub">${escapeHtml(sub || '')}</div>
-    </div>
-  `;
+  return `<div class="empty-c"><div class="empty-icon">${ic(iconName, 48)}</div><div class="empty-title">${escapeHtml(title)}</div><div class="empty-sub">${escapeHtml(sub || '')}</div></div>`;
 }
 
 (async () => {
   initTheme();
-
   const headerMount = document.getElementById('header-mount');
   const pageMain = document.querySelector('.page-main');
   if (headerMount) headerMount.style.visibility = 'hidden';
   if (pageMain) pageMain.style.visibility = 'hidden';
-
   inyectarHeader();
   inyectarAuthModal();
   initEditor('editorToolbar', 'chapterEditor', 'edCounter');
@@ -3500,7 +2864,6 @@ function emptyState(iconName, title, sub) {
   initCanvasListeners();
 
   const ok = await verificarAutor();
-
   if (ok) {
     if (headerMount) headerMount.style.visibility = 'visible';
     if (pageMain) pageMain.style.visibility = 'visible';
