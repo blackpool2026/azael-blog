@@ -58,6 +58,10 @@
                 <i data-lucide="edit-3" style="width:18px;height:18px;"></i>
                 <span class="admin-action-label">Nueva entrada</span>
               </button>
+              <button class="admin-action-card primary" id="btnNewRelatoAdmin">
+                <i data-lucide="pen-line" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Nuevo relato</span>
+              </button>
               <button class="admin-action-card" id="btnArboles">
                 <i data-lucide="network" style="width:18px;height:18px;"></i>
                 <span class="admin-action-label">Árboles</span>
@@ -80,8 +84,8 @@
                 <span class="notif-badge" id="reportesBadge" hidden>0</span>
               </button>
               <button class="admin-action-card" id="btnRelatosAdmin">
-                <i data-lucide="pen-line" style="width:18px;height:18px;"></i>
-                <span class="admin-action-label">Relatos</span>
+                <i data-lucide="file-text" style="width:18px;height:18px;"></i>
+                <span class="admin-action-label">Moderar</span>
               </button>
             </div>
           </div>
@@ -366,6 +370,53 @@
       </div>
     </section>
 
+    <!-- NUEVO/EDITAR RELATO (ADMIN) -->
+    <section class="admin-view" id="viewRelatoAdmin" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromRelatoAdmin">
+          <i data-lucide="arrow-left" style="width:14px;height:14px;"></i>
+          Volver al panel
+        </button>
+
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c" id="relatoAdminViewTitle">Nuevo relato</h1>
+          <p class="page-sub-c">Publica una historia corta directamente</p>
+        </div>
+
+        <form class="admin-form" id="relatoAdminForm">
+          <label class="admin-field">
+            <span>Título *</span>
+            <input type="text" id="relatoAdminTitle" required maxlength="120" placeholder="Título del relato" />
+          </label>
+
+          <label class="admin-field">
+            <span>Contenido *</span>
+            <textarea id="relatoAdminContent" rows="16" required maxlength="20000" placeholder="Escribe tu historia aquí…" style="min-height:400px;font-family:var(--font-serif);font-size:15px;line-height:1.7;"></textarea>
+            <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-tertiary);margin-top:4px;">
+              <span>Mínimo 100 caracteres</span>
+              <span id="relatoAdminCharCount">0 / 20000</span>
+            </div>
+          </label>
+
+          <label class="admin-check">
+            <input type="checkbox" id="relatoAdminPublishAs" checked />
+            <span>Publicar en nombre del autor (no como anónimo)</span>
+          </label>
+
+          <div class="admin-form-actions">
+            <button type="button" class="btn btn-ghost" id="relatoAdminDeleteBtn" hidden>
+              <i data-lucide="trash-2" style="width:14px;height:14px;"></i>
+              Eliminar
+            </button>
+            <button type="submit" class="btn btn-primary">
+              <i data-lucide="check" style="width:14px;height:14px;"></i>
+              Guardar relato
+            </button>
+          </div>
+        </form>
+      </div>
+    </section>
+
     <!-- REDES -->
     <section class="admin-view" id="viewRedes" hidden>
       <div class="container">
@@ -624,7 +675,7 @@
       </div>
     </section>
 
-    <!-- RELATOS ADMIN -->
+    <!-- MODERAR RELATOS -->
     <section class="admin-view" id="viewRelatosAdmin" hidden>
       <div class="container">
         <button class="btn-back" id="backFromRelatosAdmin">
@@ -692,6 +743,23 @@
             </div>
             <label class="admin-toggle">
               <input type="checkbox" id="toggleShowViews" />
+              <span class="admin-toggle-slider"></span>
+            </label>
+          </div>
+
+          <!-- NUEVO -->
+          <div class="admin-setting-row">
+            <div class="admin-setting-info">
+              <div class="admin-setting-title">
+                <i data-lucide="pen-line" style="width:18px;height:18px;"></i>
+                Mostrar botón "Escribir relato"
+              </div>
+              <div class="admin-setting-desc">
+                Si está activado, los lectores verán el botón "Escribir relato" en la página de relatos.
+              </div>
+            </div>
+            <label class="admin-toggle">
+              <input type="checkbox" id="toggleShowRelatosBtn" />
               <span class="admin-toggle-slider"></span>
             </label>
           </div>
