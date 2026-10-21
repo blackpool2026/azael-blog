@@ -2,27 +2,27 @@
 <html lang="es" data-theme="dark">
 <head>
   <!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-N82X48872T1"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-N82X48872T1');
-</script>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N82X48872T1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-N82X48872T1');
+  </script>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Biografía — Azael Blog</title>
+  <title>Mi Perfil — Azael Colina</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Azael" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
-  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#0a0a0c" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Azael" />
 </head>
 <body>
   <div id="header-mount"></div>
@@ -30,18 +30,41 @@
   <main class="page-main">
     <section class="page-head-c">
       <div class="container">
-        <h1 class="page-title-c">Biografía</h1>
-        <p class="page-sub-c">Quién está detrás de estas historias</p>
+        <h1 class="page-title-c">Mi Perfil</h1>
+        <p class="page-sub-c">Personaliza cómo te ven los demás</p>
       </div>
     </section>
 
     <section class="section">
       <div class="container">
-        <div class="bio-card-c" id="bioCard">
-          <div class="empty-c" style="grid-column:1/-1;">
-            <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
-            <div class="empty-title">Cargando…</div>
+        <div class="admin-form" style="max-width: 600px; margin: 0 auto; background: var(--bg-surface); padding: 30px; border-radius: var(--radius-lg); border: 1px solid var(--border-color);">
+          
+          <div style="display: flex; flex-direction: column; align-items: center; margin-bottom: 30px;">
+            <div class="bio-avatar-c" id="bioAvatarPreview" style="width: 140px; height: 140px; border-radius: 50%; overflow: hidden; background: var(--bg-elevated); display: grid; place-items: center; font-family: var(--font-serif); font-size: 48px; color: var(--text-tertiary); border: 3px solid var(--border-color); margin-bottom: 16px;">
+              <span>A</span>
+            </div>
+            <input type="file" id="bioAvatarInput" accept="image/*" hidden />
+            <button type="button" class="btn btn-ghost" id="bioAvatarBtn" style="border-radius: 100px;">
+              <i data-lucide="camera" style="width:16px;height:16px;"></i> Cambiar foto
+            </button>
           </div>
+
+          <label class="admin-field">
+            <span>Nombre de usuario (@)</span>
+            <input type="text" id="bioUsername" maxlength="30" placeholder="Tu nombre o apodo" />
+          </label>
+
+          <label class="admin-field">
+            <span>Biografía corta (opcional)</span>
+            <textarea id="bioText" rows="3" maxlength="200" placeholder="Algo breve sobre ti…"></textarea>
+          </label>
+
+          <div class="admin-form-actions" style="justify-content: center; border-top: none; margin-top: 20px;">
+            <button type="button" class="btn btn-primary" id="bioSaveBtn" style="width: 100%; border-radius: 100px;">
+              <i data-lucide="check" style="width:16px;height:16px;"></i> Guardar cambios
+            </button>
+          </div>
+
         </div>
       </div>
     </section>
@@ -49,15 +72,15 @@
 
   <footer class="site-footer-c">
     <div class="container">
-      <div class="footer-brand">Azael Blog</div>
+      <div class="footer-brand">Azael Colina</div>
       <p>© <span id="year"></span> — Un rincón para leer</p>
     </div>
   </footer>
 
   <div id="auth-mount"></div>
+  <div id="toast-mount"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>eruda.init();</script>
   <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
   <script src="main.js"></script>
 </body>
