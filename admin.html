@@ -45,6 +45,7 @@
           <div class="admin-action-section">
             <div class="admin-action-section-title">👥 Comunidad</div>
             <div class="admin-action-cards">
+              <button class="admin-action-card" id="btnUsuarios"><i data-lucide="users" style="width:18px;height:18px;"></i><span class="admin-action-label">Usuarios</span></button>
               <button class="admin-action-card" id="btnNotificaciones" style="position:relative;"><i data-lucide="bell" style="width:18px;height:18px;"></i><span class="admin-action-label">Notificaciones</span><span class="notif-badge" id="notifBadge" hidden>0</span></button>
               <button class="admin-action-card" id="btnReportes" style="position:relative;"><i data-lucide="flag" style="width:18px;height:18px;"></i><span class="admin-action-label">Reportes</span><span class="notif-badge" id="reportesBadge" hidden>0</span></button>
               <button class="admin-action-card" id="btnRelatosAdmin"><i data-lucide="file-text" style="width:18px;height:18px;"></i><span class="admin-action-label">Moderar</span></button>
@@ -72,6 +73,20 @@
           <div class="section-head"><div><h2 class="section-title">Blog</h2></div></div>
           <div class="admin-list" id="adminPostsList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div>
         </section>
+      </div>
+    </section>
+
+    <!-- USUARIOS REGISTRADOS -->
+    <section class="admin-view" id="viewUsuarios" hidden>
+      <div class="container">
+        <button class="btn-back" id="backFromUsuarios"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Usuarios Registrados</h1>
+          <p class="page-sub-c">Lleva el control de los lectores de la comunidad</p>
+        </div>
+        <div class="admin-list" id="adminUsersList">
+          <div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando usuarios…</div></div>
+        </div>
       </div>
     </section>
 
@@ -160,17 +175,10 @@
     <section class="admin-view" id="viewRelatoAdmin" hidden>
       <div class="container">
         <button class="btn-back" id="backFromRelatoAdmin"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
-          <h1 class="page-title-c" id="relatoAdminViewTitle">Nuevo relato</h1>
-          <p class="page-sub-c">Publica una historia corta directamente</p>
-        </div>
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c" id="relatoAdminViewTitle">Nuevo relato</h1><p class="page-sub-c">Publica una historia corta directamente</p></div>
         <form class="admin-form" id="relatoAdminForm">
           <label class="admin-field"><span>Título *</span><input type="text" id="relatoAdminTitle" required maxlength="120" placeholder="Título del relato" /></label>
-          <label class="admin-field">
-            <span>Contenido *</span>
-            <textarea id="relatoAdminContent" rows="16" required maxlength="20000" placeholder="Escribe tu historia aquí…" style="min-height:400px;font-family:var(--font-serif);font-size:15px;line-height:1.7;"></textarea>
-            <div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-tertiary);margin-top:4px;"><span>Mínimo 100 caracteres</span><span id="relatoAdminCharCount">0 / 20000</span></div>
-          </label>
+          <label class="admin-field"><span>Contenido *</span><textarea id="relatoAdminContent" rows="16" required maxlength="20000" placeholder="Escribe tu historia aquí…" style="min-height:400px;font-family:var(--font-serif);font-size:15px;line-height:1.7;"></textarea><div style="display:flex;justify-content:space-between;font-size:11.5px;color:var(--text-tertiary);margin-top:4px;"><span>Mínimo 100 caracteres</span><span id="relatoAdminCharCount">0 / 20000</span></div></label>
           <label class="admin-check"><input type="checkbox" id="relatoAdminPublishAs" checked /><span>Publicar en nombre del autor (no como anónimo)</span></label>
           <div class="admin-form-actions">
             <button type="button" class="btn btn-ghost" id="relatoAdminDeleteBtn" hidden><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Eliminar</button>
@@ -180,30 +188,14 @@
       </div>
     </section>
 
-    <!-- REDES -->
-    <section class="admin-view" id="viewRedes" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromRedes"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Redes sociales</h1><p class="page-sub-c">Añade tus perfiles para que te encuentren</p></div>
-        <div id="redesList"></div>
-        <div class="admin-net-add" id="redesAddPanel">
-          <p class="admin-net-add-title">Añadir red social</p>
-          <button class="admin-net-btn" data-platform="instagram" title="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></button>
-          <button class="admin-net-btn" data-platform="facebook" title="Facebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></button>
-          <button class="admin-net-btn" data-platform="youtube" title="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg></button>
-          <button class="admin-net-btn" data-platform="tiktok" title="TikTok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg></button>
-          <button class="admin-net-btn" data-platform="twitter" title="Twitter / X"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg></button>
-          <button class="admin-net-btn" data-platform="whatsapp" title="WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></button>
-          <button class="admin-net-btn" data-platform="telegram" title="Telegram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
-        </div>
-      </div>
-    </section>
-
-    <!-- BIOGRAFÍA -->
+    <!-- BIOGRAFÍA (Exclusiva del autor) -->
     <section class="admin-view" id="viewBio" hidden>
       <div class="container">
         <button class="btn-back" id="backFromBio"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Biografía</h1><p class="page-sub-c">Cuenta quién eres</p></div>
+        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
+          <h1 class="page-title-c">Mi Biografía (Autor)</h1>
+          <p class="page-sub-c">Esta es la información que verán los lectores sobre ti</p>
+        </div>
         <div class="admin-form">
           <div class="admin-form-grid">
             <div class="admin-cover-uploader">
@@ -214,7 +206,11 @@
             </div>
             <div class="admin-fields">
               <label class="admin-field"><span>Nombre de autor</span><input type="text" id="bioUsername" maxlength="60" placeholder="Azael Colina" /></label>
-              <label class="admin-field"><span>Biografía</span><textarea id="bioText" rows="8" maxlength="2000" placeholder="Cuenta algo sobre ti…"></textarea></label>
+              <label class="admin-field"><span>Biografía</span><textarea id="bioText" rows="6" maxlength="2000" placeholder="Cuenta algo sobre ti…"></textarea></label>
+              <div class="admin-row">
+                <label class="admin-field" style="flex:1;"><span>Fecha de nacimiento</span><input type="date" id="bioBirthdate" /></label>
+                <label class="admin-field" style="flex:1;"><span>Género</span><select id="bioGender"><option value="">— Selecciona —</option><option value="Masculino">Masculino</option><option value="Femenino">Femenino</option><option value="Otro">Otro</option><option value="Prefiero no decirlo">Prefiero no decirlo</option></select></label>
+              </div>
             </div>
           </div>
           <div class="admin-form-actions"><button type="button" class="btn btn-primary" id="bioSaveBtn"><i data-lucide="check" style="width:14px;height:14px;"></i> Guardar biografía</button></div>
@@ -222,215 +218,32 @@
       </div>
     </section>
 
-    <!-- DONACIONES -->
-    <section class="admin-view" id="viewDonaciones" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromDonaciones"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Donaciones</h1><p class="page-sub-c">Añade formas para que tus lectores te apoyen</p></div>
-        <div id="donationsListAdmin"></div>
-        <div class="admin-net-add" id="donationsAddPanel">
-          <p class="admin-net-add-title">Añadir método</p>
-          <button class="admin-net-btn" data-platform="paypal" title="PayPal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h5a5 5 0 0 0 0-10H7l-2 10z"/><path d="M10 3h5a5 5 0 0 1 0 10h-3"/><path d="M12 7h5a5 5 0 0 1 0 10h-2"/></svg></button>
-          <button class="admin-net-btn" data-platform="binance" title="Binance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L5 9l7 7 7-7-7-7z"/><path d="M5 15l7 7 7-7"/></svg></button>
-        </div>
-      </div>
-    </section>
+    <!-- REDES, DONACIONES, ESTADÍSTICAS, NOTIFICACIONES, REPORTES, MODERAR, AJUSTES (sin cambios visuales) -->
+    <section class="admin-view" id="viewRedes" hidden><div class="container"><button class="btn-back" id="backFromRedes"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Redes sociales</h1><p class="page-sub-c">Añade tus perfiles para que te encuentren</p></div><div id="redesList"></div><div class="admin-net-add" id="redesAddPanel"><p class="admin-net-add-title">Añadir red social</p><button class="admin-net-btn" data-platform="instagram" title="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></button><button class="admin-net-btn" data-platform="facebook" title="Facebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg></button><button class="admin-net-btn" data-platform="youtube" title="YouTube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg></button><button class="admin-net-btn" data-platform="tiktok" title="TikTok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg></button><button class="admin-net-btn" data-platform="twitter" title="Twitter / X"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg></button><button class="admin-net-btn" data-platform="whatsapp" title="WhatsApp"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg></button><button class="admin-net-btn" data-platform="telegram" title="Telegram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></div></div></section>
 
-    <!-- ESTADÍSTICAS -->
-    <section class="admin-view" id="viewStats" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromStats"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Estadísticas</h1><p class="page-sub-c">Rendimiento de tus historias</p></div>
-        <div class="stats-totals">
-          <div class="stats-total-card"><div class="stats-total-label">Vistas totales</div><div class="stats-total-value" id="statsTotalViews">—</div></div>
-          <div class="stats-total-card"><div class="stats-total-label">Likes totales</div><div class="stats-total-value" id="statsTotalLikes">—</div></div>
-          <div class="stats-total-card"><div class="stats-total-label">Comentarios</div><div class="stats-total-value" id="statsTotalComments">—</div></div>
-        </div>
-        <div class="section">
-          <div class="section-head"><div><h2 class="section-title">Historias</h2><p class="section-sub">Toca una para ver el detalle</p></div></div>
-          <div class="stats-grid" id="statsList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div>
-        </div>
-      </div>
-    </section>
+    <section class="admin-view" id="viewDonaciones" hidden><div class="container"><button class="btn-back" id="backFromDonaciones"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Donaciones</h1><p class="page-sub-c">Añade formas para que tus lectores te apoyen</p></div><div id="donationsListAdmin"></div><div class="admin-net-add" id="donationsAddPanel"><p class="admin-net-add-title">Añadir método</p><button class="admin-net-btn" data-platform="paypal" title="PayPal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h5a5 5 0 0 0 0-10H7l-2 10z"/><path d="M10 3h5a5 5 0 0 1 0 10h-3"/><path d="M12 7h5a5 5 0 0 1 0 10h-2"/></svg></button><button class="admin-net-btn" data-platform="binance" title="Binance"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L5 9l7 7 7-7-7-7z"/><path d="M5 15l7 7 7-7"/></svg></button></div></div></section>
 
-    <!-- DETALLE DE ESTADÍSTICAS DE HISTORIA -->
-    <section class="admin-view" id="viewStoryStats" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromStoryStats"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver a estadísticas</button>
-        <div id="storyStatsHeader"></div>
-        <div class="stats-totals" id="storyStatsTotals"></div>
-        <div class="section">
-          <div class="section-head"><div><h2 class="section-title">Capítulos</h2><p class="section-sub">Vistas · Likes · Comentarios</p></div></div>
-          <div class="stats-list" id="storyStatsChapters"></div>
-        </div>
-      </div>
-    </section>
+    <section class="admin-view" id="viewStats" hidden><div class="container"><button class="btn-back" id="backFromStats"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Estadísticas</h1><p class="page-sub-c">Rendimiento de tus historias</p></div><div class="stats-totals"><div class="stats-total-card"><div class="stats-total-label">Vistas totales</div><div class="stats-total-value" id="statsTotalViews">—</div></div><div class="stats-total-card"><div class="stats-total-label">Likes totales</div><div class="stats-total-value" id="statsTotalLikes">—</div></div><div class="stats-total-card"><div class="stats-total-label">Comentarios</div><div class="stats-total-value" id="statsTotalComments">—</div></div></div><div class="section"><div class="section-head"><div><h2 class="section-title">Historias</h2><p class="section-sub">Toca una para ver el detalle</p></div></div><div class="stats-grid" id="statsList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div></div></div></section>
 
-    <!-- NOTIFICACIONES -->
-    <section class="admin-view" id="viewNotificaciones" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromNotificaciones"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Notificaciones</h1><p class="page-sub-c">Actividad reciente de tus lectores</p></div>
-        <div class="notif-toolbar">
-          <div class="notif-filters" id="notifFilters">
-            <button class="notif-filter active" data-filter="all">Todas</button>
-            <button class="notif-filter" data-filter="comment">Comentarios</button>
-            <button class="notif-filter" data-filter="like">Likes</button>
-            <button class="notif-filter" data-filter="reaction">Reacciones</button>
-            <button class="notif-filter" data-filter="user">Usuarios</button>
-          </div>
-          <button class="btn btn-ghost btn-sm" id="btnMarkAllRead"><i data-lucide="check-check" style="width:14px;height:14px;"></i> Marcar todas como leídas</button>
-        </div>
-        <div class="notif-list" id="notifList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div>
-      </div>
-    </section>
+    <section class="admin-view" id="viewStoryStats" hidden><div class="container"><button class="btn-back" id="backFromStoryStats"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver a estadísticas</button><div id="storyStatsHeader"></div><div class="stats-totals" id="storyStatsTotals"></div><div class="section"><div class="section-head"><div><h2 class="section-title">Capítulos</h2><p class="section-sub">Vistas · Likes · Comentarios</p></div></div><div class="stats-list" id="storyStatsChapters"></div></div></div></section>
 
-    <!-- REPORTES -->
-    <section class="admin-view" id="viewReportes" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromReportes"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Reportes</h1><p class="page-sub-c">Gestiona los reportes de la comunidad</p></div>
-        <div class="reportes-toolbar">
-          <div class="reportes-filters" id="reportesFilters">
-            <button class="reportes-filter active" data-filter="pending">Pendientes</button>
-            <button class="reportes-filter" data-filter="resolved">Resueltos</button>
-            <button class="reportes-filter" data-filter="dismissed">Descartados</button>
-            <button class="reportes-filter" data-filter="all">Todos</button>
-          </div>
-          <span class="reportes-count" id="reportesCount">—</span>
-        </div>
-        <div class="reportes-list" id="reportesList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div>
-      </div>
-    </section>
+    <section class="admin-view" id="viewNotificaciones" hidden><div class="container"><button class="btn-back" id="backFromNotificaciones"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Notificaciones</h1><p class="page-sub-c">Actividad reciente de tus lectores</p></div><div class="notif-toolbar"><div class="notif-filters" id="notifFilters"><button class="notif-filter active" data-filter="all">Todas</button><button class="notif-filter" data-filter="comment">Comentarios</button><button class="notif-filter" data-filter="like">Likes</button><button class="notif-filter" data-filter="reaction">Reacciones</button><button class="notif-filter" data-filter="user">Usuarios</button></div><button class="btn btn-ghost btn-sm" id="btnMarkAllRead"><i data-lucide="check-check" style="width:14px;height:14px;"></i> Marcar todas como leídas</button></div><div class="notif-list" id="notifList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div></div></section>
 
-    <!-- MODERAR RELATOS -->
-    <section class="admin-view" id="viewRelatosAdmin" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromRelatosAdmin"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Relatos de la comunidad</h1><p class="page-sub-c">Modera los relatos publicados</p></div>
-        <div class="reportes-toolbar"><span class="reportes-count" id="relatosAdminCount">—</span></div>
-        <div class="reportes-list" id="relatosAdminList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div>
-      </div>
-    </section>
+    <section class="admin-view" id="viewReportes" hidden><div class="container"><button class="btn-back" id="backFromReportes"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Reportes</h1><p class="page-sub-c">Gestiona los reportes de la comunidad</p></div><div class="reportes-toolbar"><div class="reportes-filters" id="reportesFilters"><button class="reportes-filter active" data-filter="pending">Pendientes</button><button class="reportes-filter" data-filter="resolved">Resueltos</button><button class="reportes-filter" data-filter="dismissed">Descartados</button><button class="reportes-filter" data-filter="all">Todos</button></div><span class="reportes-count" id="reportesCount">—</span></div><div class="reportes-list" id="reportesList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div></div></section>
 
-    <!-- AJUSTES DEL SITIO -->
-    <section class="admin-view" id="viewAjustes" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromAjustes"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Ajustes del sitio</h1><p class="page-sub-c">Controla qué información se muestra al público</p></div>
-        <div class="admin-form" style="max-width:640px;">
-          <div class="admin-setting-row">
-            <div class="admin-setting-info"><div class="admin-setting-title"><i data-lucide="heart" style="width:18px;height:18px;"></i> Mostrar likes al público</div><div class="admin-setting-desc">Si está activado, los lectores ven el número total de likes en libros y capítulos.</div></div>
-            <label class="admin-toggle"><input type="checkbox" id="toggleShowLikes" /><span class="admin-toggle-slider"></span></label>
-          </div>
-          <div class="admin-setting-row">
-            <div class="admin-setting-info"><div class="admin-setting-title"><i data-lucide="eye" style="width:18px;height:18px;"></i> Mostrar vistas al público</div><div class="admin-setting-desc">Si está activado, los lectores ven cuántas veces se ha leído cada libro y capítulo.</div></div>
-            <label class="admin-toggle"><input type="checkbox" id="toggleShowViews" /><span class="admin-toggle-slider"></span></label>
-          </div>
-          <div class="admin-setting-row">
-            <div class="admin-setting-info"><div class="admin-setting-title"><i data-lucide="pen-line" style="width:18px;height:18px;"></i> Mostrar botón "Escribir relato"</div><div class="admin-setting-desc">Si está activado, los lectores verán el botón "Escribir relato" en la página de relatos.</div></div>
-            <label class="admin-toggle"><input type="checkbox" id="toggleShowRelatosBtn" /><span class="admin-toggle-slider"></span></label>
-          </div>
-          <div class="admin-form-actions" style="margin-top:16px;"><button type="button" class="btn btn-primary" id="saveSettingsBtn"><i data-lucide="check" style="width:14px;height:14px;"></i> Guardar ajustes</button></div>
-        </div>
-      </div>
-    </section>
+    <section class="admin-view" id="viewRelatosAdmin" hidden><div class="container"><button class="btn-back" id="backFromRelatosAdmin"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Relatos de la comunidad</h1><p class="page-sub-c">Modera los relatos publicados</p></div><div class="reportes-toolbar"><span class="reportes-count" id="relatosAdminCount">—</span></div><div class="reportes-list" id="relatosAdminList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div></div></section>
 
-    <!-- ÁRBOLES — ESTANTE -->
-    <section class="admin-view" id="viewArbolesEstante" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromArboles"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Árboles de personajes</h1><p class="page-sub-c">Elige un libro para gestionar sus personajes</p></div>
-        <div class="trees-shelf" id="treesShelf"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div>
-      </div>
-    </section>
+    <section class="admin-view" id="viewAjustes" hidden><div class="container"><button class="btn-back" id="backFromAjustes"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Ajustes del sitio</h1><p class="page-sub-c">Controla qué información se muestra al público</p></div><div class="admin-form" style="max-width:640px;"><div class="admin-setting-row"><div class="admin-setting-info"><div class="admin-setting-title"><i data-lucide="heart" style="width:18px;height:18px;"></i> Mostrar likes al público</div><div class="admin-setting-desc">Si está activado, los lectores ven el número total de likes en libros y capítulos.</div></div><label class="admin-toggle"><input type="checkbox" id="toggleShowLikes" /><span class="admin-toggle-slider"></span></label></div><div class="admin-setting-row"><div class="admin-setting-info"><div class="admin-setting-title"><i data-lucide="eye" style="width:18px;height:18px;"></i> Mostrar vistas al público</div><div class="admin-setting-desc">Si está activado, los lectores ven cuántas veces se ha leído cada libro y capítulo.</div></div><label class="admin-toggle"><input type="checkbox" id="toggleShowViews" /><span class="admin-toggle-slider"></span></label></div><div class="admin-setting-row"><div class="admin-setting-info"><div class="admin-setting-title"><i data-lucide="pen-line" style="width:18px;height:18px;"></i> Mostrar botón "Escribir relato"</div><div class="admin-setting-desc">Si está activado, los lectores verán el botón "Escribir relato" en la página de relatos.</div></div><label class="admin-toggle"><input type="checkbox" id="toggleShowRelatosBtn" /><span class="admin-toggle-slider"></span></label></div><div class="admin-setting-row"><div class="admin-setting-info"><div class="admin-setting-title"><i data-lucide="folder-open" style="width:18px;height:18px;"></i> Mostrar "Mis relatos" en el menú</div><div class="admin-setting-desc">Si está desactivado, los lectores no verán la opción de "Mis relatos" en el menú lateral.</div></div><label class="admin-toggle"><input type="checkbox" id="toggleShowMisRelatosMenu" /><span class="admin-toggle-slider"></span></label></div><div class="admin-form-actions" style="margin-top:16px;"><button type="button" class="btn btn-primary" id="saveSettingsBtn"><i data-lucide="check" style="width:14px;height:14px;"></i> Guardar ajustes</button></div></div></div></section>
 
-    <!-- ÁRBOLES — PERSONAJES DE UN LIBRO -->
-    <section class="admin-view" id="viewArbol" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromArbol"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al estante</button>
-        <div id="arbolBookHeader"></div>
-        <section class="section">
-          <div class="section-head">
-            <div><h2 class="section-title">Personajes</h2><p class="section-sub">Los habitantes de esta historia</p></div>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-ghost" id="btnOpenCanvas"><i data-lucide="network" style="width:14px;height:14px;"></i> Ver lienzo</button>
-              <button class="btn btn-primary" id="btnNewCharacter"><i data-lucide="plus" style="width:14px;height:14px;"></i> Añadir personaje</button>
-            </div>
-          </div>
-          <div class="characters-admin-list" id="charactersAdminList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div>
-        </section>
-      </div>
-    </section>
-
-    <!-- ÁRBOLES — CANVAS VISUAL -->
-    <section class="admin-view" id="viewArbolCanvas" hidden>
-      <div class="arbol-canvas-shell">
-        <div class="arbol-canvas-toolbar">
-          <button class="btn btn-ghost btn-sm" id="canvasBackBtn"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver</button>
-          <div class="canvas-toolbar-info"><strong id="canvasBookTitle">—</strong><span id="canvasCharCount">0 personajes</span></div>
-          <div class="canvas-toolbar-actions">
-            <button class="btn btn-ghost btn-sm" id="canvasConnectBtn" title="Conectar personajes"><i data-lucide="link-2" style="width:14px;height:14px;"></i> Conectar</button>
-            <button class="icon-action" id="canvasZoomOut" title="Alejar">−</button>
-            <span class="canvas-zoom-label" id="canvasZoomLabel">100%</span>
-            <button class="icon-action" id="canvasZoomIn" title="Acercar">+</button>
-            <button class="icon-action" id="canvasResetView" title="Centrar"><i data-lucide="maximize" style="width:16px;height:16px;"></i></button>
-            <button class="btn btn-primary btn-sm" id="canvasAddChar"><i data-lucide="plus" style="width:14px;height:14px;"></i> Añadir</button>
-          </div>
-        </div>
-        <div class="arbol-canvas-viewport" id="arbolCanvasViewport">
-          <div class="arbol-canvas-world" id="arbolCanvasWorld">
-            <svg class="arbol-canvas-svg" id="arbolCanvasSvg" xmlns="http://www.w3.org/2000/svg"></svg>
-            <div class="arbol-canvas-nodes" id="arbolCanvasNodes"></div>
-          </div>
-        </div>
-        <div class="arbol-canvas-hint" id="canvasHintDefault"><i data-lucide="info" style="width:14px;height:14px;"></i><span>Arrastra los personajes para moverlos. Toca "Conectar" para unir dos personajes.</span></div>
-        <div class="arbol-canvas-hint arbol-canvas-hint-connect" id="canvasHintConnect" hidden><i data-lucide="link-2" style="width:14px;height:14px;"></i><span id="canvasHintConnectText">Selecciona el primer personaje</span><button class="btn btn-ghost btn-sm" id="canvasCancelConnect">Cancelar</button></div>
-      </div>
-    </section>
-
-    <!-- ÁRBOLES — FORM PERSONAJE -->
-    <section class="admin-view" id="viewCharacterForm" hidden>
-      <div class="container">
-        <button class="btn-back" id="backFromCharacterForm"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver a personajes</button>
-        <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c" id="characterFormTitle">Nuevo personaje</h1></div>
-        <form class="admin-form" id="characterForm">
-          <div class="admin-form-grid">
-            <div class="admin-cover-uploader">
-              <div class="character-avatar-preview" id="characterAvatarPreview"><span>👤</span></div>
-              <input type="file" id="characterAvatarInput" accept="image/*" hidden />
-              <button type="button" class="btn btn-ghost btn-block" id="characterAvatarBtn"><i data-lucide="image" style="width:14px;height:14px;"></i> Subir imagen</button>
-              <button type="button" class="btn btn-ghost btn-block" id="characterRemoveImageBtn" style="margin-top:6px;" hidden><i data-lucide="x" style="width:14px;height:14px;"></i> Quitar imagen</button>
-              <p class="admin-hint">Cuadrada · Máx 5 MB</p>
-            </div>
-            <div class="admin-fields">
-              <label class="admin-field"><span>Nombre <span style="color:var(--accent-color);">*</span></span><input type="text" id="characterName" required maxlength="80" placeholder="Nombre del personaje" /></label>
-              <label class="admin-field"><span>Alias / Apodo</span><input type="text" id="characterAlias" maxlength="60" placeholder='Ej: "El Solista"' /></label>
-              <div class="admin-row">
-                <div class="admin-field" style="flex:1;"><span>Rol</span><div id="characterRoleDropdownMount"></div></div>
-                <label class="admin-field" style="flex:1;"><span>Edad</span><input type="text" id="characterAge" maxlength="30" placeholder="Ej: 27 o 'Desconocida'" /></label>
-              </div>
-              <label class="admin-field" id="customRoleField" hidden><span>✏️ Escribe el rol personalizado</span><input type="text" id="characterCustomRole" maxlength="60" placeholder="Ej: hermanastro del villano, mentora secreta…" /></label>
-              <label class="admin-field"><span>Emoji (si no pones imagen)</span><input type="text" id="characterEmoji" maxlength="4" placeholder="👤" value="👤" /></label>
-              <label class="admin-field"><span>Descripción corta</span><textarea id="characterDescription" rows="4" maxlength="400" placeholder="Cuéntanos sobre este personaje…"></textarea></label>
-            </div>
-          </div>
-          <div class="admin-form-actions">
-            <button type="button" class="btn btn-ghost" id="characterDeleteBtn" hidden><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Eliminar</button>
-            <button type="submit" class="btn btn-primary"><i data-lucide="check" style="width:14px;height:14px;"></i> Guardar</button>
-          </div>
-        </form>
-      </div>
-    </section>
+    <!-- ÁRBOLES -->
+    <section class="admin-view" id="viewArbolesEstante" hidden><div class="container"><button class="btn-back" id="backFromArboles"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al panel</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c">Árboles de personajes</h1><p class="page-sub-c">Elige un libro para gestionar sus personajes</p></div><div class="trees-shelf" id="treesShelf"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div></div></section>
+    <section class="admin-view" id="viewArbol" hidden><div class="container"><button class="btn-back" id="backFromArbol"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver al estante</button><div id="arbolBookHeader"></div><section class="section"><div class="section-head"><div><h2 class="section-title">Personajes</h2><p class="section-sub">Los habitantes de esta historia</p></div><div style="display:flex;gap:8px;flex-wrap:wrap;"><button class="btn btn-ghost" id="btnOpenCanvas"><i data-lucide="network" style="width:14px;height:14px;"></i> Ver lienzo</button><button class="btn btn-primary" id="btnNewCharacter"><i data-lucide="plus" style="width:14px;height:14px;"></i> Añadir personaje</button></div></div><div class="characters-admin-list" id="charactersAdminList"><div class="empty-c"><div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div><div class="empty-title">Cargando…</div></div></div></section></div></section>
+    <section class="admin-view" id="viewArbolCanvas" hidden><div class="arbol-canvas-shell"><div class="arbol-canvas-toolbar"><button class="btn btn-ghost btn-sm" id="canvasBackBtn"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver</button><div class="canvas-toolbar-info"><strong id="canvasBookTitle">—</strong><span id="canvasCharCount">0 personajes</span></div><div class="canvas-toolbar-actions"><button class="btn btn-ghost btn-sm" id="canvasConnectBtn" title="Conectar personajes"><i data-lucide="link-2" style="width:14px;height:14px;"></i> Conectar</button><button class="icon-action" id="canvasZoomOut" title="Alejar">−</button><span class="canvas-zoom-label" id="canvasZoomLabel">100%</span><button class="icon-action" id="canvasZoomIn" title="Acercar">+</button><button class="icon-action" id="canvasResetView" title="Centrar"><i data-lucide="maximize" style="width:16px;height:16px;"></i></button><button class="btn btn-primary btn-sm" id="canvasAddChar"><i data-lucide="plus" style="width:14px;height:14px;"></i> Añadir</button></div></div><div class="arbol-canvas-viewport" id="arbolCanvasViewport"><div class="arbol-canvas-world" id="arbolCanvasWorld"><svg class="arbol-canvas-svg" id="arbolCanvasSvg" xmlns="http://www.w3.org/2000/svg"></svg><div class="arbol-canvas-nodes" id="arbolCanvasNodes"></div></div></div><div class="arbol-canvas-hint" id="canvasHintDefault"><i data-lucide="info" style="width:14px;height:14px;"></i><span>Arrastra los personajes para moverlos. Toca "Conectar" para unir dos personajes.</span></div><div class="arbol-canvas-hint arbol-canvas-hint-connect" id="canvasHintConnect" hidden><i data-lucide="link-2" style="width:14px;height:14px;"></i><span id="canvasHintConnectText">Selecciona el primer personaje</span><button class="btn btn-ghost btn-sm" id="canvasCancelConnect">Cancelar</button></div></div></section>
+    <section class="admin-view" id="viewCharacterForm" hidden><div class="container"><button class="btn-back" id="backFromCharacterForm"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver a personajes</button><div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c" id="characterFormTitle">Nuevo personaje</h1></div><form class="admin-form" id="characterForm"><div class="admin-form-grid"><div class="admin-cover-uploader"><div class="character-avatar-preview" id="characterAvatarPreview"><span>👤</span></div><input type="file" id="characterAvatarInput" accept="image/*" hidden /><button type="button" class="btn btn-ghost btn-block" id="characterAvatarBtn"><i data-lucide="image" style="width:14px;height:14px;"></i> Subir imagen</button><button type="button" class="btn btn-ghost btn-block" id="characterRemoveImageBtn" style="margin-top:6px;" hidden><i data-lucide="x" style="width:14px;height:14px;"></i> Quitar imagen</button><p class="admin-hint">Cuadrada · Máx 5 MB</p></div><div class="admin-fields"><label class="admin-field"><span>Nombre <span style="color:var(--accent-color);">*</span></span><input type="text" id="characterName" required maxlength="80" placeholder="Nombre del personaje" /></label><label class="admin-field"><span>Alias / Apodo</span><input type="text" id="characterAlias" maxlength="60" placeholder='Ej: "El Solista"' /></label><div class="admin-row"><div class="admin-field" style="flex:1;"><span>Rol</span><div id="characterRoleDropdownMount"></div></div><label class="admin-field" style="flex:1;"><span>Edad</span><input type="text" id="characterAge" maxlength="30" placeholder="Ej: 27 o 'Desconocida'" /></label></div><label class="admin-field" id="customRoleField" hidden><span>✏️ Escribe el rol personalizado</span><input type="text" id="characterCustomRole" maxlength="60" placeholder="Ej: hermanastro del villano, mentora secreta…" /></label><label class="admin-field"><span>Emoji (si no pones imagen)</span><input type="text" id="characterEmoji" maxlength="4" placeholder="👤" value="👤" /></label><label class="admin-field"><span>Descripción corta</span><textarea id="characterDescription" rows="4" maxlength="400" placeholder="Cuéntanos sobre este personaje…"></textarea></label></div></div><div class="admin-form-actions"><button type="button" class="btn btn-ghost" id="characterDeleteBtn" hidden><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Eliminar</button><button type="submit" class="btn btn-primary"><i data-lucide="check" style="width:14px;height:14px;"></i> Guardar</button></div></form></div></section>
 
   </main>
 
-  <footer class="site-footer-c">
-    <div class="container">
-      <div class="footer-brand">Azael Colina · Panel</div>
-      <p>© <span id="year"></span></p>
-    </div>
-  </footer>
+  <footer class="site-footer-c"><div class="container"><div class="footer-brand">Azael Colina · Panel</div><p>© <span id="year"></span></p></div></footer>
 
   <div id="auth-mount"></div>
   <div id="toast-mount"></div>
