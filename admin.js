@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO
-   FASE 3.5: relatos admin + toggle público
+   FASE 3.5: relatos admin + toggle perfil
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -409,7 +409,6 @@ async function verificarAutor() {
   return true;
 }
 
-/* ---------- DASHBOARD ---------- */
 async function cargarDashboard() {
   showLoading();
   const [storiesRes, chaptersRes, postsRes, relatosRes] = await Promise.all([
@@ -475,7 +474,6 @@ async function cargarDashboard() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- STORY FORM ---------- */
 async function abrirStoryForm(id = null) {
   currentStory = null;
   document.getElementById('storyForm').reset();
@@ -581,7 +579,6 @@ document.getElementById('storyDeleteBtn').addEventListener('click', async () => 
   cargarDashboard();
 });
 
-/* ---------- CAPÍTULOS ---------- */
 async function cargarCapitulosAdmin(storyId) {
   const list = document.getElementById('chaptersList');
   const { data } = await db.from('chapters')
@@ -696,7 +693,6 @@ document.getElementById('chapterDeleteBtn').addEventListener('click', async () =
   cargarCapitulosAdmin(currentStory.id);
 });
 
-/* ---------- EDITOR ---------- */
 function initEditor(toolbarId, editorId, counterId) {
   const toolbar = document.getElementById(toolbarId);
   const editor = document.getElementById(editorId);
@@ -926,7 +922,6 @@ function guardarBorrador(editorId) {
   } catch {}
 }
 
-/* ---------- RELATO ADMIN ---------- */
 async function abrirRelatoAdminForm(id = null) {
   currentRelatoAdmin = null;
   document.getElementById('relatoAdminForm').reset();
@@ -999,7 +994,6 @@ document.getElementById('relatoAdminDeleteBtn')?.addEventListener('click', async
   cargarDashboard();
 });
 
-/* ---------- POST FORM ---------- */
 async function abrirPostForm(id = null) {
   currentPost = null;
   document.getElementById('postForm').reset();
@@ -1061,7 +1055,6 @@ document.getElementById('postDeleteBtn').addEventListener('click', async () => {
   cargarDashboard();
 });
 
-/* ---------- REDES ---------- */
 const NET_ICONS = {
   instagram: 'instagram', twitter: 'twitter', tiktok: 'music', youtube: 'youtube',
   facebook: 'facebook', whatsapp: 'message-circle', telegram: 'send', discord: 'message-square',
@@ -1157,7 +1150,6 @@ async function agregarRed(platform, url) {
   cargarRedesAdmin();
 }
 
-/* ---------- DONACIONES ADMIN ---------- */
 const DONATION_ICONS = {
   paypal: 'wallet',
   binance: 'bitcoin',
@@ -1273,7 +1265,6 @@ async function agregarDonacion(platform, url, label) {
   cargarDonacionesAdmin();
 }
 
-/* ---------- ESTADÍSTICAS ---------- */
 async function abrirStatsView() {
   showView('viewStats');
   await cargarEstadisticas();
@@ -1791,7 +1782,6 @@ async function marcarTodasLeidas() {
   } catch (e) { hideLoading(); toast('Error: ' + e.message, 'error'); }
 }
 
-/* ---------- REPORTES ---------- */
 async function abrirReportesView() {
   showView('viewReportes');
   await cargarReportes();
@@ -2046,7 +2036,6 @@ async function cargarRelatosAdmin() {
   }
 }
 
-/* ---------- AJUSTES DEL SITIO ---------- */
 async function abrirAjustesView() {
   showView('viewAjustes');
   await cargarAjustes();
@@ -2056,7 +2045,7 @@ async function cargarAjustes() {
   showLoading();
   const { data, error } = await db
     .from('site_settings')
-    .select('show_likes, show_views, show_relatos_btn')
+    .select('show_likes, show_views, show_relatos_btn, show_mis_relatos_menu')
     .eq('id', 1)
     .maybeSingle();
   hideLoading();
@@ -2069,17 +2058,19 @@ async function cargarAjustes() {
   document.getElementById('toggleShowLikes').checked = !!data.show_likes;
   document.getElementById('toggleShowViews').checked = !!data.show_views;
   document.getElementById('toggleShowRelatosBtn').checked = data.show_relatos_btn !== false;
+  document.getElementById('toggleShowMisRelatosMenu').checked = data.show_mis_relatos_menu !== false;
 }
 
 document.getElementById('saveSettingsBtn')?.addEventListener('click', async () => {
   const show_likes = document.getElementById('toggleShowLikes').checked;
   const show_views = document.getElementById('toggleShowViews').checked;
   const show_relatos_btn = document.getElementById('toggleShowRelatosBtn').checked;
+  const show_mis_relatos_menu = document.getElementById('toggleShowMisRelatosMenu').checked;
 
   showLoading();
   const { error } = await db
     .from('site_settings')
-    .update({ show_likes, show_views, show_relatos_btn, updated_at: new Date().toISOString() })
+    .update({ show_likes, show_views, show_relatos_btn, show_mis_relatos_menu, updated_at: new Date().toISOString() })
     .eq('id', 1);
   hideLoading();
 
@@ -2091,9 +2082,6 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
   limpiarCachePublica();
 });
 
-/* ============================================
-   ÁRBOLES DE PERSONAJES
-   ============================================ */
 async function abrirArbolesEstante() {
   showView('viewArbolesEstante');
   await cargarEstante();
