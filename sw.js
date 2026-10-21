@@ -1,9 +1,9 @@
 /* ============================================
    Service Worker — Azael Escritor
-   v24: relatos admin + toggle público
+   v25: perfil básico + ocultar menú
    ============================================ */
 
-const CACHE_VERSION = 'azael-v24';
+const CACHE_VERSION = 'azael-v25';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
