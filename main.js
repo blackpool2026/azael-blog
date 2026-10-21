@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   FASE 3.5: toggle escribir relato + avatar autor
+   FASE 3.5: perfil básico + toggle menú
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -33,19 +33,21 @@ let SITE_SETTINGS = {
   show_likes: true,
   show_views: true,
   show_relatos_btn: true,
+  show_mis_relatos_menu: true,
 };
 
 async function cargarSiteSettings() {
   try {
     const { data } = await db
       .from('site_settings')
-      .select('show_likes, show_views, show_relatos_btn')
+      .select('show_likes, show_views, show_relatos_btn, show_mis_relatos_menu')
       .eq('id', 1)
       .maybeSingle();
     if (data) {
       SITE_SETTINGS.show_likes = !!data.show_likes;
       SITE_SETTINGS.show_views = !!data.show_views;
       SITE_SETTINGS.show_relatos_btn = data.show_relatos_btn !== false;
+      SITE_SETTINGS.show_mis_relatos_menu = data.show_mis_relatos_menu !== false;
     }
   } catch (e) {
     console.warn('No se pudo cargar site_settings:', e);
@@ -281,7 +283,7 @@ const PAGE_TITLES = {
   'index.html': 'Inicio', 'historias.html': 'Historias', 'generos.html': 'Géneros',
   'relatos.html': 'Relatos', 'relato.html': 'Relato', 'mis-relatos.html': 'Mis relatos',
   'blog.html': 'Blog', 'post.html': 'Entrada', 'redes.html': 'Redes',
-  'biografia.html': 'Biografía', 'historia.html': 'Historia', 'capitulo.html': 'Leyendo',
+  'biografia.html': 'Mi Perfil', 'historia.html': 'Historia', 'capitulo.html': 'Leyendo',
   'donaciones.html': 'Donaciones', 'perfil.html': 'Perfil',
 };
 
@@ -345,7 +347,7 @@ function inyectarDrawer() {
         `).join('')}
         <div class="drawer-section">Sobre mí</div>
         <a href="biografia.html" class="drawer-link ${path === 'biografia.html' ? 'active' : ''}">
-          ${ic('user')} <span>Biografía</span>
+          ${ic('user')} <span>Mi Perfil</span>
         </a>
         <div id="drawerSessionLinks"></div>
       </nav>
@@ -382,13 +384,15 @@ function actualizarDrawerSessionLinks() {
   if (!mount) return;
   db.auth.getSession().then(({ data: { session } }) => {
     if (session?.user) {
+      const misRelatosLink = SITE_SETTINGS.show_mis_relatos_menu
+        ? `<a href="mis-relatos.html" class="drawer-link">${ic('pen-line')} <span>Mis relatos</span></a>`
+        : '';
+
       mount.innerHTML = `
         <a href="perfil.html?id=${session.user.id}" class="drawer-link">
           ${ic('user-circle')} <span>Mi perfil</span>
         </a>
-        <a href="mis-relatos.html" class="drawer-link">
-          ${ic('pen-line')} <span>Mis relatos</span>
-        </a>
+        ${misRelatosLink}
       `;
       if (window.lucide) lucide.createIcons();
     } else {
@@ -604,11 +608,7 @@ function renderHeroSlideHTML(s, isFirst = false) {
 }
 
 function renderHeroSlide(s, cont, isFirst) {
-  cont.innerHTML = `
-    <section class="hero-cinematic">
-      ${renderHeroSlideHTML(s, isFirst)}
-    </section>
-  `;
+  cont.innerHTML = `<section class="hero-cinematic">${renderHeroSlideHTML(s, isFirst)}</section>`;
   if (window.lucide) lucide.createIcons();
 }
 
@@ -641,9 +641,7 @@ async function cargarNovedades() {
                   <div class="chapter-card-body">
                     <div class="chapter-card-story">${escapeHtml(story.title || 'Historia')}</div>
                     <div class="chapter-card-title">Cap. ${c.chapter_order || '?'} · ${escapeHtml(c.title)}</div>
-                    <div class="chapter-card-meta">
-                      <span>${tiempoRelativo(c.created_at)}</span>
-                    </div>
+                    <div class="chapter-card-meta"><span>${tiempoRelativo(c.created_at)}</span></div>
                   </div>
                 </a>
               `;
@@ -865,9 +863,7 @@ async function cargarPost() {
     document.getElementById('commentsSection')?.removeAttribute('hidden');
     await cargarComentarios(id);
     await prepararFormComentario(id);
-  } catch (e) {
-    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.');
-  }
+  } catch (e) { render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.'); }
 }
 
 async function cargarComentarios(postId) {
@@ -890,9 +886,7 @@ async function cargarComentarios(postId) {
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
     activarVerMas();
     activarBorradoComentarios(postId, 'post');
-  } catch (e) {
-    list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
-  }
+  } catch (e) { list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.'); }
 }
 
 function renderComment(c, perfilesMap, sessionUserId = null) {
@@ -910,11 +904,7 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
         <div class="comment-author-c">${autorLink} ${badge}</div>
         <div class="comment-actions-c">
           <span class="comment-date-c">${fecha}</span>
-          ${esMio ? `
-            <button class="comment-delete-btn" data-delete-comment="${c.id}" title="Eliminar comentario" aria-label="Eliminar comentario">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          ` : ''}
+          ${esMio ? `<button class="comment-delete-btn" data-delete-comment="${c.id}" title="Eliminar comentario" aria-label="Eliminar comentario"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
         </div>
       </div>
       <div class="comment-body-wrap">
@@ -941,8 +931,7 @@ function activarVerMas() {
 function activarBorradoComentarios(parentId, tipo) {
   document.querySelectorAll('[data-delete-comment]').forEach(btn => {
     btn.addEventListener('click', async (e) => {
-      e.preventDefault();
-      e.stopPropagation();
+      e.preventDefault(); e.stopPropagation();
       const commentId = btn.dataset.deleteComment;
       if (!confirm('¿Eliminar este comentario?')) return;
       showLoading();
@@ -1165,20 +1154,6 @@ async function cargarDonaciones() {
       `;
     }).join('');
   } catch (e) { grid.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.'); }
-}
-
-/* ---------- BIOGRAFÍA ---------- */
-async function cargarBiografia() {
-  const cont = document.getElementById('bioCard');
-  if (!cont) return;
-  try {
-    const { data, error } = await withTimeout(db.from('profiles').select('username, bio, avatar_url').eq('is_author', true).limit(1).maybeSingle(), 8000);
-    if (error || !data) { cont.innerHTML = emptyState('user', 'Sin biografía', 'Pronto escribiré algo sobre mí.'); return; }
-    cont.innerHTML = `
-      <div class="bio-avatar-c">${data.avatar_url ? `<img src="${data.avatar_url}" alt="${escapeHtml(data.username)}" />` : escapeHtml((data.username || 'A').charAt(0).toUpperCase())}</div>
-      <div class="bio-body-c"><h2 class="bio-name-c">${escapeHtml(data.username || 'Azael')}</h2><p class="bio-handle-c">Autor</p><div class="bio-text-c">${escapeHtml(data.bio || 'Biografía pendiente.')}</div></div>
-    `;
-  } catch (e) { cont.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.'); }
 }
 
 /* ---------- HISTORIA DETALLE ---------- */
@@ -1568,19 +1543,12 @@ async function cargarRelatos() {
   const count = document.getElementById('relatosCount');
   if (!grid) return;
 
-  // Aplicar visibilidad del botón "Escribir relato" según ajuste del admin
   const btnWrite = document.getElementById('btnWriteRelato');
-  if (btnWrite) {
-    btnWrite.style.display = SITE_SETTINGS.show_relatos_btn ? '' : 'none';
-  }
+  if (btnWrite) btnWrite.style.display = SITE_SETTINGS.show_relatos_btn ? '' : 'none';
 
   try {
     const { data: relatos, error } = await withTimeout(
-      db.from('relatos')
-        .select('id, title, content, user_id, created_at')
-        .order('created_at', { ascending: false })
-        .limit(200),
-      10000
+      db.from('relatos').select('id, title, content, user_id, created_at').order('created_at', { ascending: false }).limit(200), 10000
     );
 
     if (error) throw error;
@@ -1592,10 +1560,7 @@ async function cargarRelatos() {
     }
 
     const userIds = [...new Set(relatos.map(r => r.user_id))];
-    const { data: perfiles } = await withTimeout(
-      db.from('profiles').select('id, username, avatar_url').in('id', userIds),
-      8000
-    );
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, avatar_url').in('id', userIds), 8000);
     const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     const relatoIds = relatos.map(r => r.id);
@@ -1683,9 +1648,7 @@ function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, c
           Por <strong>${escapeHtml(nombre)}</strong>
         </div>
         <div class="relato-card-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 180 ? '…' : ''}</div>
-        <div class="relato-card-more">
-          Leer relato ${ic('arrow-right', 14)}
-        </div>
+        <div class="relato-card-more">Leer relato ${ic('arrow-right', 14)}</div>
         <div class="relato-card-meta">
           <span class="relato-card-meta-item">${ic('clock', 13)} ${fecha}</span>
           <span class="relato-card-meta-item">${ic('smile', 13)} ${reacciones}</span>
@@ -1694,7 +1657,6 @@ function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, c
       </a>
     `;
   }).join('');
-
   if (window.lucide) lucide.createIcons();
 }
 
@@ -2112,7 +2074,7 @@ function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'li
 }
 
 /* ============================================
-   FASE 3 — PERFILES PÚBLICOS + SEGUIDORES
+   FASE 3.5 — PERFIL BÁSICO
    ============================================ */
 async function cargarPerfilPublico() {
   const cont = document.getElementById('perfilContent');
@@ -2122,83 +2084,54 @@ async function cargarPerfilPublico() {
 
   try {
     const { data: perfil, error } = await withTimeout(db.from('profiles').select('id, username, bio, bio_public, avatar_url, website, location, is_author, created_at').eq('id', id).maybeSingle(), 10000);
+    
     if (error || !perfil) {
       cont.innerHTML = `<div class="container"><div class="empty-c"><div class="empty-icon">${ic('user-x', 48)}</div><div class="empty-title">Perfil no encontrado</div><div class="empty-sub">Puede que el usuario haya eliminado su cuenta.</div><div style="margin-top:20px;"><a href="index.html" class="btn btn-primary">Volver al inicio</a></div></div></div>`;
       if (window.lucide) lucide.createIcons();
       return;
     }
-    document.title = `${perfil.username || 'Perfil'} — Azael Colina`;
-    const [{ data: relatos }, { data: followers }, { data: following }, { data: session }, { data: isFollowingData }] = await Promise.all([
-      withTimeout(db.from('relatos').select('id, title, content, created_at').eq('user_id', id).order('created_at', { ascending: false }).limit(20), 8000),
-      db.rpc('count_followers', { user_id_param: id }),
-      db.rpc('count_following', { user_id_param: id }),
-      db.auth.getSession(),
-      db.auth.getSession().then(({ data: { session: s } }) => s?.user ? db.from('follows').select('id').eq('follower_id', s.user.id).eq('following_id', id).maybeSingle() : { data: null }),
-    ]);
 
+    document.title = `${perfil.username || 'Perfil'} — Azael Colina`;
+    const { data: session } = await db.auth.getSession();
     const sessionUserId = session?.user?.id || null;
     const esPropio = sessionUserId === perfil.id;
-    const siguiendo = !!isFollowingData;
     const bioTexto = perfil.bio_public || perfil.bio || 'Sin biografía.';
+    const fechaRegistro = new Date(perfil.created_at).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
 
     cont.innerHTML = `
       <section class="page-head-c"><div class="container"><h1 class="page-title-c">Perfil de ${escapeHtml(perfil.username || 'Lector')}</h1><p class="page-sub-c">${perfil.is_author ? 'Autor' : 'Lector'} en Azael Colina</p></div></section>
       <section class="section">
         <div class="container">
-          <div class="perfil-card">
-            <div class="perfil-avatar-wrap">
-              <div class="perfil-avatar">${perfil.avatar_url ? `<img src="${perfil.avatar_url}" alt="" />` : escapeHtml((perfil.username || 'L').charAt(0).toUpperCase())}</div>
-              ${perfil.is_author ? `<span class="perfil-badge-autor">Autor</span>` : ''}
+          <div class="perfil-card" style="max-width: 500px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; border-radius: 18px; background: var(--bg-surface); border: 1px solid var(--border-color);">
+            
+            <div class="perfil-avatar-wrap" style="margin-bottom: 20px;">
+              <div class="perfil-avatar" style="width: 140px; height: 140px; border-radius: 50%; overflow: hidden; border: 3px solid var(--border-color); box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+                ${perfil.avatar_url ? `<img src="${perfil.avatar_url}" style="width:100%; height:100%; object-fit:cover;" alt="" />` : `<span style="font-size: 56px; display: flex; align-items: center; justify-content: center; height: 100%; background: var(--bg-elevated); color: var(--text-tertiary); font-family: var(--font-serif);">${escapeHtml((perfil.username || 'L').charAt(0).toUpperCase())}</span>`}
+              </div>
+              ${perfil.is_author ? `<span class="perfil-badge-autor" style="margin-top: 12px; display: inline-block; background: var(--gold); color: #000; padding: 4px 12px; border-radius: 100px; font-size: 11px; font-weight: bold; letter-spacing: 1px;">AUTOR</span>` : ''}
             </div>
-            <div class="perfil-body">
-              <h2 class="perfil-name">${escapeHtml(perfil.username || 'Lector')}</h2>
-              <div class="perfil-stats">
-                <div class="perfil-stat"><div class="perfil-stat-value">${followers || 0}</div><div class="perfil-stat-label">Seguidores</div></div>
-                <div class="perfil-stat"><div class="perfil-stat-value">${following || 0}</div><div class="perfil-stat-label">Siguiendo</div></div>
-                <div class="perfil-stat"><div class="perfil-stat-value">${relatos?.length || 0}</div><div class="perfil-stat-label">Relatos</div></div>
+
+            <div class="perfil-body" style="width: 100%;">
+              <h2 class="perfil-name" style="font-size: 32px; margin-bottom: 4px; font-family: var(--font-serif);">${escapeHtml(perfil.username || 'Lector')}</h2>
+              <p style="color: var(--text-tertiary); font-size: 13px; margin-bottom: 24px;">Miembro desde ${fechaRegistro}</p>
+              
+              ${bioTexto ? `<div class="perfil-bio" style="font-size: 15px; line-height: 1.6; margin-bottom: 24px; color: var(--text-secondary); padding: 0 20px;">${escapeHtml(bioTexto)}</div>` : ''}
+              
+              <div class="perfil-meta-extra" style="justify-content: center; margin-bottom: 28px; gap: 16px;">
+                ${perfil.location ? `<span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-tertiary);">${ic('map-pin', 14)} ${escapeHtml(perfil.location)}</span>` : ''}
               </div>
-              ${bioTexto ? `<div class="perfil-bio">${escapeHtml(bioTexto)}</div>` : ''}
-              <div class="perfil-meta-extra">
-                ${perfil.location ? `<span>${ic('map-pin', 14)} ${escapeHtml(perfil.location)}</span>` : ''}
-                ${perfil.website ? `<a href="${escapeHtml(perfil.website)}" target="_blank" rel="noopener noreferrer">${ic('link', 14)} ${escapeHtml(perfil.website)}</a>` : ''}
+
+              <div class="perfil-actions" style="justify-content: center;">
+                ${esPropio ? `<a href="biografia.html" class="btn btn-primary" style="border-radius: 100px; padding: 12px 24px;">${ic('edit-2', 14)} Editar mi perfil</a>` : ''}
               </div>
-              <div class="perfil-actions">
-                ${esPropio ? `<a href="biografia.html" class="btn btn-ghost">${ic('edit-2', 14)} Editar biografía</a>` : sessionUserId ? `<button class="btn ${siguiendo ? 'btn-ghost' : 'btn-primary'}" id="btnFollow">${siguiendo ? ic('user-check', 14) : ic('user-plus', 14)} ${siguiendo ? 'Siguiendo' : 'Seguir'}</button>` : `<button class="btn btn-primary" id="btnFollowLogin">${ic('user-plus', 14)} Seguir</button>`}
-              </div>
-            </div>
-          </div>
-          <div class="section" style="margin-top:32px;">
-            <div class="section-head"><div><h2 class="section-title">Relatos publicados</h2><p class="section-sub">${relatos?.length === 1 ? '1 relato' : `${relatos?.length || 0} relatos`}</p></div></div>
-            <div class="relatos-grid">
-              ${relatos?.length ? relatos.map(r => {
-                const excerpt = (r.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 160);
-                return `<a class="relato-card" href="relato.html?id=${r.id}"><div class="relato-card-title">${escapeHtml(r.title)}</div><div class="relato-card-excerpt">${escapeHtml(excerpt)}…</div><div class="relato-card-more">Leer relato ${ic('arrow-right', 14)}</div></a>`;
-              }).join('') : `<div class="empty-c" style="grid-column:1/-1;"><div class="empty-icon">${ic('pen-line', 48)}</div><div class="empty-title">Sin relatos aún</div><div class="empty-sub">Este lector todavía no ha publicado nada.</div></div>`}
             </div>
           </div>
         </div>
       </section>
     `;
     if (window.lucide) lucide.createIcons();
-    document.getElementById('btnFollow')?.addEventListener('click', async () => { await toggleFollow(perfil.id, siguiendo); await cargarPerfilPublico(); });
-    document.getElementById('btnFollowLogin')?.addEventListener('click', () => { document.getElementById('authModal').hidden = false; window.__showLoginView?.(); });
-  } catch (e) { console.error('Error cargando perfil:', e); cont.innerHTML = `<div class="container"><p class="empty-state">No se pudo cargar el perfil.</p></div>`; }
-}
 
-async function toggleFollow(targetId, estaSiguiendo) {
-  const { data: { session } } = await db.auth.getSession();
-  if (!session?.user) { showToast('Inicia sesión para seguir', 'info'); return; }
-  const userId = session.user.id;
-  if (userId === targetId) { showToast('No puedes seguirte a ti mismo', 'info'); return; }
-  try {
-    if (estaSiguiendo) {
-      await db.from('follows').delete().eq('follower_id', userId).eq('following_id', targetId);
-      showToast('Has dejado de seguir a este lector', 'info');
-    } else {
-      const { error } = await db.from('follows').insert({ follower_id: userId, following_id: targetId });
-      if (error) { if (error.code === '23505') showToast('Ya sigues a este lector', 'info'); else throw error; } else { showToast('Ahora sigues a este lector', 'ok'); }
-    }
-  } catch (e) { console.error('Error follow:', e); showToast('No se pudo actualizar el seguimiento', 'error'); }
+  } catch (e) { console.error('Error cargando perfil:', e); cont.innerHTML = `<div class="container"><p class="empty-state">No se pudo cargar el perfil.</p></div>`; }
 }
 
 /* ---------- INIT ---------- */
@@ -2235,7 +2168,9 @@ function dispararContenidoSegunPath() {
   } else if (path === 'donaciones.html') {
     cargarDonaciones();
   } else if (path === 'biografia.html') {
-    cargarBiografia();
+    // Ahora biografia.html es el formulario de edición del perfil
+    // La lógica está en la función cargarBioPublico() que definimos abajo, o simplemente manejamos el form directamente
+    initFormBio();
   } else if (path === 'historia.html') {
     cargarHistoriaDetalle();
   } else if (path === 'capitulo.html') {
@@ -2243,6 +2178,58 @@ function dispararContenidoSegunPath() {
   } else if (path === 'perfil.html') {
     cargarPerfilPublico();
   }
+}
+
+/* Logic for biografia.html (now user profile editor) */
+async function initFormBio() {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.user) { location.href = 'index.html'; return; }
+
+  showLoading();
+  const { data } = await db.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
+  hideLoading();
+
+  if (data) {
+    document.getElementById('bioUsername').value = data.username || '';
+    document.getElementById('bioText').value = data.bio_public || data.bio || '';
+    const preview = document.getElementById('bioAvatarPreview');
+    preview.innerHTML = data.avatar_url ? `<img src="${data.avatar_url}" style="width:100%;height:100%;object-fit:cover;" alt="" />` : escapeHtml((data.username || 'A').charAt(0).toUpperCase());
+  }
+
+  document.getElementById('bioAvatarBtn').onclick = () => document.getElementById('bioAvatarInput').click();
+
+  document.getElementById('bioAvatarInput').onchange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) { showToast('La imagen supera 5 MB', 'error'); return; }
+    showLoading();
+    try {
+      const ext = file.name.split('.').pop();
+      const filename = `avatars/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: upErr } = await db.storage.from('media').upload(filename, file);
+      if (upErr) throw upErr;
+      const { data: pub } = db.storage.from('media').getPublicUrl(filename);
+      const { error } = await db.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', session.user.id);
+      if (error) throw error;
+      document.getElementById('bioAvatarPreview').innerHTML = `<img src="${pub.publicUrl}" style="width:100%;height:100%;object-fit:cover;" alt="" />`;
+      showToast('Foto actualizada', 'ok');
+      cache.clear();
+    } catch (err) { showToast('Error al subir: ' + err.message, 'error'); }
+    hideLoading();
+  };
+
+  document.getElementById('bioSaveBtn').onclick = async () => {
+    const username = document.getElementById('bioUsername').value.trim();
+    const bio = document.getElementById('bioText').value.trim();
+    if (!username) { showToast('Falta el nombre', 'error'); return; }
+    showLoading();
+    const { error } = await db.from('profiles').update({ username, bio_public: bio, bio: bio }).eq('id', session.user.id);
+    hideLoading();
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    showToast('Perfil guardado', 'ok');
+    cache.clear();
+    setTimeout(() => { location.href = `perfil.html?id=${session.user.id}`; }, 800);
+  };
 }
 
 initTheme();
