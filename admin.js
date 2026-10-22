@@ -1,5 +1,6 @@
 /* ============================================
-   AZAEL BLOG — admin.js COMPLETO (Fase 4 + Árboles)
+   AZAEL BLOG — admin.js COMPLETO v2
+   Fix: panel en blanco + verificarAutor con try/catch
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -392,24 +393,38 @@ function showView(id) {
   if (window.lucide) lucide.createIcons();
 }
 
+/* ---------- VERIFICAR AUTOR (con try/catch) ---------- */
 async function verificarAutor() {
-  const { data: { session: s } } = await db.auth.getSession();
-  session = s;
+  try {
+    const { data: { session: s }, error: errSes } = await db.auth.getSession();
+    if (errSes) throw errSes;
+    session = s;
 
-  if (!session) {
-    document.getElementById('authModal').hidden = false;
+    if (!session) {
+      document.getElementById('authModal').hidden = false;
+      return false;
+    }
+
+    const { data: profile, error: errProf } = await db
+      .from('profiles')
+      .select('*')
+      .eq('id', session.user.id)
+      .maybeSingle();
+
+    if (errProf) throw errProf;
+    currentProfile = profile;
+
+    if (!profile?.is_author) {
+      mostrarModalSinPermisos();
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    console.error('[verificarAutor]', e);
+    toast('Error al verificar sesión: ' + (e.message || 'desconocido'), 'error');
     return false;
   }
-
-  const { data: profile } = await db.from('profiles').select('*').eq('id', session.user.id).maybeSingle();
-  currentProfile = profile;
-
-  if (!profile?.is_author) {
-    mostrarModalSinPermisos();
-    return false;
-  }
-
-  return true;
 }
 
 /* ---------- DASHBOARD ---------- */
@@ -479,7 +494,7 @@ async function cargarDashboard() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- USUARIOS (FASE 4) ---------- */
+/* ---------- USUARIOS ---------- */
 async function cargarUsuarios() {
   const list = document.getElementById('adminUsersList');
   if (!list) return;
@@ -966,7 +981,7 @@ function guardarBorrador(editorId) {
   } catch {}
 }
 
-/* ---------- RELATO ADMIN (FASE 4) ---------- */
+/* ---------- RELATO ADMIN ---------- */
 async function abrirRelatoAdminForm(id = null) {
   currentRelatoAdmin = null;
   document.getElementById('relatoAdminForm').reset();
@@ -1825,7 +1840,7 @@ async function marcarTodasLeidas() {
   } catch (e) { hideLoading(); toast('Error: ' + e.message, 'error'); }
 }
 
-/* ---------- REPORTES (FASE 4) ---------- */
+/* ---------- REPORTES ---------- */
 async function abrirReportesView() {
   showView('viewReportes');
   await cargarReportes();
@@ -1964,7 +1979,7 @@ async function actualizarBadgeReportes() {
   } catch (e) { console.warn(e); }
 }
 
-/* ---------- MODERAR RELATOS (FASE 4) ---------- */
+/* ---------- MODERAR RELATOS ---------- */
 async function abrirRelatosAdminView() {
   showView('viewRelatosAdmin');
   await cargarRelatosAdmin();
@@ -3520,32 +3535,33 @@ function emptyState(iconName, title, sub) {
 /* ---------- INIT ---------- */
 (async () => {
   initTheme();
+  console.log('[Admin] Init start');
 
   try {
-    // 1) Inyectar UI primero (header, modal, editores, canvas)
+    console.log('[Admin] Inyectando UI...');
     inyectarHeader();
     inyectarAuthModal();
     initEditor('editorToolbar', 'chapterEditor', 'edCounter');
     initEditor('postToolbar', 'postEditor', 'postCounter');
     initCanvasListeners();
 
-    // 2) Verificar autor
+    console.log('[Admin] Verificando autor...');
     const ok = await verificarAutor();
+    console.log('[Admin] Autor verificado:', ok);
 
     if (ok) {
-      // 3) Es autor: cargar dashboard
+      console.log('[Admin] Cargando dashboard...');
       await cargarDashboard();
+      console.log('[Admin] Dashboard cargado');
 
-      // 4) Badges: si fallan, NO bloquear el panel
+      // Badges: fire-and-forget, no bloquean el panel si fallan
       actualizarBadgeNotificaciones().catch(e => console.warn('[badge notif]', e));
       actualizarBadgeReportes().catch(e => console.warn('[badge reportes]', e));
     }
-    // Si !ok: el modal de login (o deniedModal) ya está visible encima.
-    // NO ocultamos el panel: se ve difuminado detrás.
 
   } catch (err) {
-    // 5) Si algo falla, mostrar mensaje legible en vez de pantalla negra
     console.error('[Admin Init Error]', err);
+    // NO dejar pantalla en blanco: mostrar mensaje legible
     const pageMain = document.querySelector('.page-main');
     if (pageMain) {
       pageMain.innerHTML = `
@@ -3554,8 +3570,9 @@ function emptyState(iconName, title, sub) {
             <div class="empty-icon">${ic('alert-circle', 48)}</div>
             <div class="empty-title">Error al cargar el panel</div>
             <div class="empty-sub">${escapeHtml(err.message || 'Error desconocido')}</div>
-            <div style="margin-top: 20px;">
+            <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
               <button class="btn btn-primary" onclick="location.reload()">Recargar</button>
+              <button class="btn btn-ghost" onclick="location.href='index.html'">Volver al sitio</button>
             </div>
           </div>
         </div>
