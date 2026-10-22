@@ -3521,25 +3521,47 @@ function emptyState(iconName, title, sub) {
 (async () => {
   initTheme();
 
-  const headerMount = document.getElementById('header-mount');
-  const pageMain = document.querySelector('.page-main');
-  if (headerMount) headerMount.style.visibility = 'hidden';
-  if (pageMain) pageMain.style.visibility = 'hidden';
+  try {
+    // 1) Inyectar UI primero (header, modal, editores, canvas)
+    inyectarHeader();
+    inyectarAuthModal();
+    initEditor('editorToolbar', 'chapterEditor', 'edCounter');
+    initEditor('postToolbar', 'postEditor', 'postCounter');
+    initCanvasListeners();
 
-  inyectarHeader();
-  inyectarAuthModal();
-  initEditor('editorToolbar', 'chapterEditor', 'edCounter');
-  initEditor('postToolbar', 'postEditor', 'postCounter');
-  initCanvasListeners();
+    // 2) Verificar autor
+    const ok = await verificarAutor();
 
-  const ok = await verificarAutor();
+    if (ok) {
+      // 3) Es autor: cargar dashboard
+      await cargarDashboard();
 
-  if (ok) {
-    if (headerMount) headerMount.style.visibility = 'visible';
-    if (pageMain) pageMain.style.visibility = 'visible';
-    await cargarDashboard();
-    await actualizarBadgeNotificaciones();
-    await actualizarBadgeReportes();
+      // 4) Badges: si fallan, NO bloquear el panel
+      actualizarBadgeNotificaciones().catch(e => console.warn('[badge notif]', e));
+      actualizarBadgeReportes().catch(e => console.warn('[badge reportes]', e));
+    }
+    // Si !ok: el modal de login (o deniedModal) ya está visible encima.
+    // NO ocultamos el panel: se ve difuminado detrás.
+
+  } catch (err) {
+    // 5) Si algo falla, mostrar mensaje legible en vez de pantalla negra
+    console.error('[Admin Init Error]', err);
+    const pageMain = document.querySelector('.page-main');
+    if (pageMain) {
+      pageMain.innerHTML = `
+        <div class="container" style="padding: 60px 20px; text-align: center;">
+          <div class="empty-c">
+            <div class="empty-icon">${ic('alert-circle', 48)}</div>
+            <div class="empty-title">Error al cargar el panel</div>
+            <div class="empty-sub">${escapeHtml(err.message || 'Error desconocido')}</div>
+            <div style="margin-top: 20px;">
+              <button class="btn btn-primary" onclick="location.reload()">Recargar</button>
+            </div>
+          </div>
+        </div>
+      `;
+      if (window.lucide) lucide.createIcons();
+    }
   }
 
   const yearEl = document.getElementById('year');
