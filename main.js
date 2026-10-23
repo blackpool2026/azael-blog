@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Fix definitivo: Formulario de 2 pasos oculto correctamente
+   Fix: Login/Registro con try/catch y pasos corregidos
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -453,10 +453,9 @@ function inyectarAuthModal() {
   const mount = document.getElementById('auth-mount'); 
   if (!mount) return;
   
-  // Forzamos display: none con !important en los estilos inline para que no se mezclen
   mount.innerHTML = `
     <div class="modal-overlay-c" id="authModal" hidden>
-      <div class="modal-c" style="padding-bottom: 80px;"> <!-- Espacio extra para el botón Instalar App -->
+      <div class="modal-c" style="padding-bottom: 80px;">
         <button class="modal-close-c" id="authClose" aria-label="Cerrar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -477,7 +476,7 @@ function inyectarAuthModal() {
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
           
-          <!-- PASO 1: Datos Personales (En columna para evitar cortes) -->
+          <!-- PASO 1: Datos Personales -->
           <form id="registerStep1" class="auth-form-c" style="display: flex;">
             <label>Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
             <label>Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
@@ -539,9 +538,8 @@ function inyectarAuthModal() {
     loginView.style.display = 'none'; 
     registerView.style.display = 'block'; 
     
-    // Resetear al paso 1 forzosamente
     registerStep1.style.display = 'flex';
-    registerStep2.style.display = 'none !important'; // Forzamos el none
+    registerStep2.style.display = 'none'; // Corregido sin el !important
     document.getElementById('regSwitchLogin').style.display = 'block';
     registerStep1.reset();
     regErrorStep1.hidden = true;
@@ -573,7 +571,6 @@ function inyectarAuthModal() {
     const firstName = document.getElementById('regFirstName').value.trim().toLowerCase();
     const lastName = document.getElementById('regLastName').value.trim().toLowerCase();
     
-    // Generar sugerencias automáticas
     const baseName = firstName.replace(/[^a-z0-9]/g, '');
     const baseLast = lastName.replace(/[^a-z0-9]/g, '');
     const randomNum = Math.floor(10 + Math.random() * 90);
@@ -593,13 +590,11 @@ function inyectarAuthModal() {
 
     document.getElementById('regUsername').value = suggestions[0];
     
-    // Cambio visual de ventana forzado
     registerStep1.style.display = 'none';
     registerStep2.style.display = 'flex';
     document.getElementById('regSwitchLogin').style.display = 'none';
   });
 
-  // Botón Volver Atrás (Paso 2 -> Paso 1)
   document.getElementById('btnBackStep1').addEventListener('click', () => {
     registerStep2.style.display = 'none';
     registerStep1.style.display = 'flex';
@@ -607,36 +602,40 @@ function inyectarAuthModal() {
     regErrorStep2.hidden = true;
   });
 
-  // Generador aleatorio manual
   document.getElementById('btnGenerateUsername').addEventListener('click', () => {
     const firstName = document.getElementById('regFirstName').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const randomId = Math.floor(1000 + Math.random() * 9000);
     document.getElementById('regUsername').value = `${firstName || 'lector'}_${randomId}`;
   });
 
+  // LOGIN CON TRY/CATCH
   loginForm.addEventListener('submit', async (e) => { 
     e.preventDefault(); 
     loginError.hidden = true; 
     showLoading(); 
-    const { error } = await db.auth.signInWithPassword({ 
-      email: document.getElementById('loginEmail').value.trim(), 
-      password: document.getElementById('loginPassword').value 
-    }); 
-    hideLoading(); 
-    if (error) { 
-      loginError.textContent = traducirError(error.message); 
+    try {
+      const { error } = await db.auth.signInWithPassword({ 
+        email: document.getElementById('loginEmail').value.trim(), 
+        password: document.getElementById('loginPassword').value 
+      }); 
+      if (error) throw error;
+      
+      showToast('Sesión iniciada', 'ok'); 
+      authModal.hidden = true; 
+      loginForm.reset(); 
+      cache.clear(); 
+      actualizarDrawerSessionLinks(); 
+      setTimeout(() => location.reload(), 500); 
+    } catch (err) {
+      console.error(err);
+      loginError.textContent = traducirError(err.message); 
       loginError.hidden = false; 
-      return; 
-    } 
-    showToast('Sesión iniciada', 'ok'); 
-    authModal.hidden = true; 
-    loginForm.reset(); 
-    cache.clear(); 
-    actualizarDrawerSessionLinks(); 
-    setTimeout(() => location.reload(), 500); 
+    } finally {
+      hideLoading();
+    }
   });
   
-  // Submit Final (Paso 2)
+  // REGISTRO CON TRY/CATCH
   registerStep2.addEventListener('submit', async (e) => { 
     e.preventDefault(); 
     regErrorStep2.hidden = true; 
@@ -652,56 +651,56 @@ function inyectarAuthModal() {
       return;
     }
 
-    // Validar @ duplicado
-    const { data: existingUser } = await db.from('profiles').select('id').eq('username', username).maybeSingle();
-    if (existingUser) {
-      hideLoading();
-      regErrorStep2.textContent = 'Ese @ ya está en uso. Elige otro o usa las sugerencias.';
-      regErrorStep2.hidden = false;
-      return;
-    }
+    try {
+      // Validar @ duplicado
+      const { data: existingUser } = await db.from('profiles').select('id').eq('username', username).maybeSingle();
+      if (existingUser) {
+        throw new Error('Ese @ ya está en uso. Elige otro.');
+      }
 
-    const email = document.getElementById('regEmail').value.trim(); 
-    const password = document.getElementById('regPassword').value; 
-    const firstName = document.getElementById('regFirstName').value.trim();
-    const lastName = document.getElementById('regLastName').value.trim();
+      const email = document.getElementById('regEmail').value.trim(); 
+      const password = document.getElementById('regPassword').value; 
+      const firstName = document.getElementById('regFirstName').value.trim();
+      const lastName = document.getElementById('regLastName').value.trim();
 
-    // Registro en Supabase
-    const { data: signUpData, error } = await db.auth.signUp({ 
-      email, 
-      password, 
-      options: { 
-        data: { 
-          username: username, 
-          first_name: firstName,
-          last_name: lastName,
-          newsletter: true 
+      const { data: signUpData, error } = await db.auth.signUp({ 
+        email, 
+        password, 
+        options: { 
+          data: { 
+            username: username, 
+            first_name: firstName,
+            last_name: lastName,
+            newsletter: true 
+          } 
         } 
-      } 
-    }); 
-    hideLoading(); 
-    
-    if (error) { 
-      regErrorStep2.textContent = traducirError(error.message); 
-      regErrorStep2.hidden = false; 
-      return; 
-    } 
-    
-    showToast('Cuenta creada. ¡Bienvenido!', 'ok'); 
-    
-    try { 
-      const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle(); 
-      if (author?.id && signUpData?.user?.id) { 
-        await db.from('notifications').insert({ user_id: author.id, type: 'new_user', from_user_id: signUpData.user.id }); 
-      } 
-    } catch (e) { console.warn(e); } 
-    
-    authModal.hidden = true; 
-    document.getElementById('regPassword').value = '';
-    document.getElementById('regConfirmPassword').value = '';
-    cache.clear(); 
-    actualizarDrawerSessionLinks(); 
-    setTimeout(() => location.reload(), 500); 
+      }); 
+      
+      if (error) throw error;
+      
+      showToast('Cuenta creada. ¡Bienvenido!', 'ok'); 
+      
+      try { 
+        const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle(); 
+        if (author?.id && signUpData?.user?.id) { 
+          await db.from('notifications').insert({ user_id: author.id, type: 'new_user', from_user_id: signUpData.user.id }); 
+        } 
+      } catch (e) { console.warn(e); } 
+      
+      authModal.hidden = true; 
+      document.getElementById('regPassword').value = '';
+      document.getElementById('regConfirmPassword').value = '';
+      cache.clear(); 
+      actualizarDrawerSessionLinks(); 
+      setTimeout(() => location.reload(), 500); 
+
+    } catch (err) {
+      console.error(err);
+      regErrorStep2.textContent = traducirError(err.message);
+      regErrorStep2.hidden = false;
+    } finally {
+      hideLoading();
+    }
   });
   
   db.auth.onAuthStateChange((_event, session) => { 
