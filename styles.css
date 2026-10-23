@@ -7315,3 +7315,118 @@ body[data-reader-theme="neutral"] {
     width: 100%;
   }
 }
+/* ============================================
+   BLOQUE DE CORRECCIÓN RESPONSIVA (FIX PARA TODAS LAS PANTALLAS)
+   Pega esto al final de tu styles.css
+   ============================================ */
+
+/* 1. Evitar el zoom automático en iPhones y mejorar inputs en móviles */
+input, textarea, select {
+  font-size: 16px !important;
+  max-width: 100%;
+}
+
+/* 2. Formulario de registro: Apilar Nombre y Apellido en móviles */
+.auth-form-c {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.auth-form-c label {
+  width: 100%;
+}
+/* Si tenías los inputs de nombre y apellido en un flex, los apilamos en pantallas pequeñas */
+@media (max-width: 600px) {
+  .auth-form-c > div {
+    flex-direction: column !important;
+    gap: 12px !important;
+  }
+}
+
+/* 3. Arreglar los modales para que no se salgan de la pantalla (especialmente en móviles) */
+.modal-overlay-c {
+  padding: 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+.modal-c {
+  max-height: 90vh !important;
+  overflow-y: auto !important;
+  width: 100% !important;
+  max-width: 450px !important;
+  margin: auto !important;
+}
+
+/* 4. Grillas automáticas (Libros, Géneros, Relatos) */
+/* Esto hace que en PC se vean 5 o 6 columnas, en tablet 3, y en móvil 2 */
+.stories-grid-c, 
+.genres-grid-c, 
+.relatos-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)) !important;
+  gap: 16px !important;
+}
+
+/* 5. Textos que se adaptan a cualquier pantalla (Tipografía Fluida) */
+.page-title-c { font-size: clamp(24px, 5vw, 46px) !important; }
+.hero-title-c { font-size: clamp(28px, 6vw, 68px) !important; }
+.section-title { font-size: clamp(20px, 3.5vw, 30px) !important; }
+.chapter-title-c, .reader-title-c { font-size: clamp(22px, 4vw, 38px) !important; }
+.chapter-body, .reader-body-c { font-size: clamp(16px, 2.5vw, 19px) !important; }
+
+/* 6. Contenedor principal y espaciados */
+.container {
+  padding: 0 clamp(16px, 4vw, 40px) !important;
+  max-width: 1200px !important;
+  margin: 0 auto !important;
+}
+
+/* 7. Formularios de administración (Para que no se aplasten en móvil) */
+@media (max-width: 768px) {
+  .admin-form-grid {
+    grid-template-columns: 1fr !important;
+    gap: 20px !important;
+  }
+  .admin-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+  .admin-action-cards {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+}
+
+/* 8. Ajustes para Smart TVs y Pantallas 4K */
+@media (min-width: 1920px) {
+  .container {
+    max-width: 1600px !important;
+    padding: 0 60px !important;
+  }
+  .hero-title-c { font-size: 90px !important; }
+  .hero-synopsis { font-size: 22px !important; max-width: 800px !important; }
+  .stories-grid-c, .genres-grid-c { 
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)) !important; 
+    gap: 40px !important; 
+  }
+  .chapter-shell { max-width: 1000px !important; }
+  .chapter-body, .reader-body-c { font-size: 24px !important; line-height: 1.8 !important; }
+  .book-cover { font-size: 72px !important; }
+  .desktop-nav a { font-size: 18px !important; padding: 10px 20px !important; }
+  .app-header-inner { height: 80px !important; }
+}
+
+/* 9. Ajustes para pantallas muy pequeñas (iPhone SE, etc.) */
+@media (max-width: 380px) {
+  .container { padding: 0 12px !important; }
+  .modal-c { padding: 16px !important; }
+  .stories-grid-c, .genres-grid-c { grid-template-columns: repeat(2, 1fr) !important; gap: 10px !important; }
+  .admin-action-cards { grid-template-columns: 1fr !important; }
+  .chapter-nav { grid-template-columns: 1fr !important; }
+}
+
+/* 10. Asegurar que el botón de instalar App no tape cosas importantes */
+.pwa-install-btn {
+  z-index: 99999 !important;
+}
