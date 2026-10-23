@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Con fix de sincronización para ocultar "Mis relatos"
+   Con @ único, generador aleatorio y bloqueo de edición
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -433,7 +433,6 @@ function actualizarDrawerSessionLinks() {
         </a>
       `;
       
-      // 👇 AQUÍ SE APLICA EL AJUSTE DEL ADMIN 👇
       if (SITE_SETTINGS.show_mis_relatos_menu) { 
         links += `
           <a href="mis-relatos.html" class="drawer-link ${path === 'mis-relatos.html' ? 'active' : ''}">
@@ -477,7 +476,14 @@ function inyectarAuthModal() {
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
           <form id="registerForm" class="auth-form-c">
-            <label>Nombre de usuario <input type="text" id="registerUsername" required minlength="3" maxlength="20" placeholder="Cómo te llamas" /></label>
+            <label>Nombre de usuario (@)
+              <div style="display: flex; gap: 8px;">
+                <input type="text" id="registerUsername" required minlength="3" maxlength="20" placeholder="tú_apodo" style="flex: 1; text-transform: lowercase;" />
+                <button type="button" id="btnGenerateUsername" class="btn btn-ghost" style="padding: 0 12px; font-size: 18px;" title="Generar @ aleatorio">🎲</button>
+              </div>
+            </label>
+            <p style="font-size: 11px; color: var(--text-tertiary); margin-top: -8px; margin-bottom: 8px;">⚠️ Elige bien tu @, no podrás cambiarlo después.</p>
+            
             <label>Correo <input type="email" id="registerEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
             <label>Contraseña <input type="password" id="registerPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
             <div class="auth-consent-c">
@@ -512,6 +518,12 @@ function inyectarAuthModal() {
   document.getElementById('goRegister').addEventListener('click', showRegisterView);
   document.getElementById('goLogin').addEventListener('click', showLoginView);
   
+  // Generador de @ aleatorio
+  document.getElementById('btnGenerateUsername').addEventListener('click', () => {
+    const randomId = Math.floor(1000 + Math.random() * 9000);
+    document.getElementById('registerUsername').value = `lector_${randomId}`;
+  });
+
   loginForm.addEventListener('submit', async (e) => { 
     e.preventDefault(); 
     loginError.hidden = true; 
@@ -538,27 +550,51 @@ function inyectarAuthModal() {
     e.preventDefault(); 
     registerError.hidden = true; 
     showLoading(); 
-    const username = document.getElementById('registerUsername').value.trim(); 
+    
+    // Limpiamos el @ (solo minúsculas, números y guiones bajos)
+    const rawUsername = document.getElementById('registerUsername').value.trim().toLowerCase();
+    const username = rawUsername.replace(/[^a-z0-9_]/g, '');
+    
+    if (username.length < 3) {
+      hideLoading();
+      registerError.textContent = 'El @ debe tener al menos 3 caracteres (letras, números, _).';
+      registerError.hidden = false;
+      return;
+    }
+
+    // Verificamos si el @ ya existe ANTES de registrar
+    const { data: existingUser } = await db.from('profiles').select('id').eq('username', username).maybeSingle();
+    if (existingUser) {
+      hideLoading();
+      registerError.textContent = 'Ese @ ya está en uso. Elige otro o usa el generador.';
+      registerError.hidden = false;
+      return;
+    }
+
     const email = document.getElementById('registerEmail').value.trim(); 
     const password = document.getElementById('registerPassword').value; 
     const { data: signUpData, error } = await db.auth.signUp({ 
       email, 
       password, 
-      options: { data: { username, newsletter: true } } 
+      options: { data: { username: username, newsletter: true } } 
     }); 
     hideLoading(); 
+    
     if (error) { 
       registerError.textContent = traducirError(error.message); 
       registerError.hidden = false; 
       return; 
     } 
+    
     showToast('Cuenta creada. ¡Bienvenido!', 'ok'); 
+    
     try { 
       const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle(); 
       if (author?.id && signUpData?.user?.id) { 
         await db.from('notifications').insert({ user_id: author.id, type: 'new_user', from_user_id: signUpData.user.id }); 
       } 
     } catch (e) { console.warn(e); } 
+    
     authModal.hidden = true; 
     registerForm.reset(); 
     cache.clear(); 
@@ -2615,6 +2651,7 @@ async function cargarPerfilPublico() {
   const esPropio = session.user.id === perfil.id; 
   const fechaRegistro = new Date(perfil.created_at).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); 
   
+  // NOTA: Se ha eliminado el botón de "Editar mi @" porque ahora es permanente.
   cont.innerHTML = `
     <section class="page-head-c">
       <div class="container">
@@ -2645,7 +2682,6 @@ async function cargarPerfilPublico() {
               <div><span style="color:var(--text-tertiary); font-size: 12px;">Correo:</span> <span style="color:var(--text-primary); font-size: 14px;">${escapeHtml(session.user.email || 'No definido')}</span></div>
               ${perfil.gender ? `<div><span style="color:var(--text-tertiary); font-size: 12px;">Género:</span> <span style="color:var(--text-primary); font-size: 14px;">${escapeHtml(perfil.gender)}</span></div>` : ''}
             </div>
-            ${esPropio ? `<button class="btn btn-primary" id="userEditBtn" style="border-radius: 100px; padding: 12px 24px; width: 100%;">${ic('edit-2', 14)} Editar mi @</button>` : ''}
           </div>
         </div>
       </div>
@@ -2675,56 +2711,6 @@ async function cargarPerfilPublico() {
         showToast('Error: ' + err.message, 'error'); 
       } 
       hideLoading(); 
-    }); 
-    
-    document.getElementById('userEditBtn')?.addEventListener('click', () => { 
-      const modal = document.createElement('div'); 
-      modal.className = 'modal-overlay-c'; 
-      modal.innerHTML = `
-        <div class="modal-c">
-          <h2 class="modal-title-c">Cambiar mi @</h2>
-          <p class="modal-sub-c">Elige un nombre de usuario único.</p>
-          <div class="admin-field" style="margin-bottom: 12px;">
-            <span>Nuevo @</span>
-            <input type="text" id="newUsernameInput" value="${escapeHtml(perfil.username)}" maxlength="20" style="text-transform: lowercase;" />
-          </div>
-          <p id="usernameError" style="color: #ff6b6b; font-size: 12px; margin-bottom: 16px;" hidden>Ese @ ya está en uso. Prueba con otro.</p>
-          <div class="admin-form-actions" style="border-top: none; padding: 0;">
-            <button class="btn btn-ghost" id="cancelUsernameBtn">Cancelar</button>
-            <button class="btn btn-primary" id="saveUsernameBtn">Guardar</button>
-          </div>
-        </div>
-      `; 
-      document.body.appendChild(modal); 
-      if (window.lucide) lucide.createIcons(); 
-      
-      const input = modal.querySelector('#newUsernameInput'); 
-      const errorMsg = modal.querySelector('#usernameError'); 
-      modal.querySelector('#cancelUsernameBtn').addEventListener('click', () => modal.remove()); 
-      
-      modal.querySelector('#saveUsernameBtn').addEventListener('click', async () => { 
-        const newUsername = input.value.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''); 
-        if (!newUsername || newUsername.length < 3) { 
-          errorMsg.textContent = 'Mínimo 3 caracteres (solo letras, números y _)'; 
-          errorMsg.hidden = false; 
-          return; 
-        } 
-        if (newUsername === perfil.username) { modal.remove(); return; } 
-        showLoading(); 
-        const { data: existing } = await db.from('profiles').select('id').eq('username', newUsername).maybeSingle(); 
-        if (existing) { 
-          hideLoading(); 
-          errorMsg.textContent = 'Ese @ ya está en uso. Prueba con otro.'; 
-          errorMsg.hidden = false; 
-          return; 
-        } 
-        const { error } = await db.from('profiles').update({ username: newUsername }).eq('id', session.user.id); 
-        hideLoading(); 
-        if (error) { showToast('Error: ' + error.message, 'error'); return; } 
-        showToast('@ actualizado', 'ok'); 
-        modal.remove(); 
-        cargarPerfilPublico(); 
-      }); 
     }); 
   } 
 }
@@ -2830,17 +2816,13 @@ const yearEl = document.getElementById('year');
 if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 (async () => { 
-  // 1. Cargar configuraciones (¿Mostrar mis relatos en el menú?)
   await cargarSiteSettings(); 
   
-  // 2. Re-dibujar el menú con los datos reales (Para que oculte "Mis relatos" si es necesario)
   if (typeof actualizarDrawerSessionLinks === 'function') {
     actualizarDrawerSessionLinks();
   }
 
-  // 3. Cargar el contenido de la página correspondiente
   dispararContenidoSegunPath(); 
-  
   if (window.lucide) lucide.createIcons(); 
 })();
 
