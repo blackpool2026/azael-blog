@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Con @ único, generador aleatorio y bloqueo de edición
+   Con flujo de registro de 2 pasos y @ único
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -475,25 +475,47 @@ function inyectarAuthModal() {
         <div id="registerView" hidden>
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
-          <form id="registerForm" class="auth-form-c">
+          
+          <!-- PASO 1: Datos Personales -->
+          <form id="registerStep1" class="auth-form-c">
+            <div style="display: flex; gap: 8px;">
+              <label style="flex: 1;">Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
+              <label style="flex: 1;">Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
+            </div>
+            <label>Correo <input type="email" id="regEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
+            <label>Contraseña <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
+            <label>Repetir Contraseña <input type="password" id="regConfirmPassword" required minlength="6" autocomplete="new-password" placeholder="Repite la contraseña" /></label>
+            
+            <div class="auth-consent-c">
+              <input type="checkbox" id="regConsent" required />
+              <label for="regConsent">Acepto recibir novedades de los libros y del blog por correo.</label>
+            </div>
+            
+            <p class="auth-error-c" id="regErrorStep1" hidden></p>
+            <button type="submit" class="btn btn-primary btn-block">Siguiente</button>
+          </form>
+
+          <!-- PASO 2: Elección de @ -->
+          <form id="registerStep2" class="auth-form-c" hidden>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Elige tu nombre de usuario. <br><strong>⚠️ No podrás cambiarlo después.</strong></p>
+            
             <label>Nombre de usuario (@)
               <div style="display: flex; gap: 8px;">
-                <input type="text" id="registerUsername" required minlength="3" maxlength="20" placeholder="tú_apodo" style="flex: 1; text-transform: lowercase;" />
-                <button type="button" id="btnGenerateUsername" class="btn btn-ghost" style="padding: 0 12px; font-size: 18px;" title="Generar @ aleatorio">🎲</button>
+                <input type="text" id="regUsername" required minlength="3" maxlength="20" placeholder="tu_apodo" style="flex: 1; text-transform: lowercase;" />
+                <button type="button" id="btnGenerateUsername" class="btn btn-ghost" style="padding: 0 12px; font-size: 18px;" title="Generar otro">🎲</button>
               </div>
             </label>
-            <p style="font-size: 11px; color: var(--text-tertiary); margin-top: -8px; margin-bottom: 8px;">⚠️ Elige bien tu @, no podrás cambiarlo después.</p>
             
-            <label>Correo <input type="email" id="registerEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
-            <label>Contraseña <input type="password" id="registerPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
-            <div class="auth-consent-c">
-              <input type="checkbox" id="registerConsent" required />
-              <label for="registerConsent">Acepto recibir novedades de los libros y del blog por correo.</label>
+            <div id="usernameSuggestions" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;"></div>
+            <p class="auth-error-c" id="regErrorStep2" hidden></p>
+            
+            <div style="display: flex; gap: 8px; margin-top: 8px;">
+              <button type="button" id="btnBackStep1" class="btn btn-ghost" style="flex: 1;">Atrás</button>
+              <button type="submit" class="btn btn-primary" style="flex: 2;">Crear cuenta</button>
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Crear cuenta</button>
-            <p class="auth-error-c" id="registerError" hidden></p>
           </form>
-          <p class="auth-switch-c">¿Ya tienes cuenta? <button type="button" id="goLogin">Iniciar sesión</button></p>
+          
+          <p class="auth-switch-c" id="regSwitchLogin">¿Ya tienes cuenta? <button type="button" id="goLogin">Iniciar sesión</button></p>
         </div>
       </div>
     </div>
@@ -503,12 +525,26 @@ function inyectarAuthModal() {
   const loginView = document.getElementById('loginView'); 
   const registerView = document.getElementById('registerView'); 
   const loginForm = document.getElementById('loginForm'); 
-  const registerForm = document.getElementById('registerForm'); 
+  const registerStep1 = document.getElementById('registerStep1'); 
+  const registerStep2 = document.getElementById('registerStep2');
   const loginError = document.getElementById('loginError'); 
-  const registerError = document.getElementById('registerError');
+  const regErrorStep1 = document.getElementById('regErrorStep1');
+  const regErrorStep2 = document.getElementById('regErrorStep2');
   
-  function showLoginView() { loginView.hidden = false; registerView.hidden = true; }
-  function showRegisterView() { loginView.hidden = true; registerView.hidden = false; }
+  function showLoginView() { 
+    loginView.hidden = false; 
+    registerView.hidden = true; 
+    registerStep1.hidden = false;
+    registerStep2.hidden = true;
+  }
+  
+  function showRegisterView() { 
+    loginView.hidden = true; 
+    registerView.hidden = false; 
+    registerStep1.hidden = false;
+    registerStep2.hidden = true;
+    document.getElementById('regSwitchLogin').hidden = false;
+  }
   
   window.__showLoginView = showLoginView; 
   window.__showRegisterView = showRegisterView;
@@ -517,11 +553,61 @@ function inyectarAuthModal() {
   authModal.addEventListener('click', (e) => { if (e.target === authModal) authModal.hidden = true; });
   document.getElementById('goRegister').addEventListener('click', showRegisterView);
   document.getElementById('goLogin').addEventListener('click', showLoginView);
-  
-  // Generador de @ aleatorio
+
+  // Lógica del Paso 1 -> Paso 2
+  registerStep1.addEventListener('submit', (e) => {
+    e.preventDefault();
+    regErrorStep1.hidden = true;
+    
+    const p1 = document.getElementById('regPassword').value;
+    const p2 = document.getElementById('regConfirmPassword').value;
+    
+    if (p1 !== p2) {
+      regErrorStep1.textContent = 'Las contraseñas no coinciden.';
+      regErrorStep1.hidden = false;
+      return;
+    }
+
+    const firstName = document.getElementById('regFirstName').value.trim().toLowerCase();
+    const lastName = document.getElementById('regLastName').value.trim().toLowerCase();
+    
+    // Generar sugerencias automáticas
+    const baseName = firstName.replace(/[^a-z0-9]/g, '');
+    const baseLast = lastName.replace(/[^a-z0-9]/g, '');
+    const randomNum = Math.floor(10 + Math.random() * 90);
+    
+    const suggestions = [
+      `${baseName}${baseLast}`,
+      `${baseName}.${baseLast}`,
+      `${baseName}_${baseLast}`,
+      `${baseName}${randomNum}`,
+      `${baseName.charAt(0)}${baseLast}`
+    ];
+    
+    const sugContainer = document.getElementById('usernameSuggestions');
+    sugContainer.innerHTML = suggestions.map(s => 
+      `<button type="button" class="btn btn-ghost" style="padding: 4px 10px; font-size: 12px; border-radius: 100px; text-transform: lowercase;" onclick="document.getElementById('regUsername').value='${s}'">@${s}</button>`
+    ).join('');
+
+    document.getElementById('regUsername').value = suggestions[0];
+    registerStep1.hidden = true;
+    registerStep2.hidden = false;
+    document.getElementById('regSwitchLogin').hidden = true;
+  });
+
+  // Botón Volver Atrás (Paso 2 -> Paso 1)
+  document.getElementById('btnBackStep1').addEventListener('click', () => {
+    registerStep2.hidden = true;
+    registerStep1.hidden = false;
+    document.getElementById('regSwitchLogin').hidden = false;
+    regErrorStep2.hidden = true;
+  });
+
+  // Generador aleatorio manual
   document.getElementById('btnGenerateUsername').addEventListener('click', () => {
+    const firstName = document.getElementById('regFirstName').value.trim().toLowerCase().replace(/[^a-z0-9]/g, '');
     const randomId = Math.floor(1000 + Math.random() * 9000);
-    document.getElementById('registerUsername').value = `lector_${randomId}`;
+    document.getElementById('regUsername').value = `${firstName || 'lector'}_${randomId}`;
   });
 
   loginForm.addEventListener('submit', async (e) => { 
@@ -546,43 +632,54 @@ function inyectarAuthModal() {
     setTimeout(() => location.reload(), 500); 
   });
   
-  registerForm.addEventListener('submit', async (e) => { 
+  // Submit Final (Paso 2)
+  registerStep2.addEventListener('submit', async (e) => { 
     e.preventDefault(); 
-    registerError.hidden = true; 
+    regErrorStep2.hidden = true; 
     showLoading(); 
     
-    // Limpiamos el @ (solo minúsculas, números y guiones bajos)
-    const rawUsername = document.getElementById('registerUsername').value.trim().toLowerCase();
+    const rawUsername = document.getElementById('regUsername').value.trim().toLowerCase();
     const username = rawUsername.replace(/[^a-z0-9_]/g, '');
     
     if (username.length < 3) {
       hideLoading();
-      registerError.textContent = 'El @ debe tener al menos 3 caracteres (letras, números, _).';
-      registerError.hidden = false;
+      regErrorStep2.textContent = 'El @ debe tener al menos 3 caracteres (letras, números, _).';
+      regErrorStep2.hidden = false;
       return;
     }
 
-    // Verificamos si el @ ya existe ANTES de registrar
+    // Validar @ duplicado
     const { data: existingUser } = await db.from('profiles').select('id').eq('username', username).maybeSingle();
     if (existingUser) {
       hideLoading();
-      registerError.textContent = 'Ese @ ya está en uso. Elige otro o usa el generador.';
-      registerError.hidden = false;
+      regErrorStep2.textContent = 'Ese @ ya está en uso. Elige otro o usa las sugerencias.';
+      regErrorStep2.hidden = false;
       return;
     }
 
-    const email = document.getElementById('registerEmail').value.trim(); 
-    const password = document.getElementById('registerPassword').value; 
+    const email = document.getElementById('regEmail').value.trim(); 
+    const password = document.getElementById('regPassword').value; 
+    const firstName = document.getElementById('regFirstName').value.trim();
+    const lastName = document.getElementById('regLastName').value.trim();
+
+    // Registro en Supabase
     const { data: signUpData, error } = await db.auth.signUp({ 
       email, 
       password, 
-      options: { data: { username: username, newsletter: true } } 
+      options: { 
+        data: { 
+          username: username, 
+          first_name: firstName,
+          last_name: lastName,
+          newsletter: true 
+        } 
+      } 
     }); 
     hideLoading(); 
     
     if (error) { 
-      registerError.textContent = traducirError(error.message); 
-      registerError.hidden = false; 
+      regErrorStep2.textContent = traducirError(error.message); 
+      regErrorStep2.hidden = false; 
       return; 
     } 
     
@@ -596,7 +693,8 @@ function inyectarAuthModal() {
     } catch (e) { console.warn(e); } 
     
     authModal.hidden = true; 
-    registerForm.reset(); 
+    document.getElementById('regPassword').value = '';
+    document.getElementById('regConfirmPassword').value = '';
     cache.clear(); 
     actualizarDrawerSessionLinks(); 
     setTimeout(() => location.reload(), 500); 
@@ -2651,7 +2749,6 @@ async function cargarPerfilPublico() {
   const esPropio = session.user.id === perfil.id; 
   const fechaRegistro = new Date(perfil.created_at).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }); 
   
-  // NOTA: Se ha eliminado el botón de "Editar mi @" porque ahora es permanente.
   cont.innerHTML = `
     <section class="page-head-c">
       <div class="container">
