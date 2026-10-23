@@ -7344,11 +7344,14 @@ input, textarea, select {
 }
 
 /* 3. Arreglar los modales para que no se salgan de la pantalla (especialmente en móviles) */
-.modal-overlay-c {
+.modal-overlay-c:not([hidden]) {
   padding: 10px !important;
   display: flex !important;
   align-items: center !important;
   justify-content: center !important;
+}
+.modal-overlay-c[hidden] {
+  display: none !important;
 }
 .modal-c {
   max-height: 90vh !important;
