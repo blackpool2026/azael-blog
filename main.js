@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Con flujo de registro de 2 pasos y @ único
+   Fix: Formulario de registro ordenado y pasos separados
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -472,16 +472,14 @@ function inyectarAuthModal() {
           <p class="auth-switch-c">¿No tienes cuenta? <button type="button" id="goRegister">Crear cuenta</button></p>
         </div>
         
-        <div id="registerView" hidden>
+        <div id="registerView" style="display: none;">
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
           
           <!-- PASO 1: Datos Personales -->
-          <form id="registerStep1" class="auth-form-c">
-            <div style="display: flex; gap: 8px;">
-              <label style="flex: 1;">Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
-              <label style="flex: 1;">Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
-            </div>
+          <form id="registerStep1" class="auth-form-c" style="display: flex;">
+            <label>Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
+            <label>Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
             <label>Correo <input type="email" id="regEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
             <label>Contraseña <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
             <label>Repetir Contraseña <input type="password" id="regConfirmPassword" required minlength="6" autocomplete="new-password" placeholder="Repite la contraseña" /></label>
@@ -496,7 +494,7 @@ function inyectarAuthModal() {
           </form>
 
           <!-- PASO 2: Elección de @ -->
-          <form id="registerStep2" class="auth-form-c" hidden>
+          <form id="registerStep2" class="auth-form-c" style="display: none;">
             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Elige tu nombre de usuario. <br><strong>⚠️ No podrás cambiarlo después.</strong></p>
             
             <label>Nombre de usuario (@)
@@ -532,18 +530,21 @@ function inyectarAuthModal() {
   const regErrorStep2 = document.getElementById('regErrorStep2');
   
   function showLoginView() { 
-    loginView.hidden = false; 
-    registerView.hidden = true; 
-    registerStep1.hidden = false;
-    registerStep2.hidden = true;
+    loginView.style.display = 'block'; 
+    registerView.style.display = 'none'; 
   }
   
   function showRegisterView() { 
-    loginView.hidden = true; 
-    registerView.hidden = false; 
-    registerStep1.hidden = false;
-    registerStep2.hidden = true;
-    document.getElementById('regSwitchLogin').hidden = false;
+    loginView.style.display = 'none'; 
+    registerView.style.display = 'block'; 
+    
+    // Resetear al paso 1
+    registerStep1.style.display = 'flex';
+    registerStep2.style.display = 'none';
+    document.getElementById('regSwitchLogin').style.display = 'block';
+    registerStep1.reset();
+    regErrorStep1.hidden = true;
+    regErrorStep2.hidden = true;
   }
   
   window.__showLoginView = showLoginView; 
@@ -590,16 +591,18 @@ function inyectarAuthModal() {
     ).join('');
 
     document.getElementById('regUsername').value = suggestions[0];
-    registerStep1.hidden = true;
-    registerStep2.hidden = false;
-    document.getElementById('regSwitchLogin').hidden = true;
+    
+    // Cambio visual de ventana
+    registerStep1.style.display = 'none';
+    registerStep2.style.display = 'flex';
+    document.getElementById('regSwitchLogin').style.display = 'none';
   });
 
   // Botón Volver Atrás (Paso 2 -> Paso 1)
   document.getElementById('btnBackStep1').addEventListener('click', () => {
-    registerStep2.hidden = true;
-    registerStep1.hidden = false;
-    document.getElementById('regSwitchLogin').hidden = false;
+    registerStep2.style.display = 'none';
+    registerStep1.style.display = 'flex';
+    document.getElementById('regSwitchLogin').style.display = 'block';
     regErrorStep2.hidden = true;
   });
 
