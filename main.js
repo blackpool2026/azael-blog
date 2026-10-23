@@ -1,6 +1,6 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO
-   Fix: Formulario de registro ordenado y pasos separados
+   Fix definitivo: Formulario de 2 pasos oculto correctamente
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -453,9 +453,10 @@ function inyectarAuthModal() {
   const mount = document.getElementById('auth-mount'); 
   if (!mount) return;
   
+  // Forzamos display: none con !important en los estilos inline para que no se mezclen
   mount.innerHTML = `
     <div class="modal-overlay-c" id="authModal" hidden>
-      <div class="modal-c">
+      <div class="modal-c" style="padding-bottom: 80px;"> <!-- Espacio extra para el botón Instalar App -->
         <button class="modal-close-c" id="authClose" aria-label="Cerrar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
@@ -476,7 +477,7 @@ function inyectarAuthModal() {
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
           
-          <!-- PASO 1: Datos Personales -->
+          <!-- PASO 1: Datos Personales (En columna para evitar cortes) -->
           <form id="registerStep1" class="auth-form-c" style="display: flex;">
             <label>Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
             <label>Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
@@ -538,9 +539,9 @@ function inyectarAuthModal() {
     loginView.style.display = 'none'; 
     registerView.style.display = 'block'; 
     
-    // Resetear al paso 1
+    // Resetear al paso 1 forzosamente
     registerStep1.style.display = 'flex';
-    registerStep2.style.display = 'none';
+    registerStep2.style.display = 'none !important'; // Forzamos el none
     document.getElementById('regSwitchLogin').style.display = 'block';
     registerStep1.reset();
     regErrorStep1.hidden = true;
@@ -592,7 +593,7 @@ function inyectarAuthModal() {
 
     document.getElementById('regUsername').value = suggestions[0];
     
-    // Cambio visual de ventana
+    // Cambio visual de ventana forzado
     registerStep1.style.display = 'none';
     registerStep2.style.display = 'flex';
     document.getElementById('regSwitchLogin').style.display = 'none';
