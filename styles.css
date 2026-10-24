@@ -7433,3 +7433,56 @@ input, textarea, select {
 .pwa-install-btn {
   z-index: 99999 !important;
 }
+/* ============ FIX BOTONES HERO (INICIO) ============ */
+.hero-actions-c {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.hero-actions-c .btn {
+  flex: 1;
+  min-width: 140px;
+  justify-content: center;
+  padding: 12px 16px;
+  white-space: nowrap;
+}
+@media (max-width: 400px) {
+  .hero-actions-c .btn { flex: 100%; }
+}
+
+/* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
+.story-card-coming-soon .book-cover { position: relative; }
+.coming-soon-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.5);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  opacity: 1;
+  z-index: 2;
+}
+.coming-soon-badge {
+  background: var(--accent-color);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 6px 14px;
+  border-radius: 100px;
+  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
+}
+.coming-soon-date {
+  font-family: var(--font-serif);
+  font-size: 12px;
+  color: #fff;
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
