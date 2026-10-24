@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'azael-v46';
+const CACHE_VERSION = 'azael-v47';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
