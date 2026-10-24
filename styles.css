@@ -7434,14 +7434,31 @@ input, textarea, select {
   z-index: 99999 !important;
 }
 /* ============ FIX DEFINITIVO HERO (MÓVIL) ============ */
+.hero-content {
+  padding-left: 20px !important; /* Evita que el título choque con el botón < */
+  padding-right: 20px !important; /* Evita que choque con el botón > */
+}
+
+.hero-title-c {
+  margin-top: 15px !important;
+  margin-bottom: 15px !important;
+  line-height: 1.1 !important;
+  font-size: 32px !important; /* Ajusta el tamaño si es muy grande */
+}
+
+/* Mover los botones del carrusel para que no tapen el texto */
+.hero-nav-prev { left: 5px !important; }
+.hero-nav-next { right: 5px !important; }
+.hero-nav { width: 32px !important; height: 32px !important; }
+
 .hero-actions-c {
   display: flex !important;
-  flex-direction: column !important; /* Apilados en móvil */
+  flex-direction: column !important; 
   gap: 12px !important;
   width: 100% !important;
   margin-top: 20px !important;
   position: relative;
-  z-index: 10; /* Para que estén por encima de la imagen */
+  z-index: 10;
 }
 
 .hero-actions-c .btn {
@@ -7449,40 +7466,30 @@ input, textarea, select {
   padding: 14px 20px !important;
   justify-content: center !important;
   font-size: 15px !important;
+  list-style: none !important; /* Quita cualquier viñeta */
 }
 
-/* Arreglar el botón "Ver todas" para que no se vea transparente */
+/* Quitar los puntos negros del botón "Ver todas" */
+.hero-actions-c .btn::before,
+.hero-actions-c .btn::after {
+  display: none !important;
+  content: none !important;
+}
+
+/* Arreglar el fondo del botón "Ver todas" */
 .hero-actions-c .btn-ghost {
   background: rgba(255, 255, 255, 0.1) !important;
   border: 1px solid rgba(255, 255, 255, 0.2) !important;
   backdrop-filter: blur(10px);
 }
 
-/* Darle un poco de espacio al texto para que no se monte en la etiqueta roja */
-.hero-title-c {
-  margin-top: 15px !important;
-  margin-bottom: 15px !important;
-  line-height: 1.1 !important;
-}
-
-/* Mover el botón de Instalar App para que no tape el contenido */
+/* SUBIR el botón de Instalar App para que no tape "Novedades" */
 .pwa-install-btn {
-  bottom: 80px !important; /* Lo subimos un poco */
+  bottom: 90px !important; 
   right: 15px !important;
   padding: 10px 15px !important;
   font-size: 12px !important;
   z-index: 9999 !important;
-}
-
-/* Asegurar que el botón de ajustes de lectura (si existe) no se rompa */
-@media (min-width: 501px) {
-  .hero-actions-c {
-    flex-direction: row !important;
-  }
-  .hero-actions-c .btn {
-    width: auto !important;
-    flex: 1 !important;
-  }
 }
 /* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
 .story-card-coming-soon .book-cover { position: relative; }
