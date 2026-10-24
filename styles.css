@@ -7433,63 +7433,82 @@ input, textarea, select {
 .pwa-install-btn {
   z-index: 99999 !important;
 }
-/* ============ FIX DEFINITIVO HERO (MÓVIL) ============ */
-.hero-content {
-  padding-left: 20px !important; /* Evita que el título choque con el botón < */
-  padding-right: 20px !important; /* Evita que choque con el botón > */
-}
+/* ============ FIX HERO DEFINITIVO (MÓVILES) ============ */
+@media (max-width: 768px) {
+  /* 1. Mover las flechas < > arriba y hacerlas más pequeñas para que no tapen el texto */
+  .hero-nav {
+    top: 20px !important;
+    transform: none !important;
+    width: 32px !important;
+    height: 32px !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    opacity: 0.8 !important;
+  }
+  .hero-nav-prev { left: 15px !important; }
+  .hero-nav-next { right: 15px !important; }
+  .hero-nav svg { width: 16px !important; height: 16px !important; }
 
-.hero-title-c {
-  margin-top: 15px !important;
-  margin-bottom: 15px !important;
-  line-height: 1.1 !important;
-  font-size: 32px !important; /* Ajusta el tamaño si es muy grande */
-}
+  /* 2. Dar espacio al título para que no se corte */
+  .hero-content {
+    padding-top: 60px !important; /* Baja el texto para dejar espacio a las flechas */
+    padding-left: 15px !important;
+    padding-right: 15px !important;
+  }
+  .hero-title-c {
+    font-size: 28px !important;
+    line-height: 1.2 !important;
+    word-break: break-word !important; /* Si es muy largo, lo pasa a la siguiente línea */
+  }
 
-/* Mover los botones del carrusel para que no tapen el texto */
-.hero-nav-prev { left: 5px !important; }
-.hero-nav-next { right: 5px !important; }
-.hero-nav { width: 32px !important; height: 32px !important; }
+  /* 3. Quitar los puntos negros (viñetas) de los botones */
+  .hero-actions-c {
+    display: flex !important;
+    flex-direction: column !important; 
+    gap: 10px !important;
+    width: 100% !important;
+    margin-top: 15px !important;
+    list-style: none !important;
+  }
+  .hero-actions-c .btn {
+    width: 100% !important;
+    padding: 14px 20px !important;
+    justify-content: center !important;
+    list-style: none !important;
+  }
+  .hero-actions-c .btn::before,
+  .hero-actions-c .btn::after,
+  .hero-actions-c .btn span::before,
+  .hero-actions-c .btn span::after {
+    display: none !important;
+    content: none !important;
+  }
 
-.hero-actions-c {
-  display: flex !important;
-  flex-direction: column !important; 
-  gap: 12px !important;
-  width: 100% !important;
-  margin-top: 20px !important;
-  position: relative;
-  z-index: 10;
-}
+  /* 4. Arreglar los puntitos (...) del carrusel para que se vean bien */
+  .hero-dots {
+    bottom: 20px !important;
+    gap: 6px !important;
+  }
+  .hero-dot {
+    width: 8px !important;
+    height: 8px !important;
+    background: rgba(255, 255, 255, 0.3) !important;
+    border-radius: 50% !important;
+  }
+  .hero-dot.active {
+    width: 24px !important;
+    border-radius: 4px !important;
+    background: var(--accent-color) !important;
+    box-shadow: 0 0 10px var(--accent-glow) !important;
+  }
 
-.hero-actions-c .btn {
-  width: 100% !important;
-  padding: 14px 20px !important;
-  justify-content: center !important;
-  font-size: 15px !important;
-  list-style: none !important; /* Quita cualquier viñeta */
-}
-
-/* Quitar los puntos negros del botón "Ver todas" */
-.hero-actions-c .btn::before,
-.hero-actions-c .btn::after {
-  display: none !important;
-  content: none !important;
-}
-
-/* Arreglar el fondo del botón "Ver todas" */
-.hero-actions-c .btn-ghost {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  backdrop-filter: blur(10px);
-}
-
-/* SUBIR el botón de Instalar App para que no tape "Novedades" */
-.pwa-install-btn {
-  bottom: 90px !important; 
-  right: 15px !important;
-  padding: 10px 15px !important;
-  font-size: 12px !important;
-  z-index: 9999 !important;
+  /* 5. Mover el botón de Instalar App a la izquierda para que no tape "Novedades" */
+  .pwa-install-btn {
+    bottom: 20px !important;
+    left: 15px !important;
+    right: auto !important; /* Anula la posición derecha */
+    padding: 10px 15px !important;
+    font-size: 12px !important;
+  }
 }
 /* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
 .story-card-coming-soon .book-cover { position: relative; }
