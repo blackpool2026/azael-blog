@@ -7439,18 +7439,18 @@ input, textarea, select {
   /* 1. Los botones se ponen uno al lado del otro */
   .hero-actions-c {
     display: flex !important;
-    flex-direction: row !important; /* En fila */
+    flex-direction: row !important;
     flex-wrap: wrap !important;
     gap: 10px !important;
     width: 100% !important;
     margin-top: 15px !important;
-    margin-bottom: 40px !important; /* Deja espacio para los puntitos abajo */
+    margin-bottom: 40px !important;
     justify-content: center !important;
   }
 
   /* 2. Ajustar tamaño de los botones para que quepan juntos */
   .hero-actions-c .btn {
-    flex: 1 1 0% !important; /* Se reparten el ancho a la mitad */
+    flex: 1 1 0% !important;
     padding: 12px 10px !important;
     font-size: 13px !important;
     justify-content: center !important;
@@ -7465,13 +7465,13 @@ input, textarea, select {
   .hero-actions-c .btn-ghost::after {
     list-style: none !important;
     list-style-type: none !important;
-    content: none !important; /* Borra cualquier viñeta falsa */
+    content: none !important;
   }
 
   /* 4. Arreglar los puntitos del carrusel (....) */
   .hero-dots {
     position: absolute !important;
-    bottom: 15px !important; /* Los pega abajo del todo */
+    bottom: 15px !important;
     left: 50% !important;
     transform: translateX(-50%) !important;
     display: flex !important;
@@ -7489,6 +7489,31 @@ input, textarea, select {
     width: 20px !important;
     background: var(--accent-color) !important;
     border-radius: 4px !important;
+  }
+
+  /* 5. MOVER LAS FLECHAS < > A LAS ESQUINAS SUPERIORES */
+  .hero-nav {
+    top: 20px !important;        /* Las sube a la esquina */
+    bottom: auto !important;     /* Quita cualquier alineación inferior */
+    transform: none !important;  /* Quita el centrado vertical */
+    width: 36px !important;
+    height: 36px !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    backdrop-filter: blur(4px);
+    z-index: 30 !important;      /* Asegura que estén por encima de todo */
+  }
+  
+  .hero-nav-prev { left: 15px !important; }
+  .hero-nav-next { right: 15px !important; }
+  
+  .hero-nav svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  /* 6. Darle espacio al contenido para que no choque con las flechas de arriba */
+  .hero-content {
+    padding-top: 70px !important; /* Baja un poco el texto de la etiqueta "Historia" */
   }
 }
 /* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
