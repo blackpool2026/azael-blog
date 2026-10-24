@@ -7492,40 +7492,45 @@ input, textarea, select {
     border-radius: 4px !important;
   }
 
-  /* 5. FLECHAS ESTILO MINIMALISTA (Sin fondo, solo el icono) */
-  .hero-nav {
-    top: 20px !important;        
-    bottom: auto !important;     
-    transform: none !important;  
-    width: 40px !important;
-    height: 40px !important;
-    
-    /* Quitar el fondo, borde y bordes redondos */
-    background: transparent !important; 
-    border: none !important;
-    border-radius: 0 !important;
-    
-    /* Color rojizo y sombra para que se lea sobre la foto */
-    color: var(--accent-color) !important; 
-    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8));
-    z-index: 30 !important;      
-    transition: transform 0.2s ease, color 0.2s ease !important;
-  }
+  /* 5. FLECHAS ESTILO MINIMALISTA (Sin fondo, sin difuminado) */
+.hero-nav {
+  top: 20px !important;        
+  bottom: auto !important;     
+  transform: none !important;  
+  width: 40px !important;
+  height: 40px !important;
   
-  .hero-nav:hover, .hero-nav:active {
-    background: transparent !important;
-    transform: scale(1.2) !important; /* Efecto de zoom al tocar */
-    color: #ffffff !important; /* Se vuelve blanco al presionar */
-  }
+  /* Quitar fondo, borde y esquinas */
+  background: transparent !important; 
+  border: none !important;
+  border-radius: 0 !important;
   
-  .hero-nav-prev { left: 15px !important; }
-  .hero-nav-next { right: 15px !important; }
+  /* ELIMINAR EL DIFUMINADO (El "cuadrado" que se ve) */
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  box-shadow: none !important;
   
-  .hero-nav svg {
-    width: 32px !important; /* Hacemos la flecha más grande */
-    height: 32px !important;
-    stroke-width: 2.5 !important; /* La hacemos un poco más gruesa */
-  }
+  /* Color de la flecha */
+  color: var(--accent-color) !important; 
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.8)); /* Sombra solo para la flecha, no para el fondo */
+  z-index: 30 !important;      
+  transition: transform 0.2s ease, color 0.2s ease !important;
+}
+
+.hero-nav:hover, .hero-nav:active {
+  background: transparent !important;
+  transform: scale(1.2) !important; 
+  color: #ffffff !important; 
+}
+
+.hero-nav-prev { left: 15px !important; }
+.hero-nav-next { right: 15px !important; }
+
+.hero-nav svg {
+  width: 32px !important; 
+  height: 32px !important;
+  stroke-width: 2.5 !important; 
+}
 
   /* 6. Darle espacio al contenido para que no choque con las flechas de arriba */
   .hero-content {
