@@ -1,6 +1,5 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO
-   Fix: Login/Registro con try/catch y pasos corregidos
+   AZAEL BLOG — main.js COMPLETO (Fase 5)
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -539,7 +538,7 @@ function inyectarAuthModal() {
     registerView.style.display = 'block'; 
     
     registerStep1.style.display = 'flex';
-    registerStep2.style.display = 'none'; // Corregido sin el !important
+    registerStep2.style.display = 'none'; 
     document.getElementById('regSwitchLogin').style.display = 'block';
     registerStep1.reset();
     regErrorStep1.hidden = true;
@@ -554,7 +553,6 @@ function inyectarAuthModal() {
   document.getElementById('goRegister').addEventListener('click', showRegisterView);
   document.getElementById('goLogin').addEventListener('click', showLoginView);
 
-  // Lógica del Paso 1 -> Paso 2
   registerStep1.addEventListener('submit', (e) => {
     e.preventDefault();
     regErrorStep1.hidden = true;
@@ -608,7 +606,6 @@ function inyectarAuthModal() {
     document.getElementById('regUsername').value = `${firstName || 'lector'}_${randomId}`;
   });
 
-  // LOGIN CON TRY/CATCH
   loginForm.addEventListener('submit', async (e) => { 
     e.preventDefault(); 
     loginError.hidden = true; 
@@ -635,7 +632,6 @@ function inyectarAuthModal() {
     }
   });
   
-  // REGISTRO CON TRY/CATCH
   registerStep2.addEventListener('submit', async (e) => { 
     e.preventDefault(); 
     regErrorStep2.hidden = true; 
@@ -652,7 +648,6 @@ function inyectarAuthModal() {
     }
 
     try {
-      // Validar @ duplicado
       const { data: existingUser } = await db.from('profiles').select('id').eq('username', username).maybeSingle();
       if (existingUser) {
         throw new Error('Ese @ ya está en uso. Elige otro.');
@@ -785,6 +780,9 @@ async function cargarHero() {
 
 function renderHeroSlideHTML(s, isFirst = false) { 
   const isFeatured = !!s.is_featured; 
+  const isComingSoon = s.status === 'Próximamente';
+  const tituloMostrar = isComingSoon ? `${escapeHtml(s.title)} (Próximamente)` : escapeHtml(s.title);
+
   return `
     <div class="hero-slide">
       <div class="hero-bg">
@@ -792,10 +790,13 @@ function renderHeroSlideHTML(s, isFirst = false) {
       </div>
       <div class="hero-content container">
         ${isFeatured ? '<span class="hero-tag">Historia destacada</span>' : '<span class="hero-tag hero-tag-alt">Historia</span>'}
-        <h1 class="hero-title-c">${escapeHtml(s.title)}</h1>
+        <h1 class="hero-title-c">${tituloMostrar}</h1>
         ${s.synopsis ? `<p class="hero-synopsis">${escapeHtml(s.synopsis)}</p>` : ''}
         <div class="hero-actions-c">
-          <a href="historia.html?id=${s.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>
+          ${isComingSoon 
+            ? `<button class="btn btn-primary" style="cursor:not-allowed; opacity:0.8;">Próximamente</button>`
+            : `<a href="historia.html?id=${s.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>`
+          }
           <a href="historias.html" class="btn btn-ghost">Ver todas</a>
         </div>
       </div>
@@ -854,6 +855,60 @@ async function cargarNovedades() {
   } catch (e) { 
     console.warn('Novedades timeout:', e); 
   } 
+}
+
+async function cargarProximamente() {
+  const cont = document.getElementById('proximamenteMount');
+  if (!cont) return;
+
+  try {
+    const { data, error } = await withTimeout(
+      db.from('stories')
+        .select('id, title, synopsis, cover_url, genre, status, release_date')
+        .eq('is_published', true)
+        .eq('status', 'Próximamente')
+        .order('created_at', { ascending: false }),
+      8000
+    );
+
+    if (error || !data?.length) return;
+
+    cont.innerHTML = `
+      <section class="section">
+        <div class="container">
+          <div class="section-head">
+            <div>
+              <h2 class="section-title">Próximamente</h2>
+              <p class="section-sub">Historias que están por llegar</p>
+            </div>
+          </div>
+          <div class="stories-grid-c">
+            ${data.map(s => {
+              const fechaTexto = s.release_date 
+                ? new Date(s.release_date).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) 
+                : null;
+              return `
+                <a class="story-card-c story-card-coming-soon" href="historia.html?id=${s.id}">
+                  <div class="book-cover">
+                    ${s.cover_url ? `<img src="${s.cover_url}" alt="${escapeHtml(s.title)}" loading="lazy" />` : escapeHtml(s.title.charAt(0))}
+                    <div class="coming-soon-overlay">
+                      <span class="coming-soon-badge">Próximamente</span>
+                      ${fechaTexto ? `<span class="coming-soon-date">${fechaTexto}</span>` : ''}
+                    </div>
+                  </div>
+                  <h3 class="story-card-c-title">${escapeHtml(s.title)}</h3>
+                  <div class="story-card-c-meta">${escapeHtml(s.genre || 'Sin género')}</div>
+                </a>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      </section>
+    `;
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    console.warn('Error cargando próximamente:', e);
+  }
 }
 
 async function cargarRelatosHome() { 
@@ -1555,32 +1610,38 @@ function renderStory({ story, chapters, logged }, cont) {
   const ht = document.querySelector('.header-title'); 
   if (ht) ht.textContent = story.title; 
   
-  const chaptersHtml = chapters.length ? chapters.map((c, i) => { 
-    const locked = c.is_premium && !logged; 
-    const num = c.chapter_order || (i + 1); 
-    const ultimaLectura = textoUltimaLectura(c.id); 
-    
-    let metaHtml = ultimaLectura 
-      ? `<span class="chapter-row-read">${ic('check-circle', 12)} ${ultimaLectura}</span><span>${tiempoRelativo(c.created_at)}</span>` 
-      : `<span>${tiempoRelativo(c.created_at)}</span>`; 
-      
-    return `
-      <a class="chapter-row" href="capitulo.html?id=${c.id}${locked ? '&locked=1' : ''}">
-        <div class="chapter-row-num">${String(num).padStart(2, '0')}</div>
-        <div class="chapter-row-body">
-          <div class="chapter-row-title">${escapeHtml(c.title)}</div>
-          <div class="chapter-row-meta">
-            ${metaHtml}
-            ${c.is_premium ? '<span style="color:var(--accent-color);font-weight:600;">Premium</span>' : ''}
-          </div>
-        </div>
-        ${locked ? `<div class="chapter-row-lock">${ic('lock', 20)}</div>` : ''}
-      </a>
-    `; 
-  }).join('') : emptyState('book', 'Sin capítulos aún', 'Pronto empezaré a publicar.'); 
+  const isComingSoon = story.status === 'Próximamente';
+
+  const chaptersHtml = isComingSoon 
+    ? `<div class="empty-c" style="margin-top: 20px;"><div class="empty-title">Este libro aún no tiene capítulos</div><div class="empty-sub">¡Pronto estará disponible!</div></div>`
+    : (chapters.length ? chapters.map((c, i) => { 
+        const locked = c.is_premium && !logged; 
+        const num = c.chapter_order || (i + 1); 
+        const ultimaLectura = textoUltimaLectura(c.id); 
+        
+        let metaHtml = ultimaLectura 
+          ? `<span class="chapter-row-read">${ic('check-circle', 12)} ${ultimaLectura}</span><span>${tiempoRelativo(c.created_at)}</span>` 
+          : `<span>${tiempoRelativo(c.created_at)}</span>`; 
+          
+        return `
+          <a class="chapter-row" href="capitulo.html?id=${c.id}${locked ? '&locked=1' : ''}">
+            <div class="chapter-row-num">${String(num).padStart(2, '0')}</div>
+            <div class="chapter-row-body">
+              <div class="chapter-row-title">${escapeHtml(c.title)}</div>
+              <div class="chapter-row-meta">
+                ${metaHtml}
+                ${c.is_premium ? '<span style="color:var(--accent-color);font-weight:600;">Premium</span>' : ''}
+              </div>
+            </div>
+            ${locked ? `<div class="chapter-row-lock">${ic('lock', 20)}</div>` : ''}
+          </a>
+        `; 
+      }).join('') : emptyState('book', 'Sin capítulos aún', 'Pronto empezaré a publicar.'));
   
   const firstChapter = chapters[0]; 
-  const continueBtn = firstChapter ? `<a href="capitulo.html?id=${firstChapter.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>` : ''; 
+  const continueBtn = (firstChapter && !isComingSoon) 
+    ? `<a href="capitulo.html?id=${firstChapter.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>` 
+    : (isComingSoon ? `<button class="btn btn-primary" disabled style="opacity:0.8;">Próximamente</button>` : '');
   
   cont.innerHTML = `
     <div class="container">
@@ -2859,6 +2920,7 @@ function dispararContenidoSegunPath() {
   if (path === 'index.html' || path === '') { 
     cargarHero(); 
     cargarNovedades(); 
+    cargarProximamente(); // <--- AÑADIDO AQUÍ
     cargarRelatosHome(); 
     cargarUltimoBlogHome(); 
     cargarHistorias({ excluirDestacada: false }); 
