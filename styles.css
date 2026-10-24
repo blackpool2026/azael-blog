@@ -7433,81 +7433,62 @@ input, textarea, select {
 .pwa-install-btn {
   z-index: 99999 !important;
 }
-/* ============ FIX HERO DEFINITIVO (MÓVILES) ============ */
+/* ============ REDISEÑO DEL HERO (MÓVIL) ============ */
 @media (max-width: 768px) {
-  /* 1. Mover las flechas < > arriba y hacerlas más pequeñas para que no tapen el texto */
-  .hero-nav {
-    top: 20px !important;
-    transform: none !important;
-    width: 32px !important;
-    height: 32px !important;
-    background: rgba(0, 0, 0, 0.5) !important;
-    opacity: 0.8 !important;
-  }
-  .hero-nav-prev { left: 15px !important; }
-  .hero-nav-next { right: 15px !important; }
-  .hero-nav svg { width: 16px !important; height: 16px !important; }
-
-  /* 2. Dar espacio al título para que no se corte */
-  .hero-content {
-    padding-top: 60px !important; /* Baja el texto para dejar espacio a las flechas */
-    padding-left: 15px !important;
-    padding-right: 15px !important;
-  }
-  .hero-title-c {
-    font-size: 28px !important;
-    line-height: 1.2 !important;
-    word-break: break-word !important; /* Si es muy largo, lo pasa a la siguiente línea */
-  }
-
-  /* 3. Quitar los puntos negros (viñetas) de los botones */
+  
+  /* 1. Los botones se ponen uno al lado del otro */
   .hero-actions-c {
     display: flex !important;
-    flex-direction: column !important; 
+    flex-direction: row !important; /* En fila */
+    flex-wrap: wrap !important;
     gap: 10px !important;
     width: 100% !important;
     margin-top: 15px !important;
-    list-style: none !important;
-  }
-  .hero-actions-c .btn {
-    width: 100% !important;
-    padding: 14px 20px !important;
+    margin-bottom: 40px !important; /* Deja espacio para los puntitos abajo */
     justify-content: center !important;
-    list-style: none !important;
   }
+
+  /* 2. Ajustar tamaño de los botones para que quepan juntos */
+  .hero-actions-c .btn {
+    flex: 1 1 0% !important; /* Se reparten el ancho a la mitad */
+    padding: 12px 10px !important;
+    font-size: 13px !important;
+    justify-content: center !important;
+    white-space: nowrap !important;
+  }
+
+  /* 3. ELIMINAR LOS PUNTOS NEGROS (A la fuerza) */
+  .hero-actions-c .btn,
   .hero-actions-c .btn::before,
   .hero-actions-c .btn::after,
-  .hero-actions-c .btn span::before,
-  .hero-actions-c .btn span::after {
-    display: none !important;
-    content: none !important;
+  .hero-actions-c .btn-ghost::before,
+  .hero-actions-c .btn-ghost::after {
+    list-style: none !important;
+    list-style-type: none !important;
+    content: none !important; /* Borra cualquier viñeta falsa */
   }
 
-  /* 4. Arreglar los puntitos (...) del carrusel para que se vean bien */
+  /* 4. Arreglar los puntitos del carrusel (....) */
   .hero-dots {
-    bottom: 20px !important;
+    position: absolute !important;
+    bottom: 15px !important; /* Los pega abajo del todo */
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    display: flex !important;
     gap: 6px !important;
+    z-index: 20 !important;
   }
   .hero-dot {
-    width: 8px !important;
-    height: 8px !important;
-    background: rgba(255, 255, 255, 0.3) !important;
+    width: 6px !important;
+    height: 6px !important;
     border-radius: 50% !important;
+    background: rgba(255,255,255,0.3) !important;
+    border: none !important;
   }
   .hero-dot.active {
-    width: 24px !important;
-    border-radius: 4px !important;
+    width: 20px !important;
     background: var(--accent-color) !important;
-    box-shadow: 0 0 10px var(--accent-glow) !important;
-  }
-
-  /* 5. Mover el botón de Instalar App a la izquierda para que no tape "Novedades" */
-  .pwa-install-btn {
-    bottom: 20px !important;
-    left: 15px !important;
-    right: auto !important; /* Anula la posición derecha */
-    padding: 10px 15px !important;
-    font-size: 12px !important;
+    border-radius: 4px !important;
   }
 }
 /* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
