@@ -7433,29 +7433,55 @@ input, textarea, select {
 .pwa-install-btn {
   z-index: 99999 !important;
 }
-/* ============ FIX DEFINITIVO BOTONES HERO (INICIO) ============ */
+/* ============ FIX DEFINITIVO HERO (MÓVIL) ============ */
 .hero-actions-c {
   display: flex !important;
-  flex-wrap: wrap !important;
+  flex-direction: column !important; /* Apilados en móvil */
   gap: 12px !important;
   width: 100% !important;
+  margin-top: 20px !important;
+  position: relative;
+  z-index: 10; /* Para que estén por encima de la imagen */
 }
 
 .hero-actions-c .btn {
-  flex: 1 1 auto !important; 
-  white-space: nowrap !important;
-  padding: 12px 20px !important;
+  width: 100% !important;
+  padding: 14px 20px !important;
   justify-content: center !important;
+  font-size: 15px !important;
 }
 
-/* En celulares, los botones se ponen uno debajo del otro para que el texto respire */
-@media (max-width: 500px) {
+/* Arreglar el botón "Ver todas" para que no se vea transparente */
+.hero-actions-c .btn-ghost {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  backdrop-filter: blur(10px);
+}
+
+/* Darle un poco de espacio al texto para que no se monte en la etiqueta roja */
+.hero-title-c {
+  margin-top: 15px !important;
+  margin-bottom: 15px !important;
+  line-height: 1.1 !important;
+}
+
+/* Mover el botón de Instalar App para que no tape el contenido */
+.pwa-install-btn {
+  bottom: 80px !important; /* Lo subimos un poco */
+  right: 15px !important;
+  padding: 10px 15px !important;
+  font-size: 12px !important;
+  z-index: 9999 !important;
+}
+
+/* Asegurar que el botón de ajustes de lectura (si existe) no se rompa */
+@media (min-width: 501px) {
   .hero-actions-c {
-    flex-direction: column !important;
+    flex-direction: row !important;
   }
   .hero-actions-c .btn {
-    width: 100% !important;
-    flex: 1 1 100% !important;
+    width: auto !important;
+    flex: 1 !important;
   }
 }
 /* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
