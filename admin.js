@@ -1,6 +1,5 @@
 /* ============================================
-   AZAEL BLOG — admin.js COMPLETO v2
-   Fix: panel en blanco + verificarAutor con try/catch
+   AZAEL BLOG — admin.js COMPLETO
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -393,7 +392,6 @@ function showView(id) {
   if (window.lucide) lucide.createIcons();
 }
 
-/* ---------- VERIFICAR AUTOR (con try/catch) ---------- */
 async function verificarAutor() {
   try {
     const { data: { session: s }, error: errSes } = await db.auth.getSession();
@@ -540,6 +538,10 @@ async function abrirStoryForm(id = null) {
   document.getElementById('chaptersSection').hidden = true;
   document.getElementById('storyDeleteBtn').hidden = true;
   document.getElementById('storyViewTitle').textContent = 'Nueva historia';
+  
+  // Ocultar campo de fecha por defecto
+  document.getElementById('releaseDateField').style.display = 'none';
+  document.getElementById('storyReleaseDate').value = '';
 
   if (id) {
     showLoading();
@@ -554,6 +556,13 @@ async function abrirStoryForm(id = null) {
       document.getElementById('storyDedication').value = data.dedication || '';
       document.getElementById('storyFeatured').checked = !!data.is_featured;
       document.getElementById('storyPublished').checked = data.is_published !== false;
+      
+      // Si es Próximamente, mostrar la fecha
+      if (data.status === 'Próximamente') {
+        document.getElementById('releaseDateField').style.display = 'flex';
+        document.getElementById('storyReleaseDate').value = data.release_date || '';
+      }
+
       if (data.cover_url) {
         document.getElementById('storyCoverBook').innerHTML = `<img src="${data.cover_url}" alt="" />`;
         document.getElementById('storyCoverBook').dataset.coverUrl = data.cover_url;
@@ -566,6 +575,16 @@ async function abrirStoryForm(id = null) {
   }
   showView('viewStory');
 }
+
+// Evento para mostrar/ocultar fecha al cambiar el estado
+document.getElementById('storyStatus').addEventListener('change', (e) => {
+  const field = document.getElementById('releaseDateField');
+  if (e.target.value === 'Próximamente') {
+    field.style.display = 'flex';
+  } else {
+    field.style.display = 'none';
+  }
+});
 
 document.getElementById('storyCoverBtn').addEventListener('click', () => {
   document.getElementById('storyCoverInput').click();
@@ -597,6 +616,7 @@ document.getElementById('storyForm').addEventListener('submit', async (e) => {
     synopsis: document.getElementById('storySynopsis').value.trim(),
     genre: document.getElementById('storyGenre').value,
     status: document.getElementById('storyStatus').value,
+    release_date: document.getElementById('storyStatus').value === 'Próximamente' ? document.getElementById('storyReleaseDate').value : null, // <-- AÑADIDO
     dedication: document.getElementById('storyDedication').value.trim(),
     is_featured: document.getElementById('storyFeatured').checked,
     is_published: document.getElementById('storyPublished').checked,
@@ -3535,33 +3555,25 @@ function emptyState(iconName, title, sub) {
 /* ---------- INIT ---------- */
 (async () => {
   initTheme();
-  console.log('[Admin] Init start');
 
   try {
-    console.log('[Admin] Inyectando UI...');
     inyectarHeader();
     inyectarAuthModal();
     initEditor('editorToolbar', 'chapterEditor', 'edCounter');
     initEditor('postToolbar', 'postEditor', 'postCounter');
     initCanvasListeners();
 
-    console.log('[Admin] Verificando autor...');
     const ok = await verificarAutor();
-    console.log('[Admin] Autor verificado:', ok);
 
     if (ok) {
-      console.log('[Admin] Cargando dashboard...');
       await cargarDashboard();
-      console.log('[Admin] Dashboard cargado');
 
-      // Badges: fire-and-forget, no bloquean el panel si fallan
       actualizarBadgeNotificaciones().catch(e => console.warn('[badge notif]', e));
       actualizarBadgeReportes().catch(e => console.warn('[badge reportes]', e));
     }
 
   } catch (err) {
     console.error('[Admin Init Error]', err);
-    // NO dejar pantalla en blanco: mostrar mensaje legible
     const pageMain = document.querySelector('.page-main');
     if (pageMain) {
       pageMain.innerHTML = `
