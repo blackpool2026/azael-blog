@@ -7615,7 +7615,7 @@ input, textarea, select {
   text-transform: uppercase;
   border: 1px solid rgba(229,9,20,.3);
 }
-/* ============ ETIQUETA PRÓXIMAMENTE (REDISEÑO FINAL) ============ */
+/* ============ ETIQUETA PRÓXIMAMENTE (REDISEÑO FINAL Y RESPONSIVO) ============ */
 .story-card-coming-soon .book-cover { 
   position: relative; 
 }
@@ -7632,18 +7632,18 @@ input, textarea, select {
   align-items: center;
   justify-content: center; 
   gap: 6px;
-  padding: 0 10px;
+  padding: 0 8px; /* Un poco de margen a los lados por si acaso */
   z-index: 2;
 }
 
-/* Letras rojas elegantes, ajustadas al tamaño de la portada */
+/* Letras rojas elegantes, ajustadas para que NUNCA se salgan */
 .coming-soon-badge {
   background: transparent !important;
   color: var(--accent-color) !important;
   font-family: var(--font-serif) !important;
-  font-size: 13px !important; 
+  font-size: 11.5px !important; /* Tamaño reducido para que quepa perfecto */
   font-weight: 700 !important;
-  letter-spacing: 0.08em !important;
+  letter-spacing: 0.02em !important; /* Espaciado más justo */
   text-transform: uppercase !important;
   padding: 0 !important;
   box-shadow: none !important;
@@ -7652,16 +7652,19 @@ input, textarea, select {
   line-height: 1.2;
   text-align: center;
   width: 100%;
+  display: block;
+  white-space: nowrap; /* Evita que se rompa en dos líneas */
 }
 
 /* Fecha en formato DD/MM/AAAA limpia y ordenada */
 .coming-soon-date {
   font-family: var(--font-sans) !important;
-  font-size: 12px !important;
+  font-size: 11.5px !important;
   color: #ffffff !important;
   font-weight: 600 !important;
   letter-spacing: 0.05em;
   text-shadow: 0 2px 4px rgba(0,0,0,1);
   line-height: 1.2;
   text-align: center;
+  display: block;
 }
