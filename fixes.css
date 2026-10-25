@@ -1,0 +1,49 @@
+/* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
+.story-card-coming-soon .book-cover { position: relative; }
+.coming-soon-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.2); /* Menos opaco para que se vea la portada */
+  backdrop-filter: blur(1px);
+  -webkit-backdrop-filter: blur(1px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  opacity: 1;
+  z-index: 2;
+}
+.coming-soon-badge {
+  background: transparent;
+  color: var(--accent-color);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-shadow: 0 2px 8px rgba(0,0,0,0.9);
+}
+.coming-soon-date {
+  font-family: var(--font-serif);
+  font-size: 13px;
+  color: #fff;
+  font-weight: 600;
+  text-transform: capitalize;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+}
+
+/* Etiqueta roja en la grilla de Historias */
+.badge-coming-soon {
+  background: var(--accent-soft);
+  color: var(--accent-color);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 4px;
+  margin-left: 8px;
+  vertical-align: middle;
+  display: inline-block;
+  letter-spacing: 0.05em;
+  border: 1px solid rgba(229,9,20,.3);
+}
