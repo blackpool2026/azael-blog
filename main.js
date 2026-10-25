@@ -1,5 +1,5 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO (Fase 5)
+   AZAEL BLOG — main.js COMPLETO (Fase 5 - Etiquetas Rojas)
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -781,7 +781,6 @@ async function cargarHero() {
 function renderHeroSlideHTML(s, isFirst = false) { 
   const isFeatured = !!s.is_featured; 
   const isComingSoon = s.status === 'Próximamente';
-  const tituloMostrar = isComingSoon ? `${escapeHtml(s.title)} (Próximamente)` : escapeHtml(s.title);
 
   return `
     <div class="hero-slide">
@@ -789,16 +788,20 @@ function renderHeroSlideHTML(s, isFirst = false) {
         ${s.cover_url ? `<img src="${s.cover_url}" alt="" ${isFirst ? '' : 'loading="lazy"'} />` : ''}
       </div>
       <div class="hero-content container">
-        ${isFeatured ? '<span class="hero-tag">Historia destacada</span>' : '<span class="hero-tag hero-tag-alt">Historia</span>'}
-        <h1 class="hero-title-c">${tituloMostrar}</h1>
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+          ${isFeatured ? '<span class="hero-tag" style="margin-bottom:0;">Historia destacada</span>' : '<span class="hero-tag hero-tag-alt" style="margin-bottom:0;">Historia</span>'}
+          ${isComingSoon ? '<span class="badge" style="background: var(--accent-color); color: #fff; padding: 5px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 100px;">Próximamente</span>' : ''}
+        </div>
+        
+        <h1 class="hero-title-c">${escapeHtml(s.title)}</h1>
         ${s.synopsis ? `<p class="hero-synopsis">${escapeHtml(s.synopsis)}</p>` : ''}
+        
+        ${!isComingSoon ? `
         <div class="hero-actions-c">
-          ${isComingSoon 
-            ? `<button class="btn btn-primary" style="cursor:not-allowed; opacity:0.8;">Próximamente</button>`
-            : `<a href="historia.html?id=${s.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>`
-          }
+          <a href="historia.html?id=${s.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>
           <a href="historias.html" class="btn btn-ghost">Ver todas</a>
         </div>
+        ` : ''}
       </div>
     </div>
   `; 
@@ -884,8 +887,9 @@ async function cargarProximamente() {
           </div>
           <div class="stories-grid-c">
             ${data.map(s => {
+              // Formatear fecha completa: día, mes, año
               const fechaTexto = s.release_date 
-                ? new Date(s.release_date).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' }) 
+                ? new Date(s.release_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) 
                 : null;
               return `
                 <a class="story-card-c story-card-coming-soon" href="historia.html?id=${s.id}">
@@ -1045,7 +1049,10 @@ function renderStories(data, grid) {
       <div class="book-cover">
         ${s.cover_url ? `<img src="${s.cover_url}" alt="${escapeHtml(s.title)}" loading="lazy" />` : escapeHtml(s.title.charAt(0))}
       </div>
-      <h3 class="story-card-c-title">${escapeHtml(s.title)}</h3>
+      <h3 class="story-card-c-title">
+        ${escapeHtml(s.title)}
+        ${s.status === 'Próximamente' ? '<span class="badge-coming-soon">Próximamente</span>' : ''}
+      </h3>
       <div class="story-card-c-meta">${escapeHtml(s.genre || 'Sin género')}</div>
     </a>
   `).join(''); 
@@ -1641,8 +1648,8 @@ function renderStory({ story, chapters, logged }, cont) {
   const firstChapter = chapters[0]; 
   const continueBtn = (firstChapter && !isComingSoon) 
     ? `<a href="capitulo.html?id=${firstChapter.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>` 
-    : (isComingSoon ? `<button class="btn btn-primary" disabled style="opacity:0.8;">Próximamente</button>` : '');
-  
+    : '';
+
   cont.innerHTML = `
     <div class="container">
       <header class="story-header">
@@ -1655,6 +1662,7 @@ function renderStory({ story, chapters, logged }, cont) {
           <div class="story-badges">
             ${story.genre ? `<span class="badge badge-genre">${escapeHtml(story.genre)}</span>` : ''}
             <span class="badge badge-status">${escapeHtml(story.status || 'En curso')}</span>
+            ${isComingSoon ? '<span class="badge" style="background: var(--accent-color); color: #fff; border: none;">Próximamente</span>' : ''}
           </div>
           <h1 class="story-h1">${escapeHtml(story.title)}</h1>
           <div class="like-row" id="storyLikeRow" style="margin-top:8px;"></div>
@@ -2920,7 +2928,7 @@ function dispararContenidoSegunPath() {
   if (path === 'index.html' || path === '') { 
     cargarHero(); 
     cargarNovedades(); 
-    cargarProximamente(); // <--- AÑADIDO AQUÍ
+    cargarProximamente(); 
     cargarRelatosHome(); 
     cargarUltimoBlogHome(); 
     cargarHistorias({ excluirDestacada: false }); 
