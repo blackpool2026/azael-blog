@@ -874,7 +874,10 @@ async function cargarProximamente() {
       8000
     );
 
-    if (error || !data?.length) return;
+    if (error || !data?.length) {
+      cont.innerHTML = ''; 
+      return;
+    }
 
     cont.innerHTML = `
       <section class="section">
@@ -887,9 +890,8 @@ async function cargarProximamente() {
           </div>
           <div class="stories-grid-c">
             ${data.map(s => {
-              // Formatear fecha completa: día, mes, año
               const fechaTexto = s.release_date 
-                ? new Date(s.release_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) 
+                ? new Date(s.release_date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) 
                 : null;
               return `
                 <a class="story-card-c story-card-coming-soon" href="historia.html?id=${s.id}">
@@ -1021,6 +1023,7 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
   try { 
     let query = db.from('stories').select('id, title, cover_url, genre, status, is_featured')
       .eq('is_published', true)
+      .neq('status', 'Próximamente')
       .order('created_at', { ascending: false }); 
       
     if (excluirDestacada) query = query.eq('is_featured', false); 
@@ -1049,11 +1052,11 @@ function renderStories(data, grid) {
       <div class="book-cover">
         ${s.cover_url ? `<img src="${s.cover_url}" alt="${escapeHtml(s.title)}" loading="lazy" />` : escapeHtml(s.title.charAt(0))}
       </div>
-      <h3 class="story-card-c-title">
-        ${escapeHtml(s.title)}
+      <h3 class="story-card-c-title">${escapeHtml(s.title)}</h3>
+      <div class="story-card-c-meta">
+        ${escapeHtml(s.genre || 'Sin género')}
         ${s.status === 'Próximamente' ? '<span class="badge-coming-soon">Próximamente</span>' : ''}
-      </h3>
-      <div class="story-card-c-meta">${escapeHtml(s.genre || 'Sin género')}</div>
+      </div>
     </a>
   `).join(''); 
 }
@@ -2928,10 +2931,10 @@ function dispararContenidoSegunPath() {
   if (path === 'index.html' || path === '') { 
     cargarHero(); 
     cargarNovedades(); 
-    cargarProximamente(); 
     cargarRelatosHome(); 
     cargarUltimoBlogHome(); 
     cargarHistorias({ excluirDestacada: false }); 
+    cargarProximamente(); // Cargado al final para que aparezca debajo de Historias
   } else if (path === 'historias.html') { 
     cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') }); 
   } else if (path === 'generos.html') { 
