@@ -7743,30 +7743,63 @@ input, textarea, select {
 .btn-mark-read {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  background: var(--bg-surface);
-  border: 1px solid var(--border-color);
-  border-radius: 100px;
-  color: var(--text-secondary);
-  font-family: inherit;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: var(--transition);
+/* ============ SISTEMA DE VERIFICADOS MEJORADO ============ */
+/* Verificado de Dueño (Escudo Dorado en SVG para asegurar que se vea) */
+.verified-admin-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  margin-left: 6px;
+  width: 18px;
+  height: 18px;
 }
 
-.btn-mark-read:hover {
-  border-color: var(--text-tertiary);
-  color: var(--text-primary);
+.verified-admin-badge svg {
+  width: 100%;
+  height: 100%;
+  fill: #d4af37; /* Color dorado */
+  filter: drop-shadow(0 0 6px rgba(212, 175, 55, 0.6));
 }
 
-.btn-mark-read.read {
-  background: var(--accent-soft);
-  border-color: var(--accent-color);
+/* Verificado Normal (Check Rojo) */
+.verified-user-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   color: var(--accent-color);
+  margin-left: 4px;
+  vertical-align: middle;
 }
 
-.btn-mark-read.read svg {
-  color: var(--accent-color);
+.verified-user-badge svg {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
 }
+
+/* ============ FILTROS DE HISTORIAS ============ */
+.historias-filters-wrap { display: flex; flex-direction: column; gap: 12px; }
+.filtros-pills { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.filtros-pills::-webkit-scrollbar { display: none; }
+.filtro-pill {
+  padding: 8px 16px; background: var(--bg-surface); border: 1px solid var(--border-color);
+  border-radius: 100px; color: var(--text-secondary); font-family: inherit; font-size: 13px;
+  font-weight: 600; cursor: pointer; white-space: nowrap; transition: var(--transition);
+}
+.filtro-pill:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+.filtro-pill.active {
+  background: var(--accent-color); border-color: var(--accent-color); color: #ffffff;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+/* ============ BOTÓN CAPÍTULO VISTO ============ */
+.btn-mark-read {
+  display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px;
+  background: var(--bg-surface); border: 1px solid var(--border-color);
+  border-radius: 100px; color: var(--text-secondary); font-family: inherit;
+  font-size: 13px; font-weight: 600; cursor: pointer; transition: var(--transition);
+}
+.btn-mark-read:hover { border-color: var(--text-tertiary); color: var(--text-primary); }
+.btn-mark-read.read { background: var(--accent-soft); border-color: var(--accent-color); color: var(--accent-color); }
+.btn-mark-read.read svg { color: var(--accent-color); }
