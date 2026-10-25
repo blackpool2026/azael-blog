@@ -1,5 +1,5 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO (Fase 5 - Etiquetas Rojas)
+   AZAEL BLOG — main.js COMPLETO Y CORREGIDO
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -890,9 +890,17 @@ async function cargarProximamente() {
           </div>
           <div class="stories-grid-c">
             ${data.map(s => {
-              const fechaTexto = s.release_date 
-                ? new Date(s.release_date + 'T12:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) 
-                : null;
+              // LÓGICA PARA FORMATO DD/MM/AAAA
+              let fechaTexto = null;
+              if (s.release_date) {
+                const partes = s.release_date.split('-');
+                if (partes.length === 3) {
+                  fechaTexto = `${partes[2]}/${partes[1]}/${partes[0]}`;
+                } else {
+                  fechaTexto = s.release_date;
+                }
+              }
+              
               return `
                 <a class="story-card-c story-card-coming-soon" href="historia.html?id=${s.id}">
                   <div class="book-cover">
