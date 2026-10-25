@@ -7572,3 +7572,18 @@ input, textarea, select {
   font-weight: 600;
   text-shadow: 0 2px 4px rgba(0,0,0,0.8);
 }
+/* ============ BADGE PRÓXIMAMENTE EN EL GRID ============ */
+.badge-coming-soon {
+  display: inline-block;
+  background: var(--accent-soft);
+  color: var(--accent-color);
+  font-size: 9px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+  vertical-align: middle;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border: 1px solid rgba(229,9,20,.3);
+}
