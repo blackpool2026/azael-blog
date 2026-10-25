@@ -31,13 +31,29 @@
     <section class="page-head-c">
       <div class="container">
         <h1 class="page-title-c">Historias</h1>
-        <p class="page-sub-c">Todo lo que he publicado hasta ahora</p>
+        <p class="page-sub-c">Explora el catálogo completo</p>
       </div>
     </section>
 
-    <section class="section">
+    <section class="section" style="padding-top: 20px;">
       <div class="container">
-        <div class="stories-grid-c" id="storiesGrid">
+        <!-- Barra de Búsqueda y Filtros -->
+        <div class="historias-filters-wrap">
+          <div class="relatos-search-wrap" style="margin-bottom: 16px;">
+            <i data-lucide="search" style="width:18px;height:18px;"></i>
+            <input type="search" id="historiasSearchInput" placeholder="Buscar por título, sinopsis o #etiqueta…" />
+          </div>
+          
+          <div class="filtros-pills" id="filtrosPills">
+            <button class="filtro-pill active" data-filter="todos">Todas</button>
+            <button class="filtro-pill" data-filter="emision">En emisión</button>
+            <button class="filtro-pill" data-filter="finalizado">Finalizadas</button>
+            <button class="filtro-pill" data-filter="pausa">En pausa</button>
+            <button class="filtro-pill" data-filter="adulto">+18</button>
+          </div>
+        </div>
+
+        <div class="stories-grid-c" id="storiesGrid" style="margin-top: 24px;">
           <div class="empty-c" style="grid-column:1/-1;">
             <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
             <div class="empty-title">Cargando…</div>
