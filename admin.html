@@ -95,6 +95,16 @@
               <label class="admin-field"><span>Sinopsis</span><textarea id="storySynopsis" rows="4" maxlength="500" placeholder="De qué trata…"></textarea></label>
               <label class="admin-field"><span>Género principal</span><select id="storyGenre"><option value="">— Selecciona —</option><option>Romance</option><option>Terror</option><option>Comedia</option><option>Misterio</option><option>Música</option><option>Violencia</option><option>Suspenso</option><option>Aventura</option><option>Fantasía</option><option>Ciencia ficción</option><option>Drama</option><option>Poesía</option><option>Espiritual</option></select></label>
               
+              <label class="admin-field"><span>Etiquetas (Tags)</span><input type="text" id="storyTags" maxlength="200" placeholder="Ej: Enemies to lovers, Mafia, Drama (separados por coma)" /></label>
+              <label class="admin-field"><span>Clasificación de edad</span>
+                <select id="storyAgeRating">
+                  <option>Todo público</option>
+                  <option>+13 (Adolescente)</option>
+                  <option>+16 (Jóvenes)</option>
+                  <option>+18 (Adulto)</option>
+                </select>
+              </label>
+
               <label class="admin-field">
                 <span>Estado</span>
                 <select id="storyStatus">
@@ -102,11 +112,10 @@
                   <option>Borrador</option>
                   <option>Finalizado</option>
                   <option>En pausa</option>
-                  <option>Próximamente</option> <!-- AÑADIDO -->
+                  <option>Próximamente</option>
                 </select>
               </label>
 
-              <!-- CAMPO DE FECHA AÑADIDO -->
               <label class="admin-field" id="releaseDateField" style="display: none;">
                 <span>Fecha de estreno (Opcional)</span>
                 <input type="date" id="storyReleaseDate" />
@@ -131,12 +140,25 @@
       <div class="container">
         <button class="btn-back" id="backFromChapter"><i data-lucide="arrow-left" style="width:14px;height:14px;"></i> Volver a la historia</button>
         <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;"><h1 class="page-title-c" id="chapterViewTitle">Nuevo capítulo</h1></div>
-        <div class="editor-toolbar" id="editorToolbar"><button type="button" class="ed-btn" data-cmd="bold"><strong>B</strong></button><button type="button" class="ed-btn" data-cmd="italic"><em>I</em></button><button type="button" class="ed-btn" data-cmd="h2">H2</button><button type="button" class="ed-btn" data-cmd="h3">H3</button><button type="button" class="ed-btn" data-cmd="quote"><i data-lucide="quote" style="width:16px;height:16px;"></i></button><button type="button" class="ed-btn" data-cmd="hr"><i data-lucide="minus" style="width:16px;height:16px;"></i></button><button type="button" class="ed-btn" data-cmd="image"><i data-lucide="image" style="width:16px;height:16px;"></i></button><button type="button" class="ed-btn" data-cmd="fullscreen"><i data-lucide="maximize-2" style="width:16px;height:16px;"></i></button><div class="ed-spacer"></div><span class="ed-counter" id="edCounter">0 palabras</span></div>
+        <div class="editor-toolbar" id="editorToolbar"><button type="button" class="ed-btn" data-cmd="bold"><strong>B</strong></button><button type="button" class="ed-btn" data-cmd="italic"><em>I</em></button><button type="button" class="ed-btn" data-cmd="h2">H2</button><button type="button" class="ed-btn" data-cmd="h3">H3</button><button type="button" class="ed-btn" data-cmd="quote"><i data-lucide="quote" style="width:16px;height:16px;"></i></button><button type="button" class="ed-btn" data-cmd="hr">***</button><button type="button" class="ed-btn" data-cmd="image"><i data-lucide="image" style="width:16px;height:16px;"></i></button><button type="button" class="ed-btn" data-cmd="fullscreen"><i data-lucide="maximize-2" style="width:16px;height:16px;"></i></button><div class="ed-spacer"></div><span class="ed-counter" id="edCounter">0 palabras</span></div>
         <form class="admin-form" id="chapterForm">
           <label class="admin-field"><span>Título del capítulo</span><input type="text" id="chapterTitle" required maxlength="140" placeholder="Capítulo 1: El despertar" /></label>
           <label class="admin-field"><span>Contenido</span><div class="editor-area" id="chapterEditor" contenteditable="true" data-placeholder="Empieza a escribir…"></div></label>
           <label class="admin-field"><span>Nota del autor (opcional)</span><textarea id="chapterNote" rows="3" maxlength="500" placeholder="Algo para tus lectores…"></textarea></label>
-          <div class="admin-row"><label class="admin-field" style="flex:1;"><span>Orden</span><input type="number" id="chapterOrder" min="1" value="1" /></label><label class="admin-check" style="flex:1;"><input type="checkbox" id="chapterPremium" /><span>Solo registrados (premium)</span></label></div>
+          
+          <div class="admin-row">
+            <label class="admin-field" style="flex:1;"><span>Orden</span><input type="number" id="chapterOrder" min="1" value="1" /></label>
+            <label class="admin-check" style="flex:1;"><input type="checkbox" id="chapterPremium" /><span>Solo registrados (premium)</span></label>
+          </div>
+          
+          <div class="admin-row" style="margin-top: 10px;">
+            <label class="admin-field" style="flex:1;">
+              <span>Programar publicación (Fecha y Hora)</span>
+              <input type="datetime-local" id="chapterPublishAt" />
+              <p class="admin-hint" style="text-align:left; margin-top:4px;">Si lo dejas vacío, se publica de inmediato. Si pones una fecha futura, el capítulo se ocultará hasta ese día y hora exactos.</p>
+            </label>
+          </div>
+
           <div class="admin-form-actions"><button type="button" class="btn btn-ghost" id="chapterDeleteBtn" hidden><i data-lucide="trash-2" style="width:14px;height:14px;"></i> Eliminar</button><button type="submit" class="btn btn-primary"><i data-lucide="check" style="width:14px;height:14px;"></i> Guardar</button></div>
         </form>
       </div>
