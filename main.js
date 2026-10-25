@@ -19,6 +19,10 @@ let relatosCurrentPage = 1;
 let relatosAllData = null;
 let relatosSearchQuery = '';
 
+// Variables globales para la búsqueda de historias
+let historiasCurrentSearch = '';
+let historiasCurrentFilter = 'todos';
+
 const REACCIONES_DISPONIBLES = [
   { emoji: '❤️', label: 'Me encanta' }, 
   { emoji: '😂', label: 'Me río' },
@@ -1023,29 +1027,38 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
   const grid = document.getElementById('storiesGrid'); 
   if (!grid) return; 
   
-  const cacheKey = `stories:${limite || 'all'}:${excluirDestacada}:${genero || ''}:${busqueda || ''}`; 
-  const cached = cache.get(cacheKey); 
-  if (cached) { renderStories(cached, grid); return; } 
-  
   try { 
-    let query = db.from('stories').select('id, title, cover_url, genre, status, is_featured')
+    let query = db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured, tags, age_rating')
       .eq('is_published', true)
       .neq('status', 'Próximamente')
       .order('created_at', { ascending: false }); 
       
     if (excluirDestacada) query = query.eq('is_featured', false); 
+    
+    // Filtro por género de la URL
     if (genero) query = query.ilike('genre', `%${genero}%`); 
-    if (busqueda) query = query.ilike('title', `%${busqueda}%`); 
+    
+    // Filtro por texto (busca en título, sinopsis y tags)
+    if (busqueda) {
+      query = query.or(`title.ilike.%${busqueda}%,synopsis.ilike.%${busqueda}%,tags.ilike.%${busqueda}%`);
+    }
+    
+    // Filtros de los botones (Pills)
+    if (historiasCurrentFilter === 'emision') query = query.eq('status', 'En emisión');
+    if (historiasCurrentFilter === 'finalizado') query = query.eq('status', 'Finalizado');
+    if (historiasCurrentFilter === 'pausa') query = query.eq('status', 'En pausa');
+    if (historiasCurrentFilter === 'adulto') query = query.eq('age_rating', '+18 (Adulto)');
+
     if (limite) query = query.limit(limite); 
     
     const { data, error } = await withTimeout(query, 10000); 
     
     if (error || !data?.length) { 
-      grid.innerHTML = emptyState('book-open', 'Sin historias todavía', 'Cuando publique la primera, aparecerá aquí.'); 
+      grid.innerHTML = emptyState('search', 'Sin resultados', 'Prueba con otros filtros o términos de búsqueda.'); 
+      if (window.lucide) lucide.createIcons();
       return; 
     } 
     
-    cache.set(cacheKey, data); 
     renderStories(data, grid); 
   } catch (e) { 
     grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión e intenta de nuevo.'); 
@@ -2967,6 +2980,29 @@ function dispararContenidoSegunPath() {
     cargarProximamente(); // Cargado al final para que aparezca debajo de Historias
   } else if (path === 'historias.html') { 
     cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') }); 
+    
+    // Activar eventos de búsqueda y filtros
+    const searchInput = document.getElementById('historiasSearchInput');
+    if (searchInput) {
+      let searchTimer = null;
+      searchInput.addEventListener('input', (e) => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => {
+          historiasCurrentSearch = e.target.value.trim();
+          cargarHistorias({ busqueda: historiasCurrentSearch });
+        }, 400);
+      });
+    }
+
+    document.querySelectorAll('.filtro-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filtro-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        historiasCurrentFilter = btn.dataset.filter;
+        cargarHistorias({ busqueda: historiasCurrentSearch });
+      });
+    });
+    
   } else if (path === 'generos.html') { 
     cargarGeneros(); 
   } else if (path === 'relatos.html') { 
