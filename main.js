@@ -1,5 +1,5 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO Y CORREGIDO
+   AZAEL BLOG — main.js COMPLETO
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -890,7 +890,6 @@ async function cargarProximamente() {
           </div>
           <div class="stories-grid-c">
             ${data.map(s => {
-              // LÓGICA PARA FORMATO DD/MM/AAAA
               let fechaTexto = null;
               if (s.release_date) {
                 const partes = s.release_date.split('-');
@@ -1199,7 +1198,7 @@ async function cargarComentarios(postId) {
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; } 
     
     const ids = [...new Set(data.map(c => c.user_id))]; 
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author').in('id', ids), 8000); 
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified').in('id', ids), 8000); 
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p])); 
     
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join(''); 
@@ -1214,7 +1213,14 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
   const p = perfilesMap[c.user_id] || {}; 
   const fecha = tiempoRelativo(c.created_at); 
   const autor = escapeHtml(p.username || 'Lector'); 
-  const badge = p.is_author ? '<span class="comment-badge-c">Autor</span>' : ''; 
+  
+  let badge = '';
+  if (p.is_author) {
+    badge = '<span class="verified-admin-badge" title="Autor/Dueño"></span>';
+  } else if (p.is_verified) {
+    badge = '<span class="verified-user-badge" title="Usuario verificado"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg></span>';
+  }
+
   const texto = escapeHtml(c.content); 
   const esMio = sessionUserId && c.user_id === sessionUserId; 
   const autorLink = `<a href="perfil.html?id=${c.user_id}" style="color:inherit;text-decoration:none;">@${autor}</a>`; 
@@ -1336,7 +1342,7 @@ async function cargarComentariosCapitulo(chapterId) {
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; } 
     
     const ids = [...new Set(data.map(c => c.user_id))]; 
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author').in('id', ids), 8000); 
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified').in('id', ids), 8000); 
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p])); 
     
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join(''); 
@@ -1586,14 +1592,14 @@ async function cargarHistoriaDetalle() {
     const [storyRes, chaptersRes, sessionRes] = await withTimeout(
       Promise.all([
         db.from('stories').select('*').eq('id', id).maybeSingle(), 
-        db.from('chapters').select('id, title, chapter_order, created_at, is_premium').eq('story_id', id).order('chapter_order', { ascending: true }), 
+        db.from('chapters').select('id, title, chapter_order, created_at, is_premium, publish_at').eq('story_id', id).order('chapter_order', { ascending: true }), 
         db.auth.getSession()
       ]), 
       10000
     ); 
     
     const story = storyRes.data; 
-    const chapters = chaptersRes.data || []; 
+    const chaptersRaw = chaptersRes.data || []; 
     const logged = !!(sessionRes?.data?.session); 
     
     if (!story) { 
@@ -1601,6 +1607,9 @@ async function cargarHistoriaDetalle() {
       return; 
     } 
     
+    const ahora = new Date();
+    const chaptersVisibles = chaptersRaw.filter(c => !c.publish_at || new Date(c.publish_at) <= ahora);
+
     db.from('characters').select('id, name, role, description, avatar_url').eq('story_id', id).order('display_order', { ascending: true })
       .then(({ data }) => { 
         if (data?.length) { 
@@ -1612,8 +1621,8 @@ async function cargarHistoriaDetalle() {
         } 
       }).catch(() => {}); 
       
-    cache.set('story:' + id, { story, chapters, logged }); 
-    renderStory({ story, chapters, logged }, cont); 
+    cache.set('story:' + id, { story, chapters: chaptersVisibles, logged }); 
+    renderStory({ story, chapters: chaptersVisibles, logged }, cont); 
     registrarVista(story.id, null); 
   } catch (err) { 
     console.error('Error historia:', err); 
@@ -1661,6 +1670,12 @@ function renderStory({ story, chapters, logged }, cont) {
     ? `<a href="capitulo.html?id=${firstChapter.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>` 
     : '';
 
+  const tagsHtml = story.tags 
+    ? `<div style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px;">
+        ${story.tags.split(',').map(tag => `<span style="font-size: 11.5px; background: var(--bg-surface); border: 1px solid var(--border-color); padding: 4px 10px; border-radius: 100px; color: var(--text-secondary);">#${escapeHtml(tag.trim().replace(/\s+/g, ''))}</span>`).join('')}
+       </div>` 
+    : '';
+
   cont.innerHTML = `
     <div class="container">
       <header class="story-header">
@@ -1672,13 +1687,15 @@ function renderStory({ story, chapters, logged }, cont) {
         <div class="story-header-info">
           <div class="story-badges">
             ${story.genre ? `<span class="badge badge-genre">${escapeHtml(story.genre)}</span>` : ''}
+            ${story.age_rating && story.age_rating !== 'Todo público' ? `<span class="badge" style="background: rgba(229,9,20,0.15); color: var(--accent-color); border: 1px solid rgba(229,9,20,0.3);">${escapeHtml(story.age_rating)}</span>` : ''}
             <span class="badge badge-status">${escapeHtml(story.status || 'En curso')}</span>
             ${isComingSoon ? '<span class="badge" style="background: var(--accent-color); color: #fff; border: none;">Próximamente</span>' : ''}
           </div>
           <h1 class="story-h1">${escapeHtml(story.title)}</h1>
           <div class="like-row" id="storyLikeRow" style="margin-top:8px;"></div>
           ${story.synopsis ? `<p class="story-synopsis-c">${escapeHtml(story.synopsis)}</p>` : ''}
-          <div class="story-stats">
+          ${tagsHtml}
+          <div class="story-stats" style="margin-top: 16px;">
             <div class="story-stats-item">
               <span class="story-stats-label">Capítulos</span>
               <span class="story-stats-value">${chapters.length}</span>
@@ -1743,7 +1760,7 @@ async function cargarCapitulo() {
     
     const [chapterRes, sessionRes] = await withTimeout(
       Promise.all([
-        db.from('chapters').select('id, title, content, author_note, chapter_order, story_id, is_premium, created_at').eq('id', id).maybeSingle(), 
+        db.from('chapters').select('id, title, content, author_note, chapter_order, story_id, is_premium, created_at, publish_at').eq('id', id).maybeSingle(), 
         db.auth.getSession()
       ]), 
       10000
@@ -1753,6 +1770,11 @@ async function cargarCapitulo() {
     const logged = !!(sessionRes?.data?.session); 
     
     if (!chapter) { render404(cont, 'Capítulo no encontrado', 'Puede que haya sido eliminado.'); return; } 
+
+    if (chapter.publish_at && new Date(chapter.publish_at) > new Date()) {
+      render404(cont, 'Capítulo no disponible', 'Este capítulo aún no ha sido publicado. Vuelve más tarde.');
+      return;
+    }
     
     const [storyRes, siblingsRes] = await withTimeout(
       Promise.all([
@@ -2458,7 +2480,7 @@ async function cargarComentariosRelato(relatoId) {
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; } 
     
     const ids = [...new Set(data.map(c => c.user_id))]; 
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author').in('id', ids), 8000); 
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified').in('id', ids), 8000); 
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p])); 
     
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join(''); 
