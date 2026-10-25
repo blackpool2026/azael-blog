@@ -7537,40 +7537,53 @@ input, textarea, select {
     padding-top: 70px !important; /* Baja un poco el texto de la etiqueta "Historia" */
   }
 }
-/* ============ ETIQUETA PRÓXIMAMENTE (PORTADAS) ============ */
-.story-card-coming-soon .book-cover { position: relative; }
+/* ============ ETIQUETA PRÓXIMAMENTE (REDISEÑO ELEGANTE) ============ */
+.story-card-coming-soon .book-cover { 
+  position: relative; 
+}
+
+/* Menos opacidad: solo un degradado sutil abajo para que el texto se lea bien */
 .coming-soon-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(10, 10, 12, 0.5);
-  backdrop-filter: blur(2px);
-  -webkit-backdrop-filter: blur(2px);
+  background: linear-gradient(to top, rgba(10, 10, 12, 0.85) 0%, rgba(10, 10, 12, 0.2) 40%, transparent 100%) !important;
+  backdrop-filter: none !important; 
+  -webkit-backdrop-filter: none !important;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  opacity: 1;
+  justify-content: flex-end; /* Mueve el texto hacia abajo */
+  padding-bottom: 16px;
+  gap: 6px;
   z-index: 2;
 }
+
+/* Letras rojas elegantes, sin fondo ni bordes */
 .coming-soon-badge {
-  background: var(--accent-color);
-  color: #fff;
-  font-family: var(--font-sans);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  padding: 6px 14px;
-  border-radius: 100px;
-  box-shadow: 0 4px 12px rgba(229, 9, 20, 0.4);
+  background: transparent !important;
+  color: var(--accent-color) !important;
+  font-family: var(--font-serif) !important; /* Playfair Display */
+  font-size: 20px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.9);
+  line-height: 1;
 }
+
+/* Fecha ordenada, limpia y legible */
 .coming-soon-date {
-  font-family: var(--font-serif);
-  font-size: 12px;
-  color: #fff;
-  font-weight: 600;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  color: #ffffff !important;
+  font-weight: 500 !important;
+  text-transform: capitalize !important;
+  letter-spacing: 0.02em;
+  text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+  line-height: 1;
 }
 /* ============ BADGE PRÓXIMAMENTE EN EL GRID ============ */
 .badge-coming-soon {
