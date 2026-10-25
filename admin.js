@@ -497,35 +497,72 @@ async function cargarUsuarios() {
   const list = document.getElementById('adminUsersList');
   if (!list) return;
   showLoading();
+  
   const { data, error } = await db
     .from('profiles')
     .select('*')
-    .eq('is_author', false)
     .order('created_at', { ascending: false });
+    
   hideLoading();
+  
   if (error) { list.innerHTML = emptyState('alert-circle', 'Error', error.message); return; }
   if (!data?.length) {
     list.innerHTML = emptyState('users', 'Sin usuarios', 'Aún no se ha registrado nadie.');
     return;
   }
-  list.innerHTML = data.map(u => `
-    <div class="admin-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
-      <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
-        <div class="admin-item-cover" style="width: 40px; height: 40px; border-radius: 50%; font-size: 16px; overflow: hidden;">
-          ${u.avatar_url
-            ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;" />`
-            : escapeHtml((u.username || 'U').charAt(0).toUpperCase())}
-        </div>
-        <div class="admin-item-body">
-          <div class="admin-item-title">@${escapeHtml(u.username || 'Sin @')}</div>
-          <div class="admin-item-meta">
-            <span>Registrado: ${new Date(u.created_at).toLocaleDateString('es-ES')}</span>
-            ${u.gender ? `<span>· ${escapeHtml(u.gender)}</span>` : ''}
+  
+  list.innerHTML = data.map(u => {
+    let badgeVisual = '';
+    if (u.is_author) {
+      badgeVisual = '<span class="verified-admin-badge" title="Dueño/Autor"></span>';
+    } else if (u.is_verified) {
+      badgeVisual = '<span class="verified-user-badge" title="Verificado"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg></span>';
+    }
+
+    let botonAccion = '';
+    if (!u.is_author) {
+      botonAccion = `
+        <button class="admin-item-action" data-action="toggle-verify" data-id="${u.id}" data-verified="${u.is_verified}" title="${u.is_verified ? 'Quitar verificado' : 'Otorgar verificado'}">
+          ${u.is_verified ? ic('shield-off', 16) : ic('shield-check', 16)}
+        </button>
+      `;
+    }
+
+    return `
+      <div class="admin-item" style="flex-direction: column; align-items: flex-start; gap: 8px;">
+        <div style="display: flex; align-items: center; gap: 12px; width: 100%;">
+          <div class="admin-item-cover" style="width: 40px; height: 40px; border-radius: 50%; font-size: 16px; overflow: hidden; flex-shrink:0;">
+            ${u.avatar_url
+              ? `<img src="${u.avatar_url}" style="width:100%;height:100%;object-fit:cover;" />`
+              : escapeHtml((u.username || 'U').charAt(0).toUpperCase())}
           </div>
+          <div class="admin-item-body">
+            <div class="admin-item-title" style="display:flex; align-items:center;">
+              @${escapeHtml(u.username || 'Sin @')} 
+              ${badgeVisual}
+            </div>
+            <div class="admin-item-meta">
+              <span>Registrado: ${new Date(u.created_at).toLocaleDateString('es-ES')}</span>
+              ${u.is_author ? '<span style="color:var(--accent-color);font-weight:bold;">· Creador</span>' : ''}
+            </div>
+          </div>
+          ${botonAccion}
         </div>
       </div>
-    </div>
-  `).join('');
+    `;
+  }).join('');
+  
+  document.querySelectorAll('[data-action="toggle-verify"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const isVerified = btn.dataset.verified === 'true';
+      showLoading();
+      await db.from('profiles').update({ is_verified: !isVerified }).eq('id', btn.dataset.id);
+      hideLoading();
+      toast(isVerified ? 'Verificado removido' : 'Usuario verificado con éxito', 'ok');
+      cargarUsuarios(); 
+    });
+  });
+  
   if (window.lucide) lucide.createIcons();
 }
 
@@ -539,9 +576,10 @@ async function abrirStoryForm(id = null) {
   document.getElementById('storyDeleteBtn').hidden = true;
   document.getElementById('storyViewTitle').textContent = 'Nueva historia';
   
-  // Ocultar campo de fecha por defecto
   document.getElementById('releaseDateField').style.display = 'none';
   document.getElementById('storyReleaseDate').value = '';
+  document.getElementById('storyTags').value = '';
+  document.getElementById('storyAgeRating').value = 'Todo público';
 
   if (id) {
     showLoading();
@@ -556,8 +594,9 @@ async function abrirStoryForm(id = null) {
       document.getElementById('storyDedication').value = data.dedication || '';
       document.getElementById('storyFeatured').checked = !!data.is_featured;
       document.getElementById('storyPublished').checked = data.is_published !== false;
+      document.getElementById('storyTags').value = data.tags || '';
+      document.getElementById('storyAgeRating').value = data.age_rating || 'Todo público';
       
-      // Si es Próximamente, mostrar la fecha
       if (data.status === 'Próximamente') {
         document.getElementById('releaseDateField').style.display = 'flex';
         document.getElementById('storyReleaseDate').value = data.release_date || '';
@@ -576,7 +615,6 @@ async function abrirStoryForm(id = null) {
   showView('viewStory');
 }
 
-// Evento para mostrar/ocultar fecha al cambiar el estado
 document.getElementById('storyStatus').addEventListener('change', (e) => {
   const field = document.getElementById('releaseDateField');
   if (e.target.value === 'Próximamente') {
@@ -616,11 +654,13 @@ document.getElementById('storyForm').addEventListener('submit', async (e) => {
     synopsis: document.getElementById('storySynopsis').value.trim(),
     genre: document.getElementById('storyGenre').value,
     status: document.getElementById('storyStatus').value,
-    release_date: document.getElementById('storyStatus').value === 'Próximamente' ? document.getElementById('storyReleaseDate').value : null, // <-- AÑADIDO
+    release_date: document.getElementById('storyStatus').value === 'Próximamente' ? document.getElementById('storyReleaseDate').value : null,
     dedication: document.getElementById('storyDedication').value.trim(),
     is_featured: document.getElementById('storyFeatured').checked,
     is_published: document.getElementById('storyPublished').checked,
     cover_url: document.getElementById('storyCoverBook').dataset.coverUrl || currentStory?.cover_url || null,
+    tags: document.getElementById('storyTags').value.trim(),
+    age_rating: document.getElementById('storyAgeRating').value,
   };
   if (payload.is_featured) {
     await db.from('stories').update({ is_featured: false }).neq('id', currentStory?.id || '00000000-0000-0000-0000-000000000000');
@@ -661,19 +701,22 @@ document.getElementById('storyDeleteBtn').addEventListener('click', async () => 
 async function cargarCapitulosAdmin(storyId) {
   const list = document.getElementById('chaptersList');
   const { data } = await db.from('chapters')
-    .select('id, title, chapter_order, is_premium, created_at')
+    .select('id, title, chapter_order, is_premium, created_at, publish_at')
     .eq('story_id', storyId).order('chapter_order', { ascending: true });
   if (!data?.length) {
     list.innerHTML = emptyState('book-open', 'Sin capítulos', 'Añade tu primer capítulo.');
     return;
   }
-  list.innerHTML = data.map((c, i) => `
+  list.innerHTML = data.map((c, i) => {
+    const isScheduled = c.publish_at && new Date(c.publish_at) > new Date();
+    return `
     <div class="admin-chapter-row">
       <div class="admin-chapter-num">${String(c.chapter_order || i + 1).padStart(2, '0')}</div>
       <div class="admin-chapter-body">
         <div class="admin-chapter-title">${escapeHtml(c.title)}</div>
         <div class="admin-chapter-meta">
           ${c.is_premium ? '<span class="admin-badge admin-badge-accent">Premium</span>' : ''}
+          ${isScheduled ? `<span class="admin-badge" style="background:rgba(255,152,0,0.15); color:#ff9800;">Programado: ${new Date(c.publish_at).toLocaleString('es-ES')}</span>` : ''}
         </div>
       </div>
       <div class="admin-chapter-actions">
@@ -682,7 +725,7 @@ async function cargarCapitulosAdmin(storyId) {
         <button class="admin-item-action" data-action="edit-chapter" data-id="${c.id}">${ic('edit-2', 16)}</button>
       </div>
     </div>
-  `).join('');
+  `}).join('');
   document.querySelectorAll('[data-action="edit-chapter"]').forEach(btn => {
     btn.addEventListener('click', () => abrirChapterForm(btn.dataset.id));
   });
@@ -712,6 +755,7 @@ function abrirChapterForm(id = null) {
   document.getElementById('chapterDeleteBtn').hidden = true;
   document.getElementById('chapterViewTitle').textContent = 'Nuevo capítulo';
   document.getElementById('chapterOrder').value = 1;
+  document.getElementById('chapterPublishAt').value = '';
   actualizarContador('chapterEditor', 'edCounter');
   if (id) {
     showLoading();
@@ -724,6 +768,7 @@ function abrirChapterForm(id = null) {
       document.getElementById('chapterNote').value = data.author_note || '';
       document.getElementById('chapterOrder').value = data.chapter_order || 1;
       document.getElementById('chapterPremium').checked = !!data.is_premium;
+      document.getElementById('chapterPublishAt').value = data.publish_at ? new Date(data.publish_at).toISOString().slice(0, 16) : '';
       document.getElementById('chapterViewTitle').textContent = 'Editar capítulo';
       document.getElementById('chapterDeleteBtn').hidden = false;
       actualizarContador('chapterEditor', 'edCounter');
@@ -743,6 +788,7 @@ document.getElementById('chapterForm').addEventListener('submit', async (e) => {
     author_note: document.getElementById('chapterNote').value.trim(),
     chapter_order: parseInt(document.getElementById('chapterOrder').value, 10) || 1,
     is_premium: document.getElementById('chapterPremium').checked,
+    publish_at: document.getElementById('chapterPublishAt').value || null,
   };
   showLoading();
   let error;
@@ -790,7 +836,7 @@ function initEditor(toolbarId, editorId, counterId) {
           case 'h2': document.execCommand('formatBlock', false, 'H2'); break;
           case 'h3': document.execCommand('formatBlock', false, 'H3'); break;
           case 'quote': document.execCommand('formatBlock', false, 'BLOCKQUOTE'); break;
-          case 'hr': document.execCommand('insertHTML', false, '<hr>'); break;
+          case 'hr': document.execCommand('insertHTML', false, '<p style="text-align:center;margin:2em 0;">* * *</p>'); break;
           case 'image': insertarImagen(editor); break;
           case 'fullscreen': toggleFullscreen(); break;
         }
