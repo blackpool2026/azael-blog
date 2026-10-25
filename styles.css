@@ -7698,3 +7698,44 @@ input, textarea, select {
   height: 15px;
   fill: currentColor;
 }
+/* ============ FILTROS DE HISTORIAS ============ */
+.historias-filters-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.filtros-pills {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.filtros-pills::-webkit-scrollbar { display: none; }
+
+.filtro-pill {
+  padding: 8px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 100px;
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: var(--transition);
+}
+
+.filtro-pill:hover {
+  border-color: var(--text-tertiary);
+  color: var(--text-primary);
+}
+
+.filtro-pill.active {
+  background: var(--accent-color);
+  border-color: var(--accent-color);
+  color: #ffffff;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
