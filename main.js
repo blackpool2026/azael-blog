@@ -1,5 +1,5 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO
+   AZAEL BLOG — main.js COMPLETO Y CORREGIDO
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -19,7 +19,6 @@ let relatosCurrentPage = 1;
 let relatosAllData = null;
 let relatosSearchQuery = '';
 
-// Variables globales para la búsqueda de historias
 let historiasCurrentSearch = '';
 let historiasCurrentFilter = 'todos';
 
@@ -1035,15 +1034,12 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
       
     if (excluirDestacada) query = query.eq('is_featured', false); 
     
-    // Filtro por género de la URL
     if (genero) query = query.ilike('genre', `%${genero}%`); 
     
-    // Filtro por texto (busca en título, sinopsis y tags)
     if (busqueda) {
       query = query.or(`title.ilike.%${busqueda}%,synopsis.ilike.%${busqueda}%,tags.ilike.%${busqueda}%`);
     }
     
-    // Filtros de los botones (Pills)
     if (historiasCurrentFilter === 'emision') query = query.eq('status', 'En emisión');
     if (historiasCurrentFilter === 'finalizado') query = query.eq('status', 'Finalizado');
     if (historiasCurrentFilter === 'pausa') query = query.eq('status', 'En pausa');
@@ -1850,7 +1846,13 @@ async function cargarCapitulo() {
         <div class="chapter-head">
           <a href="historia.html?id=${story?.id || ''}" class="chapter-story-link">${ic('arrow-left', 14)} ${escapeHtml(story?.title || '')}</a>
           <h1 class="chapter-title-c">Capítulo ${num} · ${escapeHtml(chapter.title)}</h1>
-          <div class="like-row" id="chapterLikeRow" style="margin-top:16px;"></div>
+          
+          <div style="display:flex; gap:10px; align-items:center; margin-top:16px; flex-wrap:wrap;">
+            <div class="like-row" id="chapterLikeRow"></div>
+            <button class="btn-mark-read" id="btnMarkRead">
+              ${ic('check-circle', 16)} <span id="btnMarkReadText">Marcar como leído</span>
+            </button>
+          </div>
         </div>
         <div class="chapter-body" id="chapterBody">${chapter.content || '<p>Sin contenido.</p>'}</div>
         ${chapter.author_note ? `<div class="chapter-note"><span class="chapter-note-label">Nota del autor</span>${escapeHtml(chapter.author_note)}</div>` : ''}
@@ -1905,6 +1907,57 @@ async function cargarCapitulo() {
     await cargarComentariosCapitulo(chapter.id); 
     await prepararFormComentarioCapitulo(chapter.id); 
     cargarLikeBoton('chapter', chapter.id); 
+
+    // --- LÓGICA DEL BOTÓN "CAPÍTULO VISTO" ---
+    const btnMarkRead = document.getElementById('btnMarkRead');
+    const btnMarkReadText = document.getElementById('btnMarkReadText');
+    const currentUser = sessionRes?.data?.session?.user;
+
+    if (btnMarkRead) {
+      if (currentUser) {
+        const { data: readData } = await db.from('chapter_reads')
+          .select('id')
+          .eq('chapter_id', chapter.id)
+          .eq('user_id', currentUser.id)
+          .maybeSingle();
+          
+        let isRead = !!readData;
+
+        const updateBtnState = () => {
+          if (isRead) {
+            btnMarkRead.classList.add('read');
+            btnMarkReadText.textContent = 'Leído';
+          } else {
+            btnMarkRead.classList.remove('read');
+            btnMarkReadText.textContent = 'Marcar como leído';
+          }
+        };
+        updateBtnState();
+
+        btnMarkRead.addEventListener('click', async () => {
+          showLoading();
+          if (isRead) {
+            await db.from('chapter_reads').delete().eq('chapter_id', chapter.id).eq('user_id', currentUser.id);
+            isRead = false;
+            showToast('Marcado como no leído', 'info');
+          } else {
+            await db.from('chapter_reads').insert({ chapter_id: chapter.id, user_id: currentUser.id });
+            isRead = true;
+            showToast('¡Guardado en tu progreso!', 'ok');
+          }
+          hideLoading();
+          updateBtnState();
+        });
+
+      } else {
+        btnMarkRead.addEventListener('click', () => {
+          showToast('Inicia sesión para guardar tu progreso', 'info');
+          document.getElementById('authModal').hidden = false;
+          window.__showLoginView?.();
+        });
+      }
+    }
+
   } catch (err) { 
     console.error('Error capítulo:', err); 
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.'); 
@@ -2981,7 +3034,6 @@ function dispararContenidoSegunPath() {
   } else if (path === 'historias.html') { 
     cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') }); 
     
-    // Activar eventos de búsqueda y filtros
     const searchInput = document.getElementById('historiasSearchInput');
     if (searchInput) {
       let searchTimer = null;
