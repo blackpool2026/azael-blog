@@ -7615,3 +7615,53 @@ input, textarea, select {
   text-transform: uppercase;
   border: 1px solid rgba(229,9,20,.3);
 }
+/* ============ ETIQUETA PRÓXIMAMENTE (REDISEÑO FINAL) ============ */
+.story-card-coming-soon .book-cover { 
+  position: relative; 
+}
+
+/* Oscurece la portada un 65% y difumina ligeramente el fondo */
+.coming-soon-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 10, 12, 0.65) !important; 
+  backdrop-filter: blur(1.5px) !important; 
+  -webkit-backdrop-filter: blur(1.5px) !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center; 
+  gap: 6px;
+  padding: 0 10px;
+  z-index: 2;
+}
+
+/* Letras rojas elegantes, ajustadas al tamaño de la portada */
+.coming-soon-badge {
+  background: transparent !important;
+  color: var(--accent-color) !important;
+  font-family: var(--font-serif) !important;
+  font-size: 13px !important; 
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+  padding: 0 !important;
+  box-shadow: none !important;
+  border: none !important;
+  text-shadow: 0 2px 6px rgba(0,0,0,1);
+  line-height: 1.2;
+  text-align: center;
+  width: 100%;
+}
+
+/* Fecha en formato DD/MM/AAAA limpia y ordenada */
+.coming-soon-date {
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em;
+  text-shadow: 0 2px 4px rgba(0,0,0,1);
+  line-height: 1.2;
+  text-align: center;
+}
