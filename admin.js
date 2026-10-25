@@ -514,7 +514,18 @@ async function cargarUsuarios() {
   list.innerHTML = data.map(u => {
     let badgeVisual = '';
     if (u.is_author) {
-      badgeVisual = '<span class="verified-admin-badge" title="Dueño/Autor"></span>';
+      badgeVisual = `<span class="verified-admin-badge" title="Dueño/Autor">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="metalRed" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ff6b6b" />
+              <stop offset="50%" stop-color="#e50914" />
+              <stop offset="100%" stop-color="#8a0006" />
+            </linearGradient>
+          </defs>
+          <path fill="url(#metalRed)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+      </span>`;
     } else if (u.is_verified) {
       badgeVisual = '<span class="verified-user-badge" title="Verificado"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg></span>';
     }
