@@ -719,6 +719,7 @@ async function cargarHero() {
     const { data, error } = await withTimeout(
       db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured')
         .eq('is_published', true)
+        .neq('status', 'Borrador')
         .order('is_featured', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(10), 
@@ -820,15 +821,28 @@ async function cargarNovedades() {
   if (!cont) return; 
   
   try { 
+    // 1. Obtenemos la fecha actual para no mostrar capítulos programados en el futuro
+    const ahora = new Date().toISOString();
+    
     const { data, error } = await withTimeout(
-      db.from('chapters').select('id, title, chapter_order, created_at, story_id, stories(id, title, cover_url)')
+      db.from('chapters').select('id, title, chapter_order, created_at, story_id, publish_at, stories(id, title, cover_url, status)')
+        .or(`publish_at.is.null,publish_at.lte.${ahora}`) // Filtro clave
         .order('created_at', { ascending: false })
-        .limit(10), 
+        .limit(15), // Traemos 15 por si algunos se filtran abajo
       8000
     ); 
     
     if (error || !data?.length) return; 
+
+    // Filtramos para asegurarnos de que la historia no sea un borrador
+    const capítulosVisibles = data.filter(c => {
+      if (!c.stories || c.stories.status === 'Borrador') return false;
+      if (c.publish_at && new Date(c.publish_at) > new Date()) return false;
+      return true;
+    }).slice(0, 10);
     
+    if (!capítulosVisibles.length) return;
+
     cont.innerHTML = `
       <section class="section">
         <div class="container">
@@ -837,7 +851,7 @@ async function cargarNovedades() {
             <a href="historias.html" class="section-link">Ver todo ${ic('arrow-right', 14)}</a>
           </div>
           <div class="horizontal-carousel">
-            ${data.map(c => { 
+            ${capítulosVisibles.map(c => { 
               const story = c.stories || {}; 
               return `
                 <a class="chapter-card" href="capitulo.html?id=${c.id}">
@@ -1030,6 +1044,7 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
     let query = db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured, tags, age_rating')
       .eq('is_published', true)
       .neq('status', 'Próximamente')
+      .neq('status', 'Borrador') // Filtro clave para borradores
       .order('created_at', { ascending: false }); 
       
     if (excluirDestacada) query = query.eq('is_featured', false); 
@@ -1225,8 +1240,10 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
   
   let badge = '';
   if (p.is_author) {
-    badge = '<span class="verified-admin-badge" title="Autor/Dueño"></span>';
+    // Escudo Dorado SVG (para evitar problemas de imagen)
+    badge = '<span class="verified-admin-badge" title="Autor/Dueño"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg></span>';
   } else if (p.is_verified) {
+    // Check Rojo SVG
     badge = '<span class="verified-user-badge" title="Usuario verificado"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg></span>';
   }
 
@@ -1780,7 +1797,7 @@ async function cargarCapitulo() {
     
     if (!chapter) { render404(cont, 'Capítulo no encontrado', 'Puede que haya sido eliminado.'); return; } 
 
-    if (chapter.publish_at && new Date(chapter.publish_at) > new Date()) {
+    if (chapter.publish_at && new Date(chapter.publish_at).getTime() > new Date().getTime()) {
       render404(cont, 'Capítulo no disponible', 'Este capítulo aún no ha sido publicado. Vuelve más tarde.');
       return;
     }
@@ -3030,7 +3047,7 @@ function dispararContenidoSegunPath() {
     cargarRelatosHome(); 
     cargarUltimoBlogHome(); 
     cargarHistorias({ excluirDestacada: false }); 
-    cargarProximamente(); // Cargado al final para que aparezca debajo de Historias
+    cargarProximamente(); 
   } else if (path === 'historias.html') { 
     cargarHistorias({ genero: params.get('genero'), busqueda: params.get('q') }); 
     
