@@ -821,23 +821,25 @@ async function cargarNovedades() {
   if (!cont) return; 
   
   try { 
-    // 1. Obtenemos la fecha actual para no mostrar capítulos programados en el futuro
     const ahora = new Date().toISOString();
     
     const { data, error } = await withTimeout(
       db.from('chapters').select('id, title, chapter_order, created_at, story_id, publish_at, stories(id, title, cover_url, status)')
-        .or(`publish_at.is.null,publish_at.lte.${ahora}`) // Filtro clave
+        .or(`publish_at.is.null,publish_at.lte.${ahora}`) 
         .order('created_at', { ascending: false })
-        .limit(15), // Traemos 15 por si algunos se filtran abajo
+        .limit(15), 
       8000
     ); 
     
     if (error || !data?.length) return; 
 
-    // Filtramos para asegurarnos de que la historia no sea un borrador
+    const nowTime = Date.now();
     const capítulosVisibles = data.filter(c => {
       if (!c.stories || c.stories.status === 'Borrador') return false;
-      if (c.publish_at && new Date(c.publish_at) > new Date()) return false;
+      if (c.publish_at) {
+        const pubTime = new Date(c.publish_at).getTime();
+        if (pubTime > nowTime) return false;
+      }
       return true;
     }).slice(0, 10);
     
@@ -1044,7 +1046,7 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
     let query = db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured, tags, age_rating')
       .eq('is_published', true)
       .neq('status', 'Próximamente')
-      .neq('status', 'Borrador') // Filtro clave para borradores
+      .neq('status', 'Borrador')
       .order('created_at', { ascending: false }); 
       
     if (excluirDestacada) query = query.eq('is_featured', false); 
@@ -1240,10 +1242,19 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
   
   let badge = '';
   if (p.is_author) {
-    // Escudo Dorado SVG (para evitar problemas de imagen)
-    badge = '<span class="verified-admin-badge" title="Autor/Dueño"><svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg></span>';
+    badge = `<span class="verified-admin-badge" title="Autor/Dueño">
+      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="metalRed" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ff6b6b" />
+            <stop offset="50%" stop-color="#e50914" />
+            <stop offset="100%" stop-color="#8a0006" />
+          </linearGradient>
+        </defs>
+        <path fill="url(#metalRed)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+      </svg>
+    </span>`;
   } else if (p.is_verified) {
-    // Check Rojo SVG
     badge = '<span class="verified-user-badge" title="Usuario verificado"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg></span>';
   }
 
@@ -1633,8 +1644,12 @@ async function cargarHistoriaDetalle() {
       return; 
     } 
     
-    const ahora = new Date();
-    const chaptersVisibles = chaptersRaw.filter(c => !c.publish_at || new Date(c.publish_at) <= ahora);
+    const nowTime = Date.now();
+    const chaptersVisibles = chaptersRaw.filter(c => {
+      if (!c.publish_at) return true;
+      const pubTime = new Date(c.publish_at).getTime();
+      return pubTime <= nowTime;
+    });
 
     db.from('characters').select('id, name, role, description, avatar_url').eq('story_id', id).order('display_order', { ascending: true })
       .then(({ data }) => { 
