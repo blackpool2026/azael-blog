@@ -1,0 +1,87 @@
+.historial-group { margin-bottom: 24px; }
+
+.historial-date-title {
+  font-family: var(--font-serif);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+  padding-left: 8px;
+  border-left: 3px solid var(--accent-color);
+  text-transform: capitalize;
+}
+
+.historial-list { display: flex; flex-direction: column; gap: 8px; }
+
+.historial-item {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 16px !important;
+  padding: 12px 16px !important;
+  background: var(--bg-surface) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: var(--radius) !important;
+  text-decoration: none !important;
+  color: var(--text-primary) !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.historial-item:hover {
+  background: var(--bg-surface-hover) !important;
+  border-color: var(--text-tertiary) !important;
+}
+
+.historial-item-cover {
+  width: 45px !important;
+  height: 65px !important;
+  min-width: 45px !important;
+  max-width: 45px !important;
+  border-radius: 4px !important;
+  overflow: hidden !important;
+  background: var(--bg-elevated) !important;
+  flex-shrink: 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-family: var(--font-serif) !important;
+  font-size: 18px !important;
+  color: var(--text-tertiary) !important;
+}
+
+.historial-item-cover img {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  display: block !important;
+}
+
+.historial-item-body {
+  flex: 1 !important;
+  min-width: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  text-align: left !important;
+}
+
+.historial-item-title {
+  font-family: var(--font-serif) !important;
+  font-size: 15px !important;
+  font-weight: 600 !important;
+  color: var(--text-primary) !important;
+  margin-bottom: 4px !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.historial-item-meta {
+  font-size: 12px !important;
+  color: var(--text-tertiary) !important;
+}
+
+.historial-item-icon {
+  color: var(--accent-color) !important;
+  flex-shrink: 0 !important;
+}
