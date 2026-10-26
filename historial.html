@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="dark">
+<head>
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-N82X48872T1"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-N82X48872T1');
+  </script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Historial — Azael Colina</title>
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#0a0a0c" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Lora:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="header-mount"></div>
+
+  <main class="page-main">
+    <section class="page-head-c">
+      <div class="container">
+        <h1 class="page-title-c">Mi Historial</h1>
+        <p class="page-sub-c">Registro de tus lecturas en la página</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <!-- Filtros -->
+        <div class="historias-filters-wrap" style="margin-bottom: 24px;">
+          <div class="filtros-pills" id="filtrosHistorial">
+            <button class="filtro-pill active" data-filter="capitulos">Capítulos leídos</button>
+            <button class="filtro-pill" data-filter="libros">Libros leídos</button>
+          </div>
+        </div>
+
+        <!-- Contenedor donde se inyectará el historial -->
+        <div id="historialContent">
+          <div class="empty-c">
+            <div class="empty-icon"><i data-lucide="loader-2" style="width:48px;height:48px;"></i></div>
+            <div class="empty-title">Cargando tu historial…</div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer-c">
+    <div class="container">
+      <div class="footer-brand">Azael Colina</div>
+      <p>© <span id="year"></span> — Un rincón para leer</p>
+    </div>
+  </footer>
+
+  <div id="auth-mount"></div>
+  <div id="toast-mount"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>
