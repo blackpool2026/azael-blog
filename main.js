@@ -821,29 +821,34 @@ async function cargarNovedades() {
   if (!cont) return; 
   
   try { 
-    const ahora = new Date().toISOString();
-    
+    // 1. Traemos los últimos 30 capítulos sin filtros de fecha en el SQL
     const { data, error } = await withTimeout(
       db.from('chapters').select('id, title, chapter_order, created_at, story_id, publish_at, stories(id, title, cover_url, status)')
-        .or(`publish_at.is.null,publish_at.lte.${ahora}`) 
         .order('created_at', { ascending: false })
-        .limit(15), 
+        .limit(30), 
       8000
     ); 
     
     if (error || !data?.length) return; 
 
+    // 2. Filtramos manualmente en JavaScript
     const nowTime = Date.now();
     const capítulosVisibles = data.filter(c => {
+      // Ocultar si la historia es borrador
       if (!c.stories || c.stories.status === 'Borrador') return false;
+      
+      // Ocultar si tiene fecha de publicación y esa fecha es mayor a la hora actual
       if (c.publish_at) {
         const pubTime = new Date(c.publish_at).getTime();
-        if (pubTime > nowTime) return false;
+        if (pubTime > nowTime) return false; 
       }
       return true;
-    }).slice(0, 10);
+    }).slice(0, 10); 
     
-    if (!capítulosVisibles.length) return;
+    if (!capítulosVisibles.length) {
+      cont.innerHTML = '';
+      return;
+    }
 
     cont.innerHTML = `
       <section class="section">
