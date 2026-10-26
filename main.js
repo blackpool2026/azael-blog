@@ -1245,13 +1245,14 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
     badge = `<span class="verified-admin-badge" title="Autor/Dueño">
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <defs>
-          <linearGradient id="metalRed" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ff6b6b" />
-            <stop offset="50%" stop-color="#e50914" />
-            <stop offset="100%" stop-color="#8a0006" />
+          <linearGradient id="metalPlatinum" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#ffffff" />
+            <stop offset="30%" stop-color="#d1d5db" />
+            <stop offset="65%" stop-color="#f87171" />
+            <stop offset="100%" stop-color="#6b7280" />
           </linearGradient>
         </defs>
-        <path fill="url(#metalRed)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        <path fill="url(#metalPlatinum)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
       </svg>
     </span>`;
   } else if (p.is_verified) {
