@@ -517,13 +517,14 @@ async function cargarUsuarios() {
       badgeVisual = `<span class="verified-admin-badge" title="Dueño/Autor">
         <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
           <defs>
-            <linearGradient id="metalRed" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#ff6b6b" />
-              <stop offset="50%" stop-color="#e50914" />
-              <stop offset="100%" stop-color="#8a0006" />
+            <linearGradient id="metalPlatinum" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="30%" stop-color="#d1d5db" />
+              <stop offset="65%" stop-color="#f87171" />
+              <stop offset="100%" stop-color="#6b7280" />
             </linearGradient>
           </defs>
-          <path fill="url(#metalRed)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+          <path fill="url(#metalPlatinum)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
         </svg>
       </span>`;
     } else if (u.is_verified) {
@@ -779,7 +780,15 @@ function abrirChapterForm(id = null) {
       document.getElementById('chapterNote').value = data.author_note || '';
       document.getElementById('chapterOrder').value = data.chapter_order || 1;
       document.getElementById('chapterPremium').checked = !!data.is_premium;
-      document.getElementById('chapterPublishAt').value = data.publish_at ? new Date(data.publish_at).toISOString().slice(0, 16) : '';
+      
+      if (data.publish_at) {
+        const d = new Date(data.publish_at);
+        const localTime = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+        document.getElementById('chapterPublishAt').value = localTime;
+      } else {
+        document.getElementById('chapterPublishAt').value = '';
+      }
+      
       document.getElementById('chapterViewTitle').textContent = 'Editar capítulo';
       document.getElementById('chapterDeleteBtn').hidden = false;
       actualizarContador('chapterEditor', 'edCounter');
@@ -799,7 +808,7 @@ document.getElementById('chapterForm').addEventListener('submit', async (e) => {
     author_note: document.getElementById('chapterNote').value.trim(),
     chapter_order: parseInt(document.getElementById('chapterOrder').value, 10) || 1,
     is_premium: document.getElementById('chapterPremium').checked,
-    publish_at: document.getElementById('chapterPublishAt').value || null,
+    publish_at: document.getElementById('chapterPublishAt').value ? new Date(document.getElementById('chapterPublishAt').value).toISOString() : null,
   };
   showLoading();
   let error;
