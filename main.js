@@ -22,6 +22,9 @@ let relatosSearchQuery = '';
 let historiasCurrentSearch = '';
 let historiasCurrentFilter = 'todos';
 
+let historialFilter = 'capitulos';
+let historialRawData = [];
+
 const REACCIONES_DISPONIBLES = [
   { emoji: '❤️', label: 'Me encanta' }, 
   { emoji: '😂', label: 'Me río' },
@@ -317,6 +320,7 @@ const NAV_ITEMS = [
   { href: 'historias.html', label: 'Historias', icon: 'book-open' },
   { href: 'generos.html', label: 'Géneros', icon: 'layout-grid' },
   { href: 'relatos.html', label: 'Relatos', icon: 'pen-line' },
+  { href: 'historial.html', label: 'Historial', icon: 'history' },
   { href: 'blog.html', label: 'Blog', icon: 'feather' },
   { href: 'redes.html', label: 'Redes', icon: 'share-2' },
   { href: 'donaciones.html', label: 'Donaciones', icon: 'heart-handshake' },
@@ -326,6 +330,7 @@ const NAV_ITEMS = [
 const PAGE_TITLES = {
   'index.html': 'Inicio', 'historias.html': 'Historias', 'generos.html': 'Géneros',
   'relatos.html': 'Relatos', 'relato.html': 'Relato', 'mis-relatos.html': 'Mis relatos',
+  'historial.html': 'Mi Historial',
   'blog.html': 'Blog', 'post.html': 'Entrada', 'redes.html': 'Redes',
   'biografia.html': 'Biografía', 'historia.html': 'Historia', 'capitulo.html': 'Leyendo',
   'donaciones.html': 'Donaciones', 'perfil.html': 'Mi Perfil'
@@ -821,7 +826,6 @@ async function cargarNovedades() {
   if (!cont) return; 
   
   try { 
-    // 1. Traemos los últimos 30 capítulos sin filtros de fecha en el SQL
     const { data, error } = await withTimeout(
       db.from('chapters').select('id, title, chapter_order, created_at, story_id, publish_at, stories(id, title, cover_url, status)')
         .order('created_at', { ascending: false })
@@ -831,13 +835,9 @@ async function cargarNovedades() {
     
     if (error || !data?.length) return; 
 
-    // 2. Filtramos manualmente en JavaScript
     const nowTime = Date.now();
     const capítulosVisibles = data.filter(c => {
-      // Ocultar si la historia es borrador
       if (!c.stories || c.stories.status === 'Borrador') return false;
-      
-      // Ocultar si tiene fecha de publicación y esa fecha es mayor a la hora actual
       if (c.publish_at) {
         const pubTime = new Date(c.publish_at).getTime();
         if (pubTime > nowTime) return false; 
@@ -2927,6 +2927,128 @@ function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'li
   }); 
 }
 
+/* --- HISTORIAL DEL LECTOR --- */
+async function cargarHistorial() {
+  const cont = document.getElementById('historialContent');
+  if (!cont) return;
+
+  const { data: { session } } = await db.auth.getSession();
+  
+  if (!session?.user) {
+    cont.innerHTML = `
+      <div class="empty-c">
+        <div class="empty-icon">${ic('lock', 48)}</div>
+        <div class="empty-title">Inicia sesión</div>
+        <div class="empty-sub">Necesitas una cuenta para ver tu historial de lectura.</div>
+        <div style="margin-top:20px;"><button class="btn btn-primary" onclick="document.getElementById('authModal').hidden=false">Iniciar sesión</button></div>
+      </div>
+    `;
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  cont.innerHTML = `<div class="empty-c"><div class="empty-icon">${ic('loader-2', 48)}</div><div class="empty-title">Cargando…</div></div>`;
+  if (window.lucide) lucide.createIcons();
+
+  const { data, error } = await db.from('chapter_reads')
+    .select(`
+      read_at,
+      chapters (
+        id, title, chapter_order, story_id,
+        stories ( id, title, cover_url )
+      )
+    `)
+    .eq('user_id', session.user.id)
+    .order('read_at', { ascending: false });
+
+  if (error || !data?.length) {
+    cont.innerHTML = emptyState('history', 'Historial vacío', 'Aún no has leído ningún capítulo.');
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  historialRawData = data;
+  renderHistorial();
+}
+
+function renderHistorial() {
+  const cont = document.getElementById('historialContent');
+  if (!cont) return;
+  
+  const ahora = new Date();
+  const ayer = new Date(ahora); ayer.setDate(ayer.getDate() - 1);
+
+  const agrupado = {};
+  const librosSet = new Set();
+  
+  historialRawData.forEach(item => {
+    const ch = item.chapters;
+    if (!ch) return;
+    const story = ch.stories;
+    
+    if (historialFilter === 'libros') {
+      if (story) librosSet.add(JSON.stringify(story));
+      return;
+    }
+
+    const fecha = new Date(item.read_at);
+    let fechaKey = fecha.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    if (fecha.toDateString() === ahora.toDateString()) fechaKey = 'Hoy';
+    else if (fecha.toDateString() === ayer.toDateString()) fechaKey = 'Ayer';
+
+    if (!agrupado[fechaKey]) agrupado[fechaKey] = [];
+    agrupado[fechaKey].push({ ...item, story });
+  });
+
+  let html = '';
+
+  if (historialFilter === 'libros') {
+    const libros = Array.from(librosSet).map(s => JSON.parse(s));
+    if (!libros.length) { cont.innerHTML = emptyState('book', 'Sin libros', 'Aún no has leído libros.'); return; }
+    
+    html = `<div class="historial-list">
+      ${libros.map(s => `
+        <a href="historia.html?id=${s.id}" class="historial-item">
+          <div class="historial-item-cover">
+            ${s.cover_url ? `<img src="${s.cover_url}" />` : escapeHtml(s.title.charAt(0))}
+          </div>
+          <div class="historial-item-body">
+            <div class="historial-item-title">${escapeHtml(s.title)}</div>
+            <div class="historial-item-meta">Libro abierto</div>
+          </div>
+          <div class="historial-item-icon">${ic('chevron-right', 18)}</div>
+        </a>
+      `).join('')}
+    </div>`;
+  } else {
+    for (const [fecha, items] of Object.entries(agrupado)) {
+      html += `
+        <div class="historial-group">
+          <div class="historial-date-title">${fecha} <span style="font-size:12px;font-weight:400;color:var(--text-tertiary);">(${items.length} capítulo${items.length > 1 ? 's' : ''})</span></div>
+          <div class="historial-list">
+            ${items.map(i => `
+              <a href="capitulo.html?id=${i.chapters.id}" class="historial-item">
+                <div class="historial-item-cover">
+                  ${i.story?.cover_url ? `<img src="${i.story.cover_url}" />` : escapeHtml((i.story?.title || '?').charAt(0))}
+                </div>
+                <div class="historial-item-body">
+                  <div class="historial-item-title">Cap. ${i.chapters.chapter_order || '?'} · ${escapeHtml(i.chapters.title)}</div>
+                  <div class="historial-item-meta">${escapeHtml(i.story?.title || 'Historia')}</div>
+                </div>
+                <div class="historial-item-icon">${ic('chevron-right', 18)}</div>
+              </a>
+            `).join('')}
+          </div>
+        </div>
+      `;
+    }
+  }
+
+  cont.innerHTML = html;
+  if (window.lucide) lucide.createIcons();
+}
+
 /* --- PERFIL Y BIOGRAFÍA --- */
 async function cargarPerfilPublico() { 
   const cont = document.getElementById('perfilContent'); 
@@ -3113,6 +3235,16 @@ function dispararContenidoSegunPath() {
     cargarRelatoDetalle(); 
   } else if (path === 'mis-relatos.html') { 
     cargarMisRelatos(); 
+  } else if (path === 'historial.html') {
+    cargarHistorial();
+    document.querySelectorAll('#filtrosHistorial .filtro-pill').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('#filtrosHistorial .filtro-pill').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        historialFilter = btn.dataset.filter;
+        renderHistorial();
+      });
+    });
   } else if (path === 'blog.html') { 
     cargarBlog(); 
   } else if (path === 'post.html') { 
