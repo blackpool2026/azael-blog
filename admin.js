@@ -1,5 +1,6 @@
 /* ============================================
-   AZAEL BLOG — admin.js COMPLETO
+   AZAEL BLOG — admin.js COMPLETO Y CORREGIDO
+   (Parte 1/3 — setup, utilidades, dashboard, usuarios, reseñas)
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -17,6 +18,7 @@ let currentChapter = null;
 let currentPost = null;
 let currentProfile = null;
 let currentRelatoAdmin = null;
+let currentResena = null;
 let currentTreeStory = null;
 let currentCharacter = null;
 let currentCharacterImageUrl = null;
@@ -489,6 +491,7 @@ async function cargarDashboard() {
   document.querySelectorAll('[data-action="edit-post"]').forEach(btn => {
     btn.addEventListener('click', () => abrirPostForm(btn.dataset.id));
   });
+  cargarResenasAdminList();
   if (window.lucide) lucide.createIcons();
 }
 
@@ -497,20 +500,20 @@ async function cargarUsuarios() {
   const list = document.getElementById('adminUsersList');
   if (!list) return;
   showLoading();
-  
+
   const { data, error } = await db
     .from('profiles')
     .select('*')
     .order('created_at', { ascending: false });
-    
+
   hideLoading();
-  
+
   if (error) { list.innerHTML = emptyState('alert-circle', 'Error', error.message); return; }
   if (!data?.length) {
     list.innerHTML = emptyState('users', 'Sin usuarios', 'Aún no se ha registrado nadie.');
     return;
   }
-  
+
   list.innerHTML = data.map(u => {
     let badgeVisual = '';
     if (u.is_author) {
@@ -550,7 +553,7 @@ async function cargarUsuarios() {
           </div>
           <div class="admin-item-body">
             <div class="admin-item-title" style="display:flex; align-items:center;">
-              @${escapeHtml(u.username || 'Sin @')} 
+              @${escapeHtml(u.username || 'Sin @')}
               ${badgeVisual}
             </div>
             <div class="admin-item-meta">
@@ -563,7 +566,7 @@ async function cargarUsuarios() {
       </div>
     `;
   }).join('');
-  
+
   document.querySelectorAll('[data-action="toggle-verify"]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const isVerified = btn.dataset.verified === 'true';
@@ -571,13 +574,107 @@ async function cargarUsuarios() {
       await db.from('profiles').update({ is_verified: !isVerified }).eq('id', btn.dataset.id);
       hideLoading();
       toast(isVerified ? 'Verificado removido' : 'Usuario verificado con éxito', 'ok');
-      cargarUsuarios(); 
+      cargarUsuarios();
     });
   });
-  
+
   if (window.lucide) lucide.createIcons();
 }
 
+/* ---------- RESEÑAS ADMIN ---------- */
+async function abrirResenaAdminForm(id = null) {
+  currentResena = null;
+  const form = document.getElementById('resenaForm');
+  if (!form) return;
+  form.reset();
+  document.getElementById('resenaAdminViewTitle').textContent = 'Nueva reseña';
+  document.getElementById('resenaDeleteBtn').hidden = true;
+
+  if (id) {
+    showLoading();
+    const { data } = await db.from('resenas').select('*').eq('id', id).maybeSingle();
+    hideLoading();
+    if (data) {
+      currentResena = data;
+      document.getElementById('resenaTitle').value = data.title || '';
+      document.getElementById('resenaContent').value = data.content || '';
+      document.getElementById('resenaLinks').value = data.links || '';
+      document.getElementById('resenaAdminViewTitle').textContent = 'Editar reseña';
+      document.getElementById('resenaDeleteBtn').hidden = false;
+    }
+  }
+  showView('viewResenaAdmin');
+  setTimeout(() => document.getElementById('resenaTitle')?.focus(), 100);
+}
+
+async function cargarResenasAdminList() {
+  const list = document.getElementById('adminResenasList');
+  if (!list) return;
+  showLoading();
+  const { data } = await db.from('resenas').select('id, title, created_at').order('created_at', { ascending: false });
+  hideLoading();
+
+  if (!data?.length) {
+    list.innerHTML = emptyState('book-marked', 'Sin reseñas', 'Escribe tu primera reseña.');
+    if (window.lucide) lucide.createIcons();
+    return;
+  }
+
+  list.innerHTML = data.map(r => `
+    <div class="admin-item">
+      <div class="admin-item-body">
+        <div class="admin-item-title">${escapeHtml(r.title)}</div>
+        <div class="admin-item-meta">
+          <span>${new Date(r.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        </div>
+      </div>
+      <button class="admin-item-action" data-action="edit-resena" data-id="${r.id}">${ic('edit-2', 16)}</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('[data-action="edit-resena"]').forEach(btn => {
+    btn.addEventListener('click', () => abrirResenaAdminForm(btn.dataset.id));
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
+document.getElementById('resenaForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const payload = {
+    title: document.getElementById('resenaTitle').value.trim(),
+    content: document.getElementById('resenaContent').value.trim(),
+    links: document.getElementById('resenaLinks').value.trim() || null,
+    updated_at: new Date().toISOString(),
+  };
+  if (!payload.title || !payload.content) { toast('Título y contenido son obligatorios', 'error'); return; }
+
+  showLoading();
+  let error;
+  if (currentResena) {
+    ({ error } = await db.from('resenas').update(payload).eq('id', currentResena.id));
+  } else {
+    ({ error } = await db.from('resenas').insert(payload));
+  }
+  hideLoading();
+
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast(currentResena ? 'Reseña actualizada' : 'Reseña publicada', 'ok');
+  limpiarCachePublica();
+  setTimeout(() => { showView('viewDashboard'); cargarDashboard(); }, 400);
+});
+
+document.getElementById('resenaDeleteBtn')?.addEventListener('click', async () => {
+  if (!currentResena) return;
+  if (!confirm(`¿Eliminar la reseña "${currentResena.title}"?`)) return;
+  showLoading();
+  const { error } = await db.from('resenas').delete().eq('id', currentResena.id);
+  hideLoading();
+  if (error) { toast('Error: ' + error.message, 'error'); return; }
+  toast('Reseña eliminada', 'ok');
+  limpiarCachePublica();
+  showView('viewDashboard');
+  cargarDashboard();
+});
 /* ---------- STORY FORM ---------- */
 async function abrirStoryForm(id = null) {
   currentStory = null;
@@ -587,7 +684,7 @@ async function abrirStoryForm(id = null) {
   document.getElementById('chaptersSection').hidden = true;
   document.getElementById('storyDeleteBtn').hidden = true;
   document.getElementById('storyViewTitle').textContent = 'Nueva historia';
-  
+
   document.getElementById('releaseDateField').style.display = 'none';
   document.getElementById('storyReleaseDate').value = '';
   document.getElementById('storyTags').value = '';
@@ -608,7 +705,7 @@ async function abrirStoryForm(id = null) {
       document.getElementById('storyPublished').checked = data.is_published !== false;
       document.getElementById('storyTags').value = data.tags || '';
       document.getElementById('storyAgeRating').value = data.age_rating || 'Todo público';
-      
+
       if (data.status === 'Próximamente') {
         document.getElementById('releaseDateField').style.display = 'flex';
         document.getElementById('storyReleaseDate').value = data.release_date || '';
@@ -780,7 +877,7 @@ function abrirChapterForm(id = null) {
       document.getElementById('chapterNote').value = data.author_note || '';
       document.getElementById('chapterOrder').value = data.chapter_order || 1;
       document.getElementById('chapterPremium').checked = !!data.is_premium;
-      
+
       if (data.publish_at) {
         const d = new Date(data.publish_at);
         const localTime = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -788,7 +885,7 @@ function abrirChapterForm(id = null) {
       } else {
         document.getElementById('chapterPublishAt').value = '';
       }
-      
+
       document.getElementById('chapterViewTitle').textContent = 'Editar capítulo';
       document.getElementById('chapterDeleteBtn').hidden = false;
       actualizarContador('chapterEditor', 'edCounter');
@@ -1405,7 +1502,6 @@ async function agregarDonacion(platform, url, label) {
   limpiarCachePublica();
   cargarDonacionesAdmin();
 }
-
 /* ---------- ESTADÍSTICAS ---------- */
 async function abrirStatsView() {
   showView('viewStats');
@@ -3535,6 +3631,7 @@ document.getElementById('bioSaveBtn').addEventListener('click', async () => {
 document.getElementById('btnNewStory').addEventListener('click', () => abrirStoryForm(null));
 document.getElementById('btnNewPost').addEventListener('click', () => abrirPostForm(null));
 document.getElementById('btnNewRelatoAdmin')?.addEventListener('click', () => abrirRelatoAdminForm(null));
+document.getElementById('btnNewResena')?.addEventListener('click', () => abrirResenaAdminForm(null));
 document.getElementById('btnUsuarios')?.addEventListener('click', () => { showView('viewUsuarios'); cargarUsuarios(); });
 document.getElementById('btnNotificaciones')?.addEventListener('click', () => abrirNotificacionesView());
 document.getElementById('btnReportes')?.addEventListener('click', () => abrirReportesView());
@@ -3579,6 +3676,7 @@ document.getElementById('backFromStory').addEventListener('click', () => { showV
 document.getElementById('backFromChapter').addEventListener('click', () => { showView('viewStory'); cargarCapitulosAdmin(currentStory.id); });
 document.getElementById('backFromPost').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromRelatoAdmin')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
+document.getElementById('backFromResenaAdmin')?.addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromRedes').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromBio').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
 document.getElementById('backFromDonaciones').addEventListener('click', () => { showView('viewDashboard'); cargarDashboard(); });
