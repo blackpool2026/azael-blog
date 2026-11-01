@@ -1,22 +1,11 @@
 /* ============================================
-   AZAEL BLOG — main.js COMPLETO Y CORREGIDO
+   AZAEL BLOG — main.js (v3 con reseñas rediseñadas)
    ============================================ */
-
-// Detector de errores: Si algo falla, te avisará con una ventana emergente en el teléfono
-window.onerror = function (msg, url, line) {
-  alert("Error detectado en la línea " + line + ":\n" + msg);
-};
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbGlkdXdpYXJyeXFjcXRpZ25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3OTU4MzgsImV4cCI6MjEwNjM3MTgzOH0.T6GZXQNjzRwhbuYuVx54vsdTNy2CTpEwCjnxED1KGaY';
 
-// Carga segura de Supabase (evita que la pantalla se congele si la red tarda)
 const supabaseGlobal = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
-
-if (!supabaseGlobal) {
-  alert("Aviso: No se pudo cargar la librería de Supabase desde internet.");
-}
-
 const db = supabaseGlobal ? supabaseGlobal.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const THEME_KEY = 'azael-theme-v2';
@@ -29,10 +18,8 @@ const RELATOS_PAGE_SIZE = 12;
 let relatosCurrentPage = 1;
 let relatosAllData = null;
 let relatosSearchQuery = '';
-
 let historiasCurrentSearch = '';
 let historiasCurrentFilter = 'todos';
-
 let historialFilter = 'capitulos';
 let historialRawData = [];
 
@@ -48,11 +35,12 @@ let SITE_SETTINGS = {
   show_likes: true,
   show_views: true,
   show_relatos_btn: true,
-  show_mis_relatos_menu: true
+  show_mis_relatos_menu: true,
+  show_resena_likes: true,
 };
 
 /* ============================================
-   UTILIDADES Y HELPERS
+   UTILIDADES
    ============================================ */
 
 async function cargarSiteSettings() {
@@ -63,6 +51,7 @@ async function cargarSiteSettings() {
       SITE_SETTINGS.show_views = !!data.show_views;
       SITE_SETTINGS.show_relatos_btn = data.show_relatos_btn !== false;
       SITE_SETTINGS.show_mis_relatos_menu = data.show_mis_relatos_menu !== false;
+      SITE_SETTINGS.show_resena_likes = data.show_resena_likes !== false;
     }
   } catch (e) {
     console.warn('Error cargando site_settings:', e);
@@ -72,7 +61,7 @@ async function cargarSiteSettings() {
 function withTimeout(promise, ms = 8000) {
   return Promise.race([
     promise,
-    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms))
+    new Promise((_, reject) => setTimeout(() => reject(new Error('timeout')), ms)),
   ]);
 }
 
@@ -139,6 +128,82 @@ function showToast(msg, type = 'info', duration = 2500) {
   }, duration);
 }
 
+function escapeHtml(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+}
+
+function formatearContenidoRelato(texto) {
+  if (!texto) return '<p>Sin contenido.</p>';
+  const safe = escapeHtml(texto);
+  return safe
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>');
+}
+
+function capitalize(str) {
+  return String(str || '').charAt(0).toUpperCase() + String(str || '').slice(1);
+}
+
+function tiempoRelativo(fecha) {
+  const d = new Date(fecha);
+  const diff = (Date.now() - d.getTime()) / 1000;
+  if (diff < 60) return 'ahora';
+  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
+  if (diff < 604800) return `hace ${Math.floor(diff / 86400)} d`;
+  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+function calcularEdad(fechaNacimiento) {
+  if (!fechaNacimiento) return null;
+  const hoy = new Date();
+  const cumple = new Date(fechaNacimiento);
+  if (isNaN(cumple.getTime())) return null;
+  let edad = hoy.getFullYear() - cumple.getFullYear();
+  const m = hoy.getMonth() - cumple.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) edad--;
+  return edad;
+}
+
+async function esUsuarioMayorDeEdad() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.user) return false;
+    const { data: profile } = await db.from('profiles').select('birthdate, is_author').eq('id', session.user.id).maybeSingle();
+    if (profile?.is_author) return true;
+    const edad = calcularEdad(profile?.birthdate);
+    return edad !== null && edad >= 18;
+  } catch {
+    return false;
+  }
+}
+
+function ic(name, size = 18) {
+  return `<i data-lucide="${name}" style="width:${size}px;height:${size}px;display:inline-block;"></i>`;
+}
+
+function pagActiva() {
+  let p = (location.pathname.split('/').pop() || 'index').toLowerCase();
+  if (p === '' || p === '/') p = 'index';
+  if (!p.endsWith('.html')) p += '.html';
+  return p;
+}
+
+function emptyState(iconName, title, sub) {
+  return `
+    <div class="empty-c">
+      <div class="empty-icon">${ic(iconName, 48)}</div>
+      <div class="empty-title">${escapeHtml(title)}</div>
+      <div class="empty-sub">${escapeHtml(sub || '')}</div>
+    </div>
+  `;
+}
+
 function render404(cont, titulo = 'Contenido no encontrado', msg = 'El enlace que buscas no existe o fue eliminado.') {
   cont.innerHTML = `
     <div class="container" style="padding:80px 20px;text-align:center;">
@@ -173,6 +238,29 @@ function renderAgeGate(cont) {
   if (window.lucide) lucide.createIcons();
 }
 
+function traducirError(msg) {
+  const m = (msg || '').toLowerCase();
+  if (m.includes('invalid login')) return 'Correo o contraseña incorrectos.';
+  if (m.includes('already registered')) return 'Ese correo ya está registrado.';
+  if (m.includes('password')) return 'La contraseña debe tener al menos 6 caracteres.';
+  if (m.includes('email')) return 'Correo electrónico inválido.';
+  if (m.includes('timeout')) return 'La conexión tardó demasiado. Revisa tu internet.';
+  return msg || 'Ocurrió un error';
+}
+
+/* ============================================
+   TEMAS Y PREFERENCIAS DE LECTURA
+   ============================================ */
+
+function applyTheme(t) {
+  document.documentElement.setAttribute('data-theme', t);
+  localStorage.setItem(THEME_KEY, t);
+}
+
+function initTheme() {
+  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+}
+
 const READER_PREFS = { fontFamily: 'serif', fontSize: 18, lineHeight: 1.6, theme: 'neutral' };
 
 function loadReaderPrefs() {
@@ -199,78 +287,10 @@ function applyReaderPrefs() {
   document.body.dataset.readerTheme = READER_PREFS.theme;
 }
 
-function ic(name, size = 18) {
-  return `<i data-lucide="${name}" style="width:${size}px;height:${size}px;display:inline-block;"></i>`;
-}
-
-function pagActiva() {
-  let p = (location.pathname.split('/').pop() || 'index').toLowerCase();
-  if (p === '' || p === '/') p = 'index';
-  if (!p.endsWith('.html')) p += '.html';
-  return p;
-}
-
-function escapeHtml(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
-}
-
-/* Sanitizador seguro para relatos comunitarios (Anti-XSS) */
-function formatearContenidoRelato(texto) {
-  if (!texto) return '<p>Sin contenido.</p>';
-  const safe = escapeHtml(texto);
-  return safe
-    .replace(/\r\n/g, '\n')
-    .replace(/\n{2,}/g, '</p><p>')
-    .replace(/\n/g, '<br>')
-    .replace(/^/, '<p>')
-    .replace(/$/, '</p>');
-}
-
-function capitalize(str) {
-  return String(str || '').charAt(0).toUpperCase() + String(str || '').slice(1);
-}
-
-function tiempoRelativo(fecha) {
-  const d = new Date(fecha);
-  const diff = (Date.now() - d.getTime()) / 1000;
-  if (diff < 60) return 'ahora';
-  if (diff < 3600) return `hace ${Math.floor(diff / 60)} min`;
-  if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
-  if (diff < 604800) return `hace ${Math.floor(diff / 86400)} d`;
-  return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
-}
-
-function calcularEdad(fechaNacimiento) {
-  if (!fechaNacimiento) return null;
-  const hoy = new Date();
-  const cumple = new Date(fechaNacimiento);
-  if (isNaN(cumple.getTime())) return null;
-  let edad = hoy.getFullYear() - cumple.getFullYear();
-  const m = hoy.getMonth() - cumple.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) {
-    edad--;
-  }
-  return edad;
-}
-
-async function esUsuarioMayorDeEdad() {
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    if (!session?.user) return false;
-    const { data: profile } = await db.from('profiles').select('birthdate, is_author').eq('id', session.user.id).maybeSingle();
-    if (profile?.is_author) return true;
-    const edad = calcularEdad(profile?.birthdate);
-    return edad !== null && edad >= 18;
-  } catch {
-    return false;
-  }
-}
-
 /* ============================================
-   SISTEMA DE INSIGNIAS / RANGOS
+   INSIGNIAS / RANGOS
    ============================================ */
+
 function renderUserBadge(p) {
   if (!p) return '';
   const bType = p.badge_type || (p.is_author ? 'owner' : (p.is_verified ? 'verified' : 'none'));
@@ -294,58 +314,54 @@ function renderUserBadge(p) {
   }
 
   if (bType === 'moderator') {
-    return `
-      <span class="badge-rank badge-moderator" title="Moderador">
-        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm-1 14.5l-4-4 1.41-1.41L11 13.67l6.59-6.59L19 8.5l-8 8z"/></svg>
-      </span>
-    `;
+    return `<span class="badge-rank badge-moderator" title="Moderador"><svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm-1 14.5l-4-4 1.41-1.41L11 13.67l6.59-6.59L19 8.5l-8 8z"/></svg></span>`;
   }
 
   if (bType === 'collaborator') {
-    return `
-      <span class="badge-rank badge-collaborator" title="Colaborador">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/></svg>
-      </span>
-    `;
+    return `<span class="badge-rank badge-collaborator" title="Colaborador"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/></svg></span>`;
   }
 
   if (bType === 'vip') {
-    return `
-      <span class="badge-rank badge-vip" title="VIP">
-        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-      </span>
-    `;
+    return `<span class="badge-rank badge-vip" title="VIP"><svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg></span>`;
   }
 
   if (bType === 'verified' || p.is_verified) {
-    return `
-      <span class="badge-rank badge-verified verified-user-badge" title="Verificado">
-        <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg>
-      </span>
-    `;
+    return `<span class="badge-rank badge-verified verified-user-badge" title="Verificado"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg></span>`;
   }
 
   return '';
 }
 
-async function crearNotificacion({ type, storyId, chapterId, postId, commentId, relatoId }) {
-  try {
-    const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle();
-    if (!author?.id) return;
-    const { data: { session } } = await db.auth.getSession();
-    if (session?.user?.id === author.id) return;
-    await db.from('notifications').insert({
-      user_id: author.id,
-      type,
-      from_user_id: session?.user?.id || null,
-      story_id: storyId || null,
-      chapter_id: chapterId || null,
-      post_id: postId || null,
-      comment_id: commentId || null,
-      relato_id: relatoId || null
-    });
-  } catch (e) { console.warn(e); }
+/* ============================================
+   ICONOS SVG
+   ============================================ */
+
+function socialIconSvg(platform, size = 20) {
+  const icons = {
+    instagram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
+    facebook: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>`,
+    youtube: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>`,
+    tiktok: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>`,
+    twitter: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>`,
+    whatsapp: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
+    telegram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
+    discord: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
+    link: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
+  };
+  return icons[platform] || icons.link;
 }
+
+function donationIconSvg(platform, size = 20) {
+  const icons = {
+    paypal: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h5a5 5 0 0 0 0-10H7l-2 10z"/><path d="M10 3h5a5 5 0 0 1 0 10h-3"/><path d="M12 7h5a5 5 0 0 1 0 10h-2"/></svg>`,
+    binance: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L5 9l7 7 7-7-7-7z"/><path d="M5 15l7 7 7-7"/></svg>`,
+  };
+  return icons[platform] || socialIconSvg('link', size);
+}
+
+/* ============================================
+   HISTORIAL LOCAL Y VISTAS
+   ============================================ */
 
 function getReadHistory() {
   try { return JSON.parse(localStorage.getItem(READ_HISTORY_KEY) || '{}'); } catch { return {}; }
@@ -398,56 +414,22 @@ async function registrarVista(storyId, chapterId = null) {
   } catch (e) { console.warn(e); }
 }
 
-function emptyState(iconName, title, sub) {
-  return `
-    <div class="empty-c">
-      <div class="empty-icon">${ic(iconName, 48)}</div>
-      <div class="empty-title">${escapeHtml(title)}</div>
-      <div class="empty-sub">${escapeHtml(sub || '')}</div>
-    </div>
-  `;
-}
-
-function traducirError(msg) {
-  const m = (msg || '').toLowerCase();
-  if (m.includes('invalid login')) return 'Correo o contraseña incorrectos.';
-  if (m.includes('already registered')) return 'Ese correo ya está registrado.';
-  if (m.includes('password')) return 'La contraseña debe tener al menos 6 caracteres.';
-  if (m.includes('email')) return 'Correo electrónico inválido.';
-  if (m.includes('timeout')) return 'La conexión tardó demasiado. Revisa tu internet.';
-  return msg || 'Ocurrió un error';
-}
-
-function socialIconSvg(platform, size = 20) {
-  const icons = {
-    instagram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg>`,
-    facebook: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>`,
-    youtube: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22.54 6.42a2.78 2.78 0 0 0-1.94-2C18.88 4 12 4 12 4s-6.88 0-8.6.46a2.78 2.78 0 0 0-1.94 2A29 29 0 0 0 1 11.75a29 29 0 0 0 .46 5.33A2.78 2.78 0 0 0 3.4 19c1.72.46 8.6.46 8.6.46s6.88 0 8.6-.46a2.78 2.78 0 0 0 1.94-2 29 29 0 0 0 .46-5.25 29 29 0 0 0-.46-5.33z"/><polygon points="9.75 15.02 15.5 11.75 9.75 8.48 9.75 15.02"/></svg>`,
-    tiktok: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>`,
-    twitter: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"/></svg>`,
-    whatsapp: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>`,
-    telegram: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>`,
-    discord: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`,
-    link: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>`,
-  };
-  return icons[platform] || icons.link;
-}
-
-function donationIconSvg(platform, size = 20) {
-  const icons = {
-    paypal: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 21h5a5 5 0 0 0 0-10H7l-2 10z"/><path d="M10 3h5a5 5 0 0 1 0 10h-3"/><path d="M12 7h5a5 5 0 0 1 0 10h-2"/></svg>`,
-    binance: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L5 9l7 7 7-7-7-7z"/><path d="M5 15l7 7 7-7"/></svg>`,
-  };
-  return icons[platform] || socialIconSvg('link', size);
-}
-
-function applyTheme(t) {
-  document.documentElement.setAttribute('data-theme', t);
-  localStorage.setItem(THEME_KEY, t);
-}
-
-function initTheme() {
-  applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
+async function crearNotificacion({ type, storyId, chapterId, postId, commentId, relatoId }) {
+  try {
+    const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle();
+    if (!author?.id) return;
+    const { data: { session } } = await db.auth.getSession();
+    if (session?.user?.id === author.id) return;
+    await db.from('notifications').insert({
+      user_id: author.id, type,
+      from_user_id: session?.user?.id || null,
+      story_id: storyId || null,
+      chapter_id: chapterId || null,
+      post_id: postId || null,
+      comment_id: commentId || null,
+      relato_id: relatoId || null,
+    });
+  } catch (e) { console.warn(e); }
 }
 
 /* ============================================
@@ -474,7 +456,7 @@ const PAGE_TITLES = {
   'historial.html': 'Mi Historial',
   'blog.html': 'Blog', 'post.html': 'Entrada', 'redes.html': 'Redes',
   'biografia.html': 'Biografía', 'historia.html': 'Historia', 'capitulo.html': 'Leyendo',
-  'donaciones.html': 'Donaciones', 'perfil.html': 'Mi Perfil'
+  'donaciones.html': 'Donaciones', 'perfil.html': 'Mi Perfil',
 };
 
 function inyectarHeader() {
@@ -579,7 +561,6 @@ function actualizarDrawerSessionLinks() {
           ${ic('user-circle')} <span>Mi Perfil</span>
         </a>
       `;
-
       if (SITE_SETTINGS.show_mis_relatos_menu) {
         links += `
           <a href="mis-relatos.html" class="drawer-link ${path === 'mis-relatos.html' ? 'active' : ''}">
@@ -587,7 +568,6 @@ function actualizarDrawerSessionLinks() {
           </a>
         `;
       }
-
       mount.innerHTML = links;
       if (window.lucide) lucide.createIcons();
     } else {
@@ -597,7 +577,7 @@ function actualizarDrawerSessionLinks() {
 }
 
 /* ============================================
-   MODAL DE AUTENTICACIÓN (LOGIN & REGISTRO)
+   MODAL DE AUTENTICACIÓN
    ============================================ */
 
 function inyectarAuthModal() {
@@ -611,7 +591,6 @@ function inyectarAuthModal() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
 
-        <!-- VISTA LOGIN -->
         <div id="loginView">
           <h2 class="modal-title-c">Iniciar sesión</h2>
           <p class="modal-sub-c">Accede con tu cuenta para seguir leyendo y comentar.</p>
@@ -624,18 +603,15 @@ function inyectarAuthModal() {
           <p class="auth-switch-c">¿No tienes cuenta? <button type="button" id="goRegister">Crear cuenta</button></p>
         </div>
 
-        <!-- VISTA REGISTRO -->
         <div id="registerView" style="display: none;">
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
 
-          <!-- PASO 1: Datos Personales (Nombre, Fecha, Sexo, Claves) -->
           <form id="registerStep1" class="auth-form-c" style="display: flex;">
             <div style="display: flex; gap: 8px;">
               <label style="flex: 1;">Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
               <label style="flex: 1;">Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
             </div>
-            
             <div style="display: flex; gap: 8px;">
               <label style="flex: 1;">Fecha de Nacimiento *
                 <input type="date" id="regBirthdate" required />
@@ -650,36 +626,29 @@ function inyectarAuthModal() {
                 </select>
               </label>
             </div>
-
             <label>Correo <input type="email" id="regEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
             <label>Contraseña <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
             <label>Repetir Contraseña <input type="password" id="regConfirmPassword" required minlength="6" autocomplete="new-password" placeholder="Repite la contraseña" /></label>
-
             <div class="auth-consent-c">
               <input type="checkbox" id="regConsent" required />
               <label for="regConsent">Acepto recibir novedades de los libros y del blog por correo.</label>
             </div>
-
             <p class="auth-error-c" id="regErrorStep1" hidden></p>
             <button type="submit" class="btn btn-primary btn-block">Siguiente</button>
           </form>
 
-          <!-- PASO 2: Elección de Nombre de Usuario (@) -->
           <form id="registerStep2" class="auth-form-c" style="display: none;">
             <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
               Elige tu nombre de usuario visible en la comunidad.<br><strong>⚠️ No podrás cambiarlo después.</strong>
             </p>
-
             <label>Nombre de usuario (@)
               <div style="display: flex; gap: 8px;">
                 <input type="text" id="regUsername" required minlength="3" maxlength="20" placeholder="tu_apodo" style="flex: 1; text-transform: lowercase;" />
                 <button type="button" id="btnGenerateUsername" class="btn btn-ghost" style="padding: 0 12px; font-size: 18px;" title="Generar otro">🎲</button>
               </div>
             </label>
-
             <div id="usernameSuggestions" style="display: flex; flex-wrap: wrap; gap: 6px; margin-top: 4px;"></div>
             <p class="auth-error-c" id="regErrorStep2" hidden></p>
-
             <div style="display: flex; gap: 8px; margin-top: 8px;">
               <button type="button" id="btnBackStep1" class="btn btn-ghost" style="flex: 1;">Atrás</button>
               <button type="submit" class="btn btn-primary" style="flex: 2;">Crear cuenta</button>
@@ -706,7 +675,6 @@ function inyectarAuthModal() {
     loginView.style.display = 'block';
     registerView.style.display = 'none';
   }
-
   function showRegisterView() {
     loginView.style.display = 'none';
     registerView.style.display = 'block';
@@ -729,7 +697,6 @@ function inyectarAuthModal() {
   registerStep1.addEventListener('submit', (e) => {
     e.preventDefault();
     regErrorStep1.hidden = true;
-
     const p1 = document.getElementById('regPassword').value;
     const p2 = document.getElementById('regConfirmPassword').value;
     const bdate = document.getElementById('regBirthdate').value;
@@ -740,13 +707,11 @@ function inyectarAuthModal() {
       regErrorStep1.hidden = false;
       return;
     }
-
     if (!bdate) {
       regErrorStep1.textContent = 'Indica tu fecha de nacimiento.';
       regErrorStep1.hidden = false;
       return;
     }
-
     if (!gender) {
       regErrorStep1.textContent = 'Selecciona tu sexo.';
       regErrorStep1.hidden = false;
@@ -764,7 +729,7 @@ function inyectarAuthModal() {
       `${baseName}.${baseLast}`,
       `${baseName}_${baseLast}`,
       `${baseName}${randomNum}`,
-      `${baseName.charAt(0)}${baseLast}`
+      `${baseName.charAt(0)}${baseLast}`,
     ];
 
     const sugContainer = document.getElementById('usernameSuggestions');
@@ -798,10 +763,9 @@ function inyectarAuthModal() {
     try {
       const { error } = await db.auth.signInWithPassword({
         email: document.getElementById('loginEmail').value.trim(),
-        password: document.getElementById('loginPassword').value
+        password: document.getElementById('loginPassword').value,
       });
       if (error) throw error;
-
       showToast('Sesión iniciada', 'ok');
       authModal.hidden = true;
       loginForm.reset();
@@ -809,7 +773,6 @@ function inyectarAuthModal() {
       actualizarDrawerSessionLinks();
       setTimeout(() => location.reload(), 500);
     } catch (err) {
-      console.error(err);
       loginError.textContent = traducirError(err.message);
       loginError.hidden = false;
     } finally {
@@ -844,30 +807,13 @@ function inyectarAuthModal() {
       const gender = document.getElementById('regGender').value;
 
       const { data: signUpData, error } = await db.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            username,
-            first_name: firstName,
-            last_name: lastName,
-            birthdate,
-            gender,
-            newsletter: true
-          }
-        }
+        email, password,
+        options: { data: { username, first_name: firstName, last_name: lastName, birthdate, gender, newsletter: true } },
       });
-
       if (error) throw error;
 
       if (signUpData?.user?.id) {
-        // Asegurar persistencia directa en la tabla profiles
-        await db.from('profiles').update({
-          username,
-          birthdate,
-          gender
-        }).eq('id', signUpData.user.id);
-
+        await db.from('profiles').update({ username, birthdate, gender }).eq('id', signUpData.user.id);
         try {
           const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle();
           if (author?.id) {
@@ -883,9 +829,7 @@ function inyectarAuthModal() {
       cache.clear();
       actualizarDrawerSessionLinks();
       setTimeout(() => location.reload(), 500);
-
     } catch (err) {
-      console.error(err);
       regErrorStep2.textContent = traducirError(err.message);
       regErrorStep2.hidden = false;
     } finally {
@@ -901,9 +845,8 @@ function inyectarAuthModal() {
 
   if (window.lucide) lucide.createIcons();
 }
-
 /* ============================================
-   PORTADA Y HOME
+   HOME — HERO / NOVEDADES / PRÓXIMAMENTE / RELATOS HOME / BLOG
    ============================================ */
 
 async function cargarHero() {
@@ -918,9 +861,7 @@ async function cargarHero() {
       .order('is_featured', { ascending: false })
       .order('created_at', { ascending: false });
 
-    if (!esMayor) {
-      q = q.neq('age_rating', '+18 (Adulto)');
-    }
+    if (!esMayor) q = q.neq('age_rating', '+18 (Adulto)');
 
     const { data, error } = await withTimeout(q.limit(10), 8000);
 
@@ -1038,10 +979,7 @@ async function cargarNovedades() {
       return true;
     }).slice(0, 10);
 
-    if (!capítulosVisibles.length) {
-      cont.innerHTML = '';
-      return;
-    }
+    if (!capítulosVisibles.length) { cont.innerHTML = ''; return; }
 
     cont.innerHTML = `
       <section class="section">
@@ -1070,7 +1008,6 @@ async function cargarNovedades() {
         </div>
       </section>
     `;
-
     if (window.lucide) lucide.createIcons();
   } catch (e) {
     console.warn('Novedades timeout:', e);
@@ -1092,19 +1029,13 @@ async function cargarProximamente() {
     if (!esMayor) q = q.neq('age_rating', '+18 (Adulto)');
 
     const { data, error } = await withTimeout(q, 8000);
-    if (error || !data?.length) {
-      cont.innerHTML = '';
-      return;
-    }
+    if (error || !data?.length) { cont.innerHTML = ''; return; }
 
     cont.innerHTML = `
       <section class="section">
         <div class="container">
           <div class="section-head">
-            <div>
-              <h2 class="section-title">Próximamente</h2>
-              <p class="section-sub">Historias que están por llegar</p>
-            </div>
+            <div><h2 class="section-title">Próximamente</h2><p class="section-sub">Historias que están por llegar</p></div>
           </div>
           <div class="stories-grid-c">
             ${data.map(s => {
@@ -1113,7 +1044,6 @@ async function cargarProximamente() {
                 const partes = s.release_date.split('-');
                 fechaTexto = partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : s.release_date;
               }
-
               return `
                 <a class="story-card-c story-card-coming-soon" href="historia.html?id=${s.id}">
                   <div class="book-cover">
@@ -1180,7 +1110,6 @@ async function cargarRelatosHome() {
         </div>
       </section>
     `;
-
     if (window.lucide) lucide.createIcons();
   } catch (e) {
     console.warn('Error cargando relatos home:', e);
@@ -1226,7 +1155,6 @@ async function cargarUltimoBlogHome() {
         </div>
       </section>
     `;
-
     if (window.lucide) lucide.createIcons();
   } catch (e) {
     console.warn('Último blog timeout:', e);
@@ -1243,18 +1171,13 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
 
   try {
     const esMayor = await esUsuarioMayorDeEdad();
-
     let query = db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured, tags, age_rating')
       .eq('is_published', true)
       .neq('status', 'Próximamente')
       .neq('status', 'Borrador')
       .order('created_at', { ascending: false });
 
-    // Filtrar fuera +18 si es menor o visitante sin sesión
-    if (!esMayor) {
-      query = query.neq('age_rating', '+18 (Adulto)');
-    }
-
+    if (!esMayor) query = query.neq('age_rating', '+18 (Adulto)');
     if (excluirDestacada) query = query.eq('is_featured', false);
     if (genero) query = query.ilike('genre', `%${genero}%`);
 
@@ -1319,25 +1242,23 @@ const GENEROS = [
   { slug: 'ciencia', label: 'Ciencia ficción', icon: 'rocket' },
   { slug: 'drama', label: 'Drama', icon: 'theater' },
   { slug: 'poesia', label: 'Poesía', icon: 'feather' },
-  { slug: 'espiritual', label: 'Espiritual', icon: 'sparkle' }
+  { slug: 'espiritual', label: 'Espiritual', icon: 'sparkle' },
 ];
 
 function cargarGeneros() {
   const grid = document.getElementById('genresGrid');
   if (!grid) return;
-
   grid.innerHTML = GENEROS.map(g => `
     <a class="genre-card-c" href="historias.html?genero=${encodeURIComponent(g.label)}">
       <div class="genre-card-c-icon">${ic(g.icon, 40)}</div>
       <div class="genre-card-c-name">${escapeHtml(g.label)}</div>
     </a>
   `).join('');
-
   if (window.lucide) lucide.createIcons();
 }
 
 /* ============================================
-   BLOG Y ENTRADAS
+   BLOG Y POSTS
    ============================================ */
 
 async function cargarBlog(limite = null) {
@@ -1380,10 +1301,7 @@ async function cargarPost() {
   if (!cont) return;
 
   const id = new URLSearchParams(location.search).get('id');
-  if (!id) {
-    render404(cont, 'Entrada no encontrada', 'El enlace no incluye un identificador válido.');
-    return;
-  }
+  if (!id) { render404(cont, 'Entrada no encontrada', 'El enlace no incluye un identificador válido.'); return; }
 
   try {
     const { data, error } = await withTimeout(
@@ -1391,10 +1309,7 @@ async function cargarPost() {
       8000
     );
 
-    if (error || !data) {
-      render404(cont, 'Entrada no encontrada', 'Puede que haya sido eliminada o el enlace sea incorrecto.');
-      return;
-    }
+    if (error || !data) { render404(cont, 'Entrada no encontrada', 'Puede que haya sido eliminada.'); return; }
 
     document.title = `${data.title} — Azael Colina`;
     const ht = document.querySelector('.header-title');
@@ -1416,9 +1331,13 @@ async function cargarPost() {
     await cargarComentarios(id);
     await prepararFormComentario(id);
   } catch (e) {
-    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.');
+    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
   }
 }
+
+/* ============================================
+   COMENTARIOS (reutilizables para post/capítulo/relato)
+   ============================================ */
 
 async function cargarComentarios(postId) {
   const list = document.getElementById('commentsList');
@@ -1428,7 +1347,7 @@ async function cargarComentarios(postId) {
   try {
     const [{ data, error }, { data: { session } }] = await Promise.all([
       withTimeout(db.from('comments').select('id, content, created_at, user_id').eq('post_id', postId).order('created_at', { ascending: true }), 8000),
-      db.auth.getSession()
+      db.auth.getSession(),
     ]);
 
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
@@ -1497,7 +1416,8 @@ function activarBorradoComentarios(parentId, tipo) {
       const commentId = btn.dataset.deleteComment;
       if (!confirm('¿Eliminar este comentario?')) return;
       showLoading();
-      const { error } = await db.from(tipo === 'relato' ? 'relato_comments' : 'comments').delete().eq('id', commentId);
+      const tabla = tipo === 'relato' ? 'relato_comments' : 'comments';
+      const { error } = await db.from(tabla).delete().eq('id', commentId);
       hideLoading();
       if (error) { showToast('No se pudo eliminar: ' + error.message, 'error'); return; }
       showToast('Comentario eliminado', 'ok');
@@ -1556,7 +1476,7 @@ async function prepararFormComentario(postId) {
 }
 
 /* ============================================
-   HISTORIA DETALLE Y CAPÍTULOS
+   HISTORIA DETALLE
    ============================================ */
 
 async function cargarHistoriaDetalle() {
@@ -1571,7 +1491,7 @@ async function cargarHistoriaDetalle() {
       Promise.all([
         db.from('stories').select('*').eq('id', id).maybeSingle(),
         db.from('chapters').select('id, title, chapter_order, created_at, is_premium, publish_at').eq('story_id', id).order('chapter_order', { ascending: true }),
-        db.auth.getSession()
+        db.auth.getSession(),
       ]),
       10000
     );
@@ -1579,13 +1499,9 @@ async function cargarHistoriaDetalle() {
     const story = storyRes.data;
     if (!story) { render404(cont, 'Historia no encontrada', 'Puede que haya sido eliminada.'); return; }
 
-    // Validación Restricción de Edad (+18)
     if (story.age_rating === '+18 (Adulto)') {
       const esMayor = await esUsuarioMayorDeEdad();
-      if (!esMayor) {
-        renderAgeGate(cont);
-        return;
-      }
+      if (!esMayor) { renderAgeGate(cont); return; }
     }
 
     const chaptersRaw = chaptersRes.data || [];
@@ -1689,6 +1605,10 @@ function renderStory({ story, chapters, logged }, cont) {
   cargarLikeBoton('story', story.id);
 }
 
+/* ============================================
+   CAPÍTULO (con paywall, anti-copia, ajustes, marcar leído)
+   ============================================ */
+
 async function cargarCapitulo() {
   const cont = document.getElementById('chapterContent');
   if (!cont) return;
@@ -1701,7 +1621,7 @@ async function cargarCapitulo() {
     const [chapterRes, sessionRes] = await withTimeout(
       Promise.all([
         db.from('chapters').select('id, title, content, author_note, chapter_order, story_id, is_premium, created_at, publish_at').eq('id', id).maybeSingle(),
-        db.auth.getSession()
+        db.auth.getSession(),
       ]),
       10000
     );
@@ -1711,13 +1631,9 @@ async function cargarCapitulo() {
 
     const { data: story } = await db.from('stories').select('id, title, age_rating').eq('id', chapter.story_id).maybeSingle();
 
-    // Restricción +18
     if (story?.age_rating === '+18 (Adulto)') {
       const esMayor = await esUsuarioMayorDeEdad();
-      if (!esMayor) {
-        renderAgeGate(cont);
-        return;
-      }
+      if (!esMayor) { renderAgeGate(cont); return; }
     }
 
     if (chapter.publish_at && new Date(chapter.publish_at).getTime() > Date.now()) {
@@ -1834,7 +1750,6 @@ async function cargarCapitulo() {
     await prepararFormComentarioCapitulo(chapter.id);
     cargarLikeBoton('chapter', chapter.id);
 
-    // Botón de leído
     const btnMarkRead = document.getElementById('btnMarkRead');
     const btnMarkReadText = document.getElementById('btnMarkReadText');
     const currentUser = sessionRes?.data?.session?.user;
@@ -1862,7 +1777,6 @@ async function cargarCapitulo() {
         updateBtn();
       });
     }
-
   } catch (err) {
     console.error('Error capítulo:', err);
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
@@ -1877,7 +1791,7 @@ async function cargarComentariosCapitulo(chapterId) {
   try {
     const [{ data, error }, { data: { session } }] = await Promise.all([
       withTimeout(db.from('comments').select('id, content, created_at, user_id').eq('chapter_id', chapterId).order('created_at', { ascending: true }), 8000),
-      db.auth.getSession()
+      db.auth.getSession(),
     ]);
 
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
@@ -1967,25 +1881,28 @@ async function cargarLikeBoton(tipo, id) {
       dioLike = !!myLike;
     }
 
-    let totalLikes = 0;
     let queryCount = db.from('likes').select('id', { count: 'exact', head: true });
     if (tipo === 'story') queryCount = queryCount.eq('story_id', id).is('chapter_id', null);
     else queryCount = queryCount.eq('chapter_id', id);
     const { count } = await queryCount;
-    totalLikes = count || 0;
+    const totalLikes = count || 0;
 
     let totalVistas = 0;
     if (SITE_SETTINGS.show_views) {
       try {
         const { data: v } = await db.rpc(tipo === 'story' ? 'count_story_views' : 'count_chapter_views', {
-          [tipo === 'story' ? 'story_id_param' : 'chapter_id_param']: id
+          [tipo === 'story' ? 'story_id_param' : 'chapter_id_param']: id,
         });
         totalVistas = v || 0;
       } catch (e) { console.warn(e); }
     }
 
-    const spanLikes = SITE_SETTINGS.show_likes ? `<span class="like-count">${totalLikes.toLocaleString('es-ES')}</span>` : '';
-    const spanVistas = SITE_SETTINGS.show_views ? `<span class="views-counter" title="Visualizaciones">${ic('eye', 14)} ${totalVistas.toLocaleString('es-ES')}</span>` : '';
+    const spanLikes = SITE_SETTINGS.show_likes
+      ? `<span class="like-count">${totalLikes.toLocaleString('es-ES')}</span>`
+      : '';
+    const spanVistas = SITE_SETTINGS.show_views
+      ? `<span class="views-counter" title="Visualizaciones">${ic('eye', 14)} ${totalVistas.toLocaleString('es-ES')}</span>`
+      : '';
 
     row.innerHTML = `
       <div class="like-row-inner">
@@ -2195,7 +2112,9 @@ function saveReadingPosition(chapterId, storyId) {
   const docHeight = document.documentElement.scrollHeight - window.innerHeight;
   const percent = docHeight > 0 ? (scrollTop / docHeight) * 100 : 0;
   try {
-    localStorage.setItem('azael-last-read', JSON.stringify({ chapterId, storyId, percent: Math.min(100, Math.max(0, percent)), timestamp: Date.now() }));
+    localStorage.setItem('azael-last-read', JSON.stringify({
+      chapterId, storyId, percent: Math.min(100, Math.max(0, percent)), timestamp: Date.now(),
+    }));
   } catch {}
 }
 
@@ -2217,6 +2136,315 @@ function restaurarPosicionLectura(chapterId) {
     }
   } catch {}
 }
+/* ============================================
+   RESEÑAS LITERARIAS — Rediseño completo
+   ============================================ */
+
+/**
+ * Listado público de reseñas.
+ * Muestra tarjetas con avatar de Azael, título, extracto, fecha
+ * y contador de likes ❤️ (si el admin lo permite).
+ */
+async function cargarResenas() {
+  const grid = document.getElementById('resenasGrid');
+  if (!grid) return;
+
+  try {
+    // 1. Reseñas + perfil del autor (Azael)
+    const [{ data: resenas, error }, { data: autor }] = await Promise.all([
+      withTimeout(
+        db.from('resenas')
+          .select('id, title, content, created_at, links')
+          .order('created_at', { ascending: false }),
+        10000
+      ),
+      withTimeout(
+        db.from('profiles')
+          .select('id, username, avatar_url, badge_type, is_author, is_verified')
+          .eq('is_author', true)
+          .limit(1)
+          .maybeSingle(),
+        8000
+      ),
+    ]);
+
+    if (error) throw error;
+
+    if (!resenas?.length) {
+      grid.innerHTML = emptyState('book-marked', 'Sin reseñas aún', 'Las reseñas que escriba aparecerán aquí.');
+      if (window.lucide) lucide.createIcons();
+      return;
+    }
+
+    // 2. Conteo de likes por reseña
+    const resenaIds = resenas.map(r => r.id);
+    const { data: likesData } = await withTimeout(
+      db.from('resena_likes').select('resena_id').in('resena_id', resenaIds),
+      8000
+    );
+    const likesMap = {};
+    (likesData || []).forEach(l => {
+      likesMap[l.resena_id] = (likesMap[l.resena_id] || 0) + 1;
+    });
+
+    // 3. Render con tarjetas elegantes
+    const autorNombre = autor?.username || 'Azael';
+    const autorAvatar = autor?.avatar_url;
+    const badgeHtml = renderUserBadge(autor);
+
+    grid.innerHTML = resenas.map(r => {
+      const excerpt = (r.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 220);
+      const fecha = new Date(r.created_at).toLocaleDateString('es-ES', {
+        day: 'numeric', month: 'long', year: 'numeric',
+      });
+      const likesCount = likesMap[r.id] || 0;
+      const mostrarLikes = SITE_SETTINGS.show_resena_likes;
+
+      return `
+        <a class="resena-card" href="resena.html?id=${r.id}">
+          <div class="resena-card-author">
+            <div class="resena-card-avatar">
+              ${autorAvatar
+                ? `<img src="${escapeHtml(autorAvatar)}" alt="${escapeHtml(autorNombre)}" loading="lazy" />`
+                : `<span>${escapeHtml(autorNombre.charAt(0).toUpperCase())}</span>`}
+            </div>
+            <div class="resena-card-author-info">
+              <span class="resena-card-author-name">@${escapeHtml(autorNombre)} ${badgeHtml}</span>
+              <span class="resena-card-author-date">${fecha}</span>
+            </div>
+          </div>
+          <h3 class="resena-card-title">${escapeHtml(r.title)}</h3>
+          <p class="resena-card-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 220 ? '…' : ''}</p>
+          <div class="resena-card-footer">
+            <span class="resena-card-more">Leer reseña ${ic('arrow-right', 14)}</span>
+            ${mostrarLikes ? `<span class="resena-card-likes">${ic('heart', 15)} <span>${likesCount}</span></span>` : ''}
+          </div>
+        </a>
+      `;
+    }).join('');
+
+    if (window.lucide) lucide.createIcons();
+  } catch (e) {
+    console.error('Error cargando reseñas:', e);
+    grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión.');
+    if (window.lucide) lucide.createIcons();
+  }
+}
+
+/**
+ * Detalle de una reseña: fondo gris agradable (resena-reader-wrapper),
+ * botones de compartir que registran en resena_shares, y botón de like
+ * conectado a resena_likes.
+ */
+async function cargarResenaDetalle() {
+  const cont = document.getElementById('resenaContent');
+  if (!cont) return;
+
+  const id = new URLSearchParams(location.search).get('id');
+  if (!id) { render404(cont, 'Reseña no encontrada', 'Falta el identificador.'); return; }
+
+  try {
+    const [{ data: resena, error }, { data: autor }, { data: { session } }] = await Promise.all([
+      withTimeout(db.from('resenas').select('*').eq('id', id).maybeSingle(), 10000),
+      withTimeout(
+        db.from('profiles')
+          .select('id, username, avatar_url, badge_type, is_author, is_verified')
+          .eq('is_author', true)
+          .limit(1)
+          .maybeSingle(),
+        8000
+      ),
+      db.auth.getSession(),
+    ]);
+
+    if (error || !resena) {
+      render404(cont, 'Reseña no encontrada', 'Puede que haya sido eliminada.');
+      return;
+    }
+
+    document.title = `${resena.title} — Azael Colina`;
+    const ht = document.querySelector('.header-title');
+    if (ht) ht.textContent = resena.title;
+
+    const autorNombre = autor?.username || 'Azael';
+    const autorAvatar = autor?.avatar_url;
+    const badgeHtml = renderUserBadge(autor);
+    const fecha = new Date(resena.created_at).toLocaleDateString('es-ES', {
+      day: 'numeric', month: 'long', year: 'numeric',
+    });
+
+    // Enlaces (formato: "Nombre | URL" por línea)
+    const linksHtml = (resena.links || '')
+      .split('\n')
+      .map(l => l.trim())
+      .filter(Boolean)
+      .map(line => {
+        const [name, url] = line.split('|').map(s => s.trim());
+        if (!url || !/^https?:\/\//.test(url)) return '';
+        return `<a class="resena-link-btn" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${ic('external-link', 14)} ${escapeHtml(name || 'Ver')}</a>`;
+      })
+      .filter(Boolean)
+      .join('');
+
+    // Estado del like
+    let yaDioLike = false;
+    if (session?.user) {
+      const { data: miLike } = await db.from('resena_likes')
+        .select('id').eq('resena_id', id).eq('user_id', session.user.id).maybeSingle();
+      yaDioLike = !!miLike;
+    }
+
+    const { count: likesCount } = await db.from('resena_likes')
+      .select('id', { count: 'exact', head: true }).eq('resena_id', id);
+
+    cont.innerHTML = `
+      <div class="resena-reader-wrapper">
+        <article class="resena-reader-inner">
+          <header class="resena-reader-head">
+            <div class="resena-reader-meta">
+              <div class="resena-card-avatar resena-reader-avatar">
+                ${autorAvatar
+                  ? `<img src="${escapeHtml(autorAvatar)}" alt="${escapeHtml(autorNombre)}" />`
+                  : `<span>${escapeHtml(autorNombre.charAt(0).toUpperCase())}</span>`}
+              </div>
+              <div class="resena-reader-author">
+                <span class="resena-card-author-name">@${escapeHtml(autorNombre)} ${badgeHtml}</span>
+                <span class="resena-card-author-date">${fecha}</span>
+              </div>
+            </div>
+            <h1 class="resena-reader-title">${escapeHtml(resena.title)}</h1>
+          </header>
+
+          <div class="resena-reader-body">${resena.content || '<p>Sin contenido.</p>'}</div>
+
+          ${linksHtml ? `<div class="resena-links">${linksHtml}</div>` : ''}
+
+          <div class="resena-actions-row">
+            ${SITE_SETTINGS.show_resena_likes ? `
+              <button class="resena-like-btn ${yaDioLike ? 'liked' : ''}" id="resenaLikeBtn" data-id="${resena.id}">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="${yaDioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                </svg>
+                <span class="resena-like-count">${likesCount || 0}</span>
+              </button>
+            ` : ''}
+
+            <div class="resena-share-row">
+              <span class="resena-share-label">Compartir</span>
+              <button class="share-btn" data-share="twitter" data-id="${resena.id}" data-title="${escapeHtml(resena.title)}">
+                ${ic('twitter', 14)} Twitter / X
+              </button>
+              <button class="share-btn" data-share="whatsapp" data-id="${resena.id}" data-title="${escapeHtml(resena.title)}">
+                ${ic('message-circle', 14)} WhatsApp
+              </button>
+              <button class="share-btn" data-share="copy" data-id="${resena.id}" data-title="${escapeHtml(resena.title)}">
+                ${ic('copy', 14)} Copiar enlace
+              </button>
+            </div>
+          </div>
+        </article>
+      </div>
+    `;
+
+    if (window.lucide) lucide.createIcons();
+
+    // Botón de like
+    const btnLike = document.getElementById('resenaLikeBtn');
+    if (btnLike) {
+      btnLike.addEventListener('click', () => toggleLikeResena(resena.id, btnLike));
+    }
+
+    // Botones de compartir
+    cont.querySelectorAll('[data-share]').forEach(btn => {
+      btn.addEventListener('click', () => manejarCompartirResena(btn.dataset.share, resena.id, btn.dataset.title));
+    });
+  } catch (e) {
+    console.error('Error cargando reseña:', e);
+    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
+  }
+}
+
+/**
+ * Toggle del like en una reseña.
+ * Si no hay sesión, abre el modal de auth.
+ */
+async function toggleLikeResena(resenaId, btnEl) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.user) {
+    showToast('Inicia sesión para dar me gusta', 'info');
+    document.getElementById('authModal').hidden = false;
+    window.__showLoginView?.();
+    return;
+  }
+
+  const userId = session.user.id;
+
+  try {
+    const { data: existing } = await db.from('resena_likes')
+      .select('id').eq('resena_id', resenaId).eq('user_id', userId).maybeSingle();
+
+    if (existing) {
+      await db.from('resena_likes').delete().eq('id', existing.id);
+    } else {
+      await db.from('resena_likes').insert({ resena_id: resenaId, user_id: userId });
+    }
+
+    // Recontar y actualizar visualmente
+    const { count } = await db.from('resena_likes')
+      .select('id', { count: 'exact', head: true }).eq('resena_id', resenaId);
+
+    const yaDioLike = !existing;
+    if (btnEl) {
+      btnEl.classList.toggle('liked', yaDioLike);
+      const svg = btnEl.querySelector('svg');
+      if (svg) svg.setAttribute('fill', yaDioLike ? 'currentColor' : 'none');
+      const counter = btnEl.querySelector('.resena-like-count');
+      if (counter) counter.textContent = count || 0;
+    }
+
+    showToast(yaDioLike ? '¡Gracias por el ❤️!' : 'Me gusta quitado', yaDioLike ? 'ok' : 'info');
+  } catch (e) {
+    console.error('Error like reseña:', e);
+    showToast('No se pudo actualizar el me gusta', 'error');
+  }
+}
+
+/**
+ * Maneja el clic en un botón de compartir: abre ventana o copia,
+ * y registra el share en la tabla resena_shares.
+ */
+async function manejarCompartirResena(tipo, resenaId, titulo) {
+  const urlActual = location.href;
+  const texto = `"${titulo}" — Reseña en Azael Colina`;
+
+  try {
+    if (tipo === 'twitter') {
+      const tw = `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}&url=${encodeURIComponent(urlActual)}`;
+      window.open(tw, '_blank', 'noopener,noreferrer,width=600,height=500');
+    } else if (tipo === 'whatsapp') {
+      const wa = `https://wa.me/?text=${encodeURIComponent(texto + ' ' + urlActual)}`;
+      window.open(wa, '_blank', 'noopener,noreferrer');
+    } else if (tipo === 'copy') {
+      try {
+        await navigator.clipboard.writeText(urlActual);
+        showToast('Enlace copiado', 'ok');
+      } catch {
+        showToast('No se pudo copiar automáticamente', 'error');
+        return;
+      }
+    }
+
+    // Registrar el share (no bloqueante)
+    const { data: { session } } = await db.auth.getSession();
+    await db.from('resena_shares').insert({
+      resena_id: resenaId,
+      user_id: session?.user?.id || null,
+      network: tipo,
+    });
+  } catch (e) {
+    console.warn('Error registrando share:', e);
+  }
+}
 
 /* ============================================
    RELATOS DE LA COMUNIDAD
@@ -2232,25 +2460,30 @@ async function cargarRelatos() {
 
   try {
     const { data: relatos, error } = await withTimeout(
-      db.from('relatos').select('id, title, content, user_id, created_at').order('created_at', { ascending: false }).limit(200),
+      db.from('relatos').select('id, title, content, user_id, created_at')
+        .order('created_at', { ascending: false }).limit(200),
       10000
     );
-
     if (error) throw error;
+
     if (!relatos?.length) {
       grid.innerHTML = emptyState('pen-line', 'Aún no hay relatos', 'Sé el primero en compartir una historia.');
       if (count) count.textContent = '0 relatos';
+      if (window.lucide) lucide.createIcons();
       return;
     }
 
     const userIds = [...new Set(relatos.map(r => r.user_id))];
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, avatar_url, badge_type, is_author, is_verified').in('id', userIds), 8000);
+    const { data: perfiles } = await withTimeout(
+      db.from('profiles').select('id, username, avatar_url, badge_type, is_author, is_verified').in('id', userIds),
+      8000
+    );
     const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     const relatoIds = relatos.map(r => r.id);
     const [{ data: reactions }, { data: comments }] = await Promise.all([
       withTimeout(db.from('relato_reactions').select('relato_id').in('relato_id', relatoIds), 8000),
-      withTimeout(db.from('relato_comments').select('relato_id').in('relato_id', relatoIds), 8000)
+      withTimeout(db.from('relato_comments').select('relato_id').in('relato_id', relatoIds), 8000),
     ]);
 
     const reactionsCount = {};
@@ -2298,12 +2531,9 @@ function aplicarFiltroYRenderRelatos() {
     return;
   }
 
-  if (count) {
-    count.textContent = query ? `${filtrados.length} resultados` : `${filtrados.length} relatos`;
-  }
-
+  if (count) count.textContent = query ? `${filtrados.length} resultados` : `${filtrados.length} relatos`;
   renderRelatos(pageData, perfiles, grid, count, reactionsCount, commentsCount);
-  renderPaginacion(totalPages, filtrados.length);
+  renderPaginacion(totalPages);
 }
 
 function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, commentsCount = {}) {
@@ -2336,7 +2566,6 @@ function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, c
       </a>
     `;
   }).join('');
-
   if (window.lucide) lucide.createIcons();
 }
 
@@ -2348,14 +2577,12 @@ function renderPaginacion(totalPages) {
     pag.className = 'relatos-pagination';
     document.getElementById('relatosGrid')?.parentElement?.appendChild(pag);
   }
-
   if (totalPages <= 1) { pag.innerHTML = ''; return; }
 
   let pageButtons = '';
   for (let i = 1; i <= totalPages; i++) {
     pageButtons += `<button class="pagination-btn ${i === relatosCurrentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
   }
-
   pag.innerHTML = pageButtons;
   pag.querySelectorAll('.pagination-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -2374,17 +2601,24 @@ async function cargarRelatoDetalle() {
   if (!id) { render404(cont, 'Relato no encontrado', 'Falta el identificador.'); return; }
 
   try {
-    const { data: relato, error } = await withTimeout(db.from('relatos').select('*').eq('id', id).maybeSingle(), 10000);
-    if (error || !relato) { render404(cont, 'Relato no encontrado', 'Fue eliminado o el enlace es incorrecto.'); return; }
+    const { data: relato, error } = await withTimeout(
+      db.from('relatos').select('*').eq('id', id).maybeSingle(),
+      10000
+    );
+    if (error || !relato) {
+      render404(cont, 'Relato no encontrado', 'Fue eliminado o el enlace es incorrecto.');
+      return;
+    }
 
     const [{ data: autor }, { data: session }] = await Promise.all([
       withTimeout(db.from('profiles').select('id, username, avatar_url, badge_type, is_author, is_verified').eq('id', relato.user_id).maybeSingle(), 8000),
-      db.auth.getSession()
+      db.auth.getSession(),
     ]);
 
     const sessionUserId = session?.user?.id || null;
     const autorNombre = autor?.username || 'Lector';
     const avatarUrl = autor?.avatar_url;
+    const badgeHtml = renderUserBadge(autor);
 
     cont.innerHTML = `
       <div class="chapter-shell">
@@ -2396,16 +2630,15 @@ async function cargarRelatoDetalle() {
             </a>
             <div style="display:inline-flex;align-items:center;gap:6px;">
               <span>Por <a href="perfil.html?id=${relato.user_id}" class="relato-author-name">@${escapeHtml(autorNombre)}</a></span>
-              ${renderUserBadge(autor)}
+              ${badgeHtml}
             </div>
             <span class="relato-author-date">· ${tiempoRelativo(relato.created_at)}</span>
             ${sessionUserId && sessionUserId !== relato.user_id ? `<button class="report-btn" id="btnReportarRelato">${ic('flag', 14)} Reportar</button>` : ''}
           </div>
         </header>
 
-        <!-- Contenido renderizado con sanitización estricta anti-XSS -->
         <div class="chapter-body reader-body-c">${formatearContenidoRelato(relato.content)}</div>
-        
+
         <div id="reactionsMount"></div>
 
         <div class="relato-share-row">
@@ -2432,7 +2665,6 @@ async function cargarRelatoDetalle() {
     document.getElementById('shareRelatoCopy')?.addEventListener('click', () => {
       navigator.clipboard.writeText(location.href).then(() => showToast('Enlace copiado', 'ok'));
     });
-
     document.getElementById('btnReportarRelato')?.addEventListener('click', () => abrirModalReportar(relato.id));
 
     await cargarReaccionesRelato(relato.id);
@@ -2451,7 +2683,7 @@ async function cargarReaccionesRelato(relatoId) {
   try {
     const [{ data: reacciones }, { data: session }] = await Promise.all([
       withTimeout(db.from('relato_reactions').select('emoji, user_id').eq('relato_id', relatoId), 8000),
-      db.auth.getSession()
+      db.auth.getSession(),
     ]);
 
     const sessionUserId = session?.user?.id || null;
@@ -2478,7 +2710,9 @@ async function cargarReaccionesRelato(relatoId) {
       </div>
     `;
 
-    mount.querySelectorAll('.reaction-btn').forEach(btn => btn.addEventListener('click', () => toggleReaccion(relatoId, btn.dataset.emoji)));
+    mount.querySelectorAll('.reaction-btn').forEach(btn =>
+      btn.addEventListener('click', () => toggleReaccion(relatoId, btn.dataset.emoji))
+    );
   } catch (e) { console.warn(e); }
 }
 
@@ -2490,10 +2724,11 @@ async function toggleReaccion(relatoId, emoji) {
     window.__showLoginView?.();
     return;
   }
-
   const userId = session.user.id;
+
   try {
-    const { data: existing } = await db.from('relato_reactions').select('id, emoji').eq('relato_id', relatoId).eq('user_id', userId).maybeSingle();
+    const { data: existing } = await db.from('relato_reactions')
+      .select('id, emoji').eq('relato_id', relatoId).eq('user_id', userId).maybeSingle();
 
     if (existing) {
       if (existing.emoji === emoji) await db.from('relato_reactions').delete().eq('id', existing.id);
@@ -2502,7 +2737,9 @@ async function toggleReaccion(relatoId, emoji) {
       await db.from('relato_reactions').insert({ relato_id: relatoId, user_id: userId, emoji });
       const { data: relato } = await db.from('relatos').select('user_id').eq('id', relatoId).maybeSingle();
       if (relato?.user_id && relato.user_id !== userId) {
-        await db.from('notifications').insert({ user_id: relato.user_id, type: 'reaction_relato', from_user_id: userId, relato_id: relatoId });
+        await db.from('notifications').insert({
+          user_id: relato.user_id, type: 'reaction_relato', from_user_id: userId, relato_id: relatoId,
+        });
       }
     }
     await cargarReaccionesRelato(relatoId);
@@ -2519,7 +2756,7 @@ async function cargarComentariosRelato(relatoId) {
   try {
     const [{ data, error }, { data: { session } }] = await Promise.all([
       withTimeout(db.from('relato_comments').select('id, content, created_at, user_id').eq('relato_id', relatoId).order('created_at', { ascending: true }), 8000),
-      db.auth.getSession()
+      db.auth.getSession(),
     ]);
 
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
@@ -2528,7 +2765,10 @@ async function cargarComentariosRelato(relatoId) {
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
 
     const ids = [...new Set(data.map(c => c.user_id))];
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified, badge_type').in('id', ids), 8000);
+    const { data: perfiles } = await withTimeout(
+      db.from('profiles').select('id, username, is_author, is_verified, badge_type').in('id', ids),
+      8000
+    );
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
@@ -2573,7 +2813,9 @@ async function prepararFormComentarioRelato(relatoId) {
     const content = document.getElementById('relatoCommentText').value.trim();
     if (!content) return;
     showLoading();
-    const { error } = await db.from('relato_comments').insert({ relato_id: relatoId, user_id: session.user.id, content });
+    const { error } = await db.from('relato_comments').insert({
+      relato_id: relatoId, user_id: session.user.id, content,
+    });
     hideLoading();
     if (error) { showToast('No se pudo publicar el comentario', 'error'); return; }
     showToast('Comentario publicado', 'ok');
@@ -2593,7 +2835,9 @@ async function abrirModalReportar(relatoId) {
   }
 
   showLoading();
-  const { error } = await db.from('relato_reports').insert({ relato_id: relatoId, user_id: session.user.id, reason: motivo.trim() });
+  const { error } = await db.from('relato_reports').insert({
+    relato_id: relatoId, user_id: session.user.id, reason: motivo.trim(),
+  });
   hideLoading();
 
   if (error) {
@@ -2605,7 +2849,7 @@ async function abrirModalReportar(relatoId) {
 }
 
 /* ============================================
-   MIS RELATOS (EDITOR Y GESTIÓN)
+   MIS RELATOS
    ============================================ */
 
 async function cargarMisRelatos() {
@@ -2660,7 +2904,6 @@ async function mostrarListaMisRelatos(userId) {
       </div>
     </div>
   `;
-
   if (window.lucide) lucide.createIcons();
 
   try {
@@ -2668,7 +2911,6 @@ async function mostrarListaMisRelatos(userId) {
       db.from('relatos').select('id, title, content, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
       10000
     );
-
     if (error) throw error;
     const list = document.getElementById('misRelatosList');
 
@@ -2785,7 +3027,9 @@ function mostrarFormularioRelato(relatoExistente, userId) {
     showLoading();
     let error;
     if (esEdicion) {
-      ({ error } = await db.from('relatos').update({ title: t, content: c, updated_at: new Date().toISOString() }).eq('id', relatoExistente.id).eq('user_id', userId));
+      ({ error } = await db.from('relatos')
+        .update({ title: t, content: c, updated_at: new Date().toISOString() })
+        .eq('id', relatoExistente.id).eq('user_id', userId));
     } else {
       ({ error } = await db.from('relatos').insert({ user_id: userId, title: t, content: c }));
     }
@@ -2863,7 +3107,6 @@ function renderHistorial() {
   });
 
   let html = '';
-
   if (historialFilter === 'libros') {
     const libros = Array.from(librosSet).map(s => JSON.parse(s));
     html = `<div class="historial-list">
@@ -2905,7 +3148,7 @@ function renderHistorial() {
 }
 
 /* ============================================
-   PERFIL Y BIOGRAFÍA
+   PERFIL PÚBLICO Y BIOGRAFÍA
    ============================================ */
 
 async function cargarPerfilPublico() {
@@ -2914,7 +3157,6 @@ async function cargarPerfilPublico() {
 
   const { data: { session } } = await db.auth.getSession();
   const id = new URLSearchParams(location.search).get('id') || session?.user?.id;
-
   if (!id) { location.href = 'index.html'; return; }
 
   showLoading();
@@ -2935,7 +3177,7 @@ async function cargarPerfilPublico() {
   if (perfil.birthdate) {
     const fechaObj = new Date(perfil.birthdate + 'T00:00:00');
     const edad = calcularEdad(perfil.birthdate);
-    fechaNacTexto = `${fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} ${edad !== null ? `(${edad} años)` : ''}`;
+    fechaNacTexto = `${fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })}${edad !== null ? ` (${edad} años)` : ''}`;
   }
 
   cont.innerHTML = `
@@ -3012,13 +3254,14 @@ async function cargarBiografia() {
       db.from('profiles').select('username, bio, avatar_url, birthdate, gender').eq('is_author', true).limit(1).maybeSingle(),
       8000
     );
-
     if (!data) {
       cont.innerHTML = emptyState('user', 'Sin biografía', 'Pronto escribiré algo sobre mí.');
       return;
     }
 
-    const fechaNac = data.birthdate ? new Date(data.birthdate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+    const fechaNac = data.birthdate
+      ? new Date(data.birthdate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })
+      : null;
 
     cont.innerHTML = `
       <div class="bio-avatar-c">
@@ -3040,94 +3283,17 @@ async function cargarBiografia() {
 }
 
 /* ============================================
-   RESEÑAS LITERARIAS
+   REDES Y DONACIONES
    ============================================ */
-
-async function cargarResenas() {
-  const grid = document.getElementById('resenasGrid');
-  if (!grid) return;
-
-  try {
-    const { data, error } = await withTimeout(
-      db.from('resenas').select('id, title, content, created_at').order('created_at', { ascending: false }),
-      10000
-    );
-    if (error) throw error;
-
-    if (!data?.length) {
-      grid.innerHTML = emptyState('book-marked', 'Sin reseñas aún', 'Las reseñas que escriba aparecerán aquí.');
-      if (window.lucide) lucide.createIcons();
-      return;
-    }
-
-    grid.innerHTML = data.map(r => {
-      const excerpt = (r.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 220);
-      return `
-        <a class="resena-card" href="resena.html?id=${r.id}">
-          <div class="resena-card-title">${escapeHtml(r.title)}</div>
-          <div class="resena-card-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 220 ? '…' : ''}</div>
-          <div class="resena-card-more">Leer reseña ${ic('arrow-right', 14)}</div>
-        </a>
-      `;
-    }).join('');
-    if (window.lucide) lucide.createIcons();
-  } catch (e) {
-    grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión.');
-    if (window.lucide) lucide.createIcons();
-  }
-}
-
-async function cargarResenaDetalle() {
-  const cont = document.getElementById('resenaContent');
-  if (!cont) return;
-
-  const id = new URLSearchParams(location.search).get('id');
-  if (!id) { render404(cont, 'Reseña no encontrada', 'Falta el identificador.'); return; }
-
-  try {
-    const { data } = await withTimeout(db.from('resenas').select('*').eq('id', id).maybeSingle(), 10000);
-    if (!data) { render404(cont, 'Reseña no encontrada', 'Puede que haya sido eliminada.'); return; }
-
-    document.title = `${data.title} — Azael Colina`;
-    const ht = document.querySelector('.header-title');
-    if (ht) ht.textContent = data.title;
-
-    const linksHtml = (data.links || '')
-      .split('\n')
-      .map(l => l.trim())
-      .filter(Boolean)
-      .map(line => {
-        const [name, url] = line.split('|').map(s => s.trim());
-        if (!url || !/^https?:\/\//.test(url)) return '';
-        return `<a class="resena-link-btn" href="${escapeHtml(url)}" target="_blank" rel="noopener noreferrer">${ic('external-link', 14)} ${escapeHtml(name || 'Ver')}</a>`;
-      })
-      .filter(Boolean)
-      .join('');
-
-    const fecha = new Date(data.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    cont.innerHTML = `
-      <div class="chapter-shell">
-        <header class="relato-header">
-          <h1 class="relato-title">${escapeHtml(data.title)}</h1>
-          <div class="relato-author-info"><span class="relato-author-date">${fecha}</span></div>
-        </header>
-        <div class="chapter-body reader-body-c">${data.content || '<p>Sin contenido.</p>'}</div>
-        ${linksHtml ? `<div class="resena-links">${linksHtml}</div>` : ''}
-      </div>
-    `;
-
-    if (window.lucide) lucide.createIcons();
-  } catch (e) {
-    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
-  }
-}
 
 async function cargarRedes() {
   const grid = document.getElementById('socialGrid');
   if (!grid) return;
   try {
-    const { data } = await withTimeout(db.from('social_links').select('platform, url').order('display_order', { ascending: true }), 8000);
+    const { data } = await withTimeout(
+      db.from('social_links').select('platform, url').order('display_order', { ascending: true }),
+      8000
+    );
     if (!data?.length) {
       grid.innerHTML = emptyState('share-2', 'Pronto añadiré mis redes', 'Aquí encontrarás todos mis perfiles.');
       return;
@@ -3149,7 +3315,10 @@ async function cargarDonaciones() {
   const grid = document.getElementById('donationsGrid');
   if (!grid) return;
   try {
-    const { data } = await withTimeout(db.from('donations').select('*').order('display_order', { ascending: true }), 8000);
+    const { data } = await withTimeout(
+      db.from('donations').select('*').order('display_order', { ascending: true }),
+      8000
+    );
     if (!data?.length) {
       grid.innerHTML = emptyState('heart-handshake', 'Aún no hay métodos de donación', 'Pronto añadiré opciones.');
       return;
@@ -3173,7 +3342,7 @@ async function cargarDonaciones() {
 }
 
 /* ============================================
-   ROUTER & DISPATCHER
+   ROUTER
    ============================================ */
 
 function dispararContenidoSegunPath() {
@@ -3210,7 +3379,6 @@ function dispararContenidoSegunPath() {
         cargarHistorias({ busqueda: historiasCurrentSearch });
       });
     });
-
   } else if (path === 'generos.html') {
     cargarGeneros();
   } else if (path === 'relatos.html') {
@@ -3265,7 +3433,7 @@ function dispararContenidoSegunPath() {
 }
 
 /* ============================================
-   INICIALIZACIÓN
+   INICIALIZACIÓN Y PWA
    ============================================ */
 
 initTheme();
@@ -3291,10 +3459,9 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 window.addEventListener('load', () => { if (window.lucide) lucide.createIcons(); });
 
-/* Soporte PWA */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('[PWA] Error SW:', err));
+    navigator.serviceWorker.register('/sw.js').catch(err => console.warn('[PWA] Error SW:', err));
   });
 }
 
@@ -3325,10 +3492,3 @@ window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
   document.getElementById('pwa-install-btn')?.remove();
 });
-
-Siguiente paso recomendado:
-
-Reemplaza tu archivo main.js actual por este código. Una vez que lo hagas, el
-siguiente paso será actualizar admin.js para que puedas cambiar y asignar los
-nuevos rangos (Dueño, Moderador, Colaborador, VIP, Verificado) directamente
-desde la lista de usuarios de tu panel de escritor.
