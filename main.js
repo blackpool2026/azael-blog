@@ -2,11 +2,22 @@
    AZAEL BLOG — main.js COMPLETO Y CORREGIDO
    ============================================ */
 
+// Detector de errores: Si algo falla, te avisará con una ventana emergente en el teléfono
+window.onerror = function (msg, url, line) {
+  alert("Error detectado en la línea " + line + ":\n" + msg);
+};
+
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJxbGlkdXdpYXJyeXFjcXRpZ25kIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA3OTU4MzgsImV4cCI6MjEwNjM3MTgzOH0.T6GZXQNjzRwhbuYuVx54vsdTNy2CTpEwCjnxED1KGaY';
 
-const { createClient } = supabase;
-const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// Carga segura de Supabase (evita que la pantalla se congele si la red tarda)
+const supabaseGlobal = window.supabase || (typeof supabase !== 'undefined' ? supabase : null);
+
+if (!supabaseGlobal) {
+  alert("Aviso: No se pudo cargar la librería de Supabase desde internet.");
+}
+
+const db = supabaseGlobal ? supabaseGlobal.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 const THEME_KEY = 'azael-theme-v2';
 const PREMIUM_FREE_LIMIT = 5;
