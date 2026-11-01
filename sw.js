@@ -1,4 +1,4 @@
-const CACHE_VERSION = 'azael-v74';
+const CACHE_VERSION = 'azael-v73';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
@@ -11,15 +11,22 @@ const STATIC_ASSETS = [
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_STATIC).then((cache) => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting()).catch((err) => console.warn('[SW] Error cacheando:', err))
+    caches.open(CACHE_STATIC)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
+      .catch((err) => console.warn('[SW] Error cacheando:', err))
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
-      return Promise.all(keys.filter((key) => key.startsWith('azael-') && key !== CACHE_STATIC && key !== CACHE_RUNTIME).map((key) => caches.delete(key)));
-    }).then(() => self.clients.claim())
+    caches.keys()
+      .then((keys) => Promise.all(
+        keys
+          .filter((key) => key.startsWith('azael-') && key !== CACHE_STATIC && key !== CACHE_RUNTIME)
+          .map((key) => caches.delete(key))
+      ))
+      .then(() => self.clients.claim())
   );
 });
 
@@ -28,19 +35,37 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(request.url);
 
   if (request.method !== 'GET') return;
-  if (url.hostname.includes('supabase') || url.hostname.includes('google-analytics') || url.hostname.includes('googletagmanager') || url.hostname.includes('google.com') || url.hostname.includes('unpkg.com') || url.hostname.includes('jsdelivr.net')) return;
+  if (
+    url.hostname.includes('supabase') ||
+    url.hostname.includes('google-analytics') ||
+    url.hostname.includes('googletagmanager') ||
+    url.hostname.includes('google.com') ||
+    url.hostname.includes('unpkg.com') ||
+    url.hostname.includes('jsdelivr.net')
+  ) return;
 
-  if (request.headers.get('accept')?.includes('text/html')) {
+  // ✅ HTML, CSS, JS → NETWORK-FIRST (siempre trae lo nuevo, caché solo como fallback)
+  const isCriticalAsset =
+    request.headers.get('accept')?.includes('text/html') ||
+    url.pathname.endsWith('.css') ||
+    url.pathname.endsWith('.js');
+
+  if (isCriticalAsset) {
     event.respondWith(
-      fetch(request).then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_RUNTIME).then((cache) => cache.put(request, copy));
-        return response;
-      }).catch(() => caches.match(request).then((cached) => cached || caches.match('/index.html')))
+      fetch(request)
+        .then((response) => {
+          const copy = response.clone();
+          caches.open(CACHE_RUNTIME).then((cache) => cache.put(request, copy));
+          return response;
+        })
+        .catch(() =>
+          caches.match(request).then((cached) => cached || caches.match('/index.html'))
+        )
     );
     return;
   }
 
+  // ✅ Imágenes, fuentes, etc. → CACHE-FIRST (más rápido, casi nunca cambian)
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
@@ -55,4 +80,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-self.addEventListener('message', (event) => { if (event.data === 'SKIP_WAITING') self.skipWaiting(); });
+self.addEventListener('message', (event) => {
+  if (event.data === 'SKIP_WAITING') self.skipWaiting();
+});
