@@ -8422,3 +8422,205 @@ input, textarea, select {
   text-decoration: underline;
 }
 .welcome-skip:hover { color: var(--text-secondary); }
+/* ============================================
+   RESEÑAS — TARJETAS + LECTOR
+   ============================================ */
+
+/* Tarjetas del listado */
+.resena-card-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+.resena-card-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
+.resena-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.resena-card-author-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.resena-card-author-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.resena-card-author-date {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+.resena-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+.resena-card-likes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+/* Lector de reseña — fondo gris agradable */
+.resena-reader-wrapper {
+  max-width: 760px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+.resena-reader-inner {
+  background: #f3f3f0;
+  color: #1a1a1a;
+  border-radius: 18px;
+  padding: 48px 40px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+}
+[data-theme="dark"] .resena-reader-inner {
+  background: #1e1e22;
+  color: #e8e8ed;
+}
+.resena-reader-head {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .resena-reader-head {
+  border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.resena-reader-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.resena-reader-avatar {
+  width: 48px !important;
+  height: 48px !important;
+}
+.resena-reader-author {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+.resena-reader-title {
+  font-family: var(--font-serif);
+  font-size: clamp(26px, 4vw, 38px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+}
+.resena-reader-body {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.75;
+}
+.resena-reader-body p { margin-bottom: 1.2em; }
+.resena-reader-body p:last-child { margin-bottom: 0; }
+
+.resena-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+[data-theme="dark"] .resena-actions-row {
+  border-top-color: rgba(255, 255, 255, 0.08);
+}
+.resena-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  color: inherit;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+[data-theme="dark"] .resena-like-btn {
+  border-color: rgba(255, 255, 255, 0.2);
+}
+.resena-like-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  transform: translateY(-2px);
+}
+.resena-like-btn.liked {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+.resena-like-btn svg { transition: transform 0.2s; }
+.resena-like-btn:hover svg { transform: scale(1.15); }
+
+/* Compartir en lector de reseña (dentro del fondo claro) */
+.resena-reader-inner .resena-share-row {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.resena-reader-inner .share-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: inherit;
+}
+[data-theme="dark"] .resena-reader-inner .share-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+.resena-reader-inner .share-btn:hover {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+.resena-reader-inner .resena-share-label {
+  color: inherit;
+  opacity: 0.7;
+}
+.resena-reader-inner .resena-link-btn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: inherit;
+}
+[data-theme="dark"] .resena-reader-inner .resena-link-btn {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 600px) {
+  .resena-reader-inner { padding: 32px 22px; }
+  .resena-reader-title { font-size: 24px; }
+  .resena-reader-body { font-size: 16px; }
+}
