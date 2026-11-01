@@ -1,6 +1,5 @@
 /* ============================================
    AZAEL BLOG — main.js COMPLETO Y CORREGIDO
-   (Parte 1/5 — setup, utilidades, layout)
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -40,6 +39,10 @@ let SITE_SETTINGS = {
   show_relatos_btn: true,
   show_mis_relatos_menu: true
 };
+
+/* ============================================
+   UTILIDADES Y HELPERS
+   ============================================ */
 
 async function cargarSiteSettings() {
   try {
@@ -137,6 +140,28 @@ function render404(cont, titulo = 'Contenido no encontrado', msg = 'El enlace qu
   if (window.lucide) lucide.createIcons();
 }
 
+function renderAgeGate(cont) {
+  cont.innerHTML = `
+    <div class="container" style="padding:60px 20px;">
+      <div class="age-gate">
+        <div class="age-gate-icon">${ic('shield-alert', 48)}</div>
+        <h2>Contenido para mayores de 18 años</h2>
+        <p>Esta historia o capítulo contiene temas adultos reservados exclusivamente para lectores mayores de edad.</p>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+          <a href="index.html" class="btn btn-ghost">${ic('arrow-left', 16)} Volver al inicio</a>
+          <button class="btn btn-primary" id="btnAgeGateLogin">${ic('log-in', 16)} Iniciar sesión (+18)</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.getElementById('btnAgeGateLogin')?.addEventListener('click', () => {
+    const modal = document.getElementById('authModal');
+    if (modal) modal.hidden = false;
+    window.__showLoginView?.();
+  });
+  if (window.lucide) lucide.createIcons();
+}
+
 const READER_PREFS = { fontFamily: 'serif', fontSize: 18, lineHeight: 1.6, theme: 'neutral' };
 
 function loadReaderPrefs() {
@@ -180,6 +205,18 @@ function escapeHtml(str) {
     .replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 }
 
+/* Sanitizador seguro para relatos comunitarios (Anti-XSS) */
+function formatearContenidoRelato(texto) {
+  if (!texto) return '<p>Sin contenido.</p>';
+  const safe = escapeHtml(texto);
+  return safe
+    .replace(/\r\n/g, '\n')
+    .replace(/\n{2,}/g, '</p><p>')
+    .replace(/\n/g, '<br>')
+    .replace(/^/, '<p>')
+    .replace(/$/, '</p>');
+}
+
 function capitalize(str) {
   return String(str || '').charAt(0).toUpperCase() + String(str || '').slice(1);
 }
@@ -192,6 +229,92 @@ function tiempoRelativo(fecha) {
   if (diff < 86400) return `hace ${Math.floor(diff / 3600)} h`;
   if (diff < 604800) return `hace ${Math.floor(diff / 86400)} d`;
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+}
+
+function calcularEdad(fechaNacimiento) {
+  if (!fechaNacimiento) return null;
+  const hoy = new Date();
+  const cumple = new Date(fechaNacimiento);
+  if (isNaN(cumple.getTime())) return null;
+  let edad = hoy.getFullYear() - cumple.getFullYear();
+  const m = hoy.getMonth() - cumple.getMonth();
+  if (m < 0 || (m === 0 && hoy.getDate() < cumple.getDate())) {
+    edad--;
+  }
+  return edad;
+}
+
+async function esUsuarioMayorDeEdad() {
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    if (!session?.user) return false;
+    const { data: profile } = await db.from('profiles').select('birthdate, is_author').eq('id', session.user.id).maybeSingle();
+    if (profile?.is_author) return true;
+    const edad = calcularEdad(profile?.birthdate);
+    return edad !== null && edad >= 18;
+  } catch {
+    return false;
+  }
+}
+
+/* ============================================
+   SISTEMA DE INSIGNIAS / RANGOS
+   ============================================ */
+function renderUserBadge(p) {
+  if (!p) return '';
+  const bType = p.badge_type || (p.is_author ? 'owner' : (p.is_verified ? 'verified' : 'none'));
+
+  if (p.is_author || bType === 'owner') {
+    return `
+      <span class="badge-rank badge-owner verified-admin-badge" title="Dueño / Autor">
+        <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="metalPlatinum" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#ffffff" />
+              <stop offset="30%" stop-color="#d1d5db" />
+              <stop offset="65%" stop-color="#f87171" />
+              <stop offset="100%" stop-color="#6b7280" />
+            </linearGradient>
+          </defs>
+          <path fill="url(#metalPlatinum)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+        </svg>
+      </span>
+    `;
+  }
+
+  if (bType === 'moderator') {
+    return `
+      <span class="badge-rank badge-moderator" title="Moderador">
+        <svg viewBox="0 0 24 24"><path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5zm-1 14.5l-4-4 1.41-1.41L11 13.67l6.59-6.59L19 8.5l-8 8z"/></svg>
+      </span>
+    `;
+  }
+
+  if (bType === 'collaborator') {
+    return `
+      <span class="badge-rank badge-collaborator" title="Colaborador">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z"/></svg>
+      </span>
+    `;
+  }
+
+  if (bType === 'vip') {
+    return `
+      <span class="badge-rank badge-vip" title="VIP">
+        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      </span>
+    `;
+  }
+
+  if (bType === 'verified' || p.is_verified) {
+    return `
+      <span class="badge-rank badge-verified verified-user-badge" title="Verificado">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg>
+      </span>
+    `;
+  }
+
+  return '';
 }
 
 async function crearNotificacion({ type, storyId, chapterId, postId, commentId, relatoId }) {
@@ -316,6 +439,10 @@ function initTheme() {
   applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 }
 
+/* ============================================
+   NAVEGACIÓN Y HEADER
+   ============================================ */
+
 const NAV_ITEMS = [
   { href: 'index.html', label: 'Inicio', icon: 'home' },
   { href: 'historias.html', label: 'Historias', icon: 'book-open' },
@@ -431,7 +558,6 @@ function inyectarDrawer() {
 function actualizarDrawerSessionLinks() {
   const mount = document.getElementById('drawerSessionLinks');
   if (!mount) return;
-
   const path = pagActiva();
 
   db.auth.getSession().then(({ data: { session } }) => {
@@ -458,6 +584,11 @@ function actualizarDrawerSessionLinks() {
     }
   });
 }
+
+/* ============================================
+   MODAL DE AUTENTICACIÓN (LOGIN & REGISTRO)
+   ============================================ */
+
 function inyectarAuthModal() {
   const mount = document.getElementById('auth-mount');
   if (!mount) return;
@@ -469,6 +600,7 @@ function inyectarAuthModal() {
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
 
+        <!-- VISTA LOGIN -->
         <div id="loginView">
           <h2 class="modal-title-c">Iniciar sesión</h2>
           <p class="modal-sub-c">Accede con tu cuenta para seguir leyendo y comentar.</p>
@@ -481,14 +613,33 @@ function inyectarAuthModal() {
           <p class="auth-switch-c">¿No tienes cuenta? <button type="button" id="goRegister">Crear cuenta</button></p>
         </div>
 
+        <!-- VISTA REGISTRO -->
         <div id="registerView" style="display: none;">
           <h2 class="modal-title-c">Crear cuenta</h2>
           <p class="modal-sub-c">Únete para leer todos los capítulos y recibir novedades.</p>
 
-          <!-- PASO 1: Datos Personales -->
+          <!-- PASO 1: Datos Personales (Nombre, Fecha, Sexo, Claves) -->
           <form id="registerStep1" class="auth-form-c" style="display: flex;">
-            <label>Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
-            <label>Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
+            <div style="display: flex; gap: 8px;">
+              <label style="flex: 1;">Nombre <input type="text" id="regFirstName" required placeholder="Tu nombre" /></label>
+              <label style="flex: 1;">Apellido <input type="text" id="regLastName" required placeholder="Tu apellido" /></label>
+            </div>
+            
+            <div style="display: flex; gap: 8px;">
+              <label style="flex: 1;">Fecha de Nacimiento *
+                <input type="date" id="regBirthdate" required />
+              </label>
+              <label style="flex: 1;">Sexo *
+                <select id="regGender" required>
+                  <option value="">— Selecciona —</option>
+                  <option value="Femenino">Femenino</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Otro">Otro</option>
+                  <option value="Prefiero no decirlo">Prefiero no decirlo</option>
+                </select>
+              </label>
+            </div>
+
             <label>Correo <input type="email" id="regEmail" required autocomplete="email" placeholder="tucorreo@ejemplo.com" /></label>
             <label>Contraseña <input type="password" id="regPassword" required minlength="6" autocomplete="new-password" placeholder="Mínimo 6 caracteres" /></label>
             <label>Repetir Contraseña <input type="password" id="regConfirmPassword" required minlength="6" autocomplete="new-password" placeholder="Repite la contraseña" /></label>
@@ -502,9 +653,11 @@ function inyectarAuthModal() {
             <button type="submit" class="btn btn-primary btn-block">Siguiente</button>
           </form>
 
-          <!-- PASO 2: Elección de @ -->
+          <!-- PASO 2: Elección de Nombre de Usuario (@) -->
           <form id="registerStep2" class="auth-form-c" style="display: none;">
-            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">Elige tu nombre de usuario. <br><strong>⚠️ No podrás cambiarlo después.</strong></p>
+            <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 12px;">
+              Elige tu nombre de usuario visible en la comunidad.<br><strong>⚠️ No podrás cambiarlo después.</strong>
+            </p>
 
             <label>Nombre de usuario (@)
               <div style="display: flex; gap: 8px;">
@@ -546,7 +699,6 @@ function inyectarAuthModal() {
   function showRegisterView() {
     loginView.style.display = 'none';
     registerView.style.display = 'block';
-
     registerStep1.style.display = 'flex';
     registerStep2.style.display = 'none';
     document.getElementById('regSwitchLogin').style.display = 'block';
@@ -569,6 +721,8 @@ function inyectarAuthModal() {
 
     const p1 = document.getElementById('regPassword').value;
     const p2 = document.getElementById('regConfirmPassword').value;
+    const bdate = document.getElementById('regBirthdate').value;
+    const gender = document.getElementById('regGender').value;
 
     if (p1 !== p2) {
       regErrorStep1.textContent = 'Las contraseñas no coinciden.';
@@ -576,9 +730,20 @@ function inyectarAuthModal() {
       return;
     }
 
+    if (!bdate) {
+      regErrorStep1.textContent = 'Indica tu fecha de nacimiento.';
+      regErrorStep1.hidden = false;
+      return;
+    }
+
+    if (!gender) {
+      regErrorStep1.textContent = 'Selecciona tu sexo.';
+      regErrorStep1.hidden = false;
+      return;
+    }
+
     const firstName = document.getElementById('regFirstName').value.trim().toLowerCase();
     const lastName = document.getElementById('regLastName').value.trim().toLowerCase();
-
     const baseName = firstName.replace(/[^a-z0-9]/g, '');
     const baseLast = lastName.replace(/[^a-z0-9]/g, '');
     const randomNum = Math.floor(10 + Math.random() * 90);
@@ -597,7 +762,6 @@ function inyectarAuthModal() {
     ).join('');
 
     document.getElementById('regUsername').value = suggestions[0];
-
     registerStep1.style.display = 'none';
     registerStep2.style.display = 'flex';
     document.getElementById('regSwitchLogin').style.display = 'none';
@@ -659,23 +823,25 @@ function inyectarAuthModal() {
 
     try {
       const { data: existingUser } = await db.from('profiles').select('id').eq('username', username).maybeSingle();
-      if (existingUser) {
-        throw new Error('Ese @ ya está en uso. Elige otro.');
-      }
+      if (existingUser) throw new Error('Ese @ ya está en uso. Elige otro.');
 
       const email = document.getElementById('regEmail').value.trim();
       const password = document.getElementById('regPassword').value;
       const firstName = document.getElementById('regFirstName').value.trim();
       const lastName = document.getElementById('regLastName').value.trim();
+      const birthdate = document.getElementById('regBirthdate').value;
+      const gender = document.getElementById('regGender').value;
 
       const { data: signUpData, error } = await db.auth.signUp({
         email,
         password,
         options: {
           data: {
-            username: username,
+            username,
             first_name: firstName,
             last_name: lastName,
+            birthdate,
+            gender,
             newsletter: true
           }
         }
@@ -683,15 +849,23 @@ function inyectarAuthModal() {
 
       if (error) throw error;
 
+      if (signUpData?.user?.id) {
+        // Asegurar persistencia directa en la tabla profiles
+        await db.from('profiles').update({
+          username,
+          birthdate,
+          gender
+        }).eq('id', signUpData.user.id);
+
+        try {
+          const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle();
+          if (author?.id) {
+            await db.from('notifications').insert({ user_id: author.id, type: 'new_user', from_user_id: signUpData.user.id });
+          }
+        } catch (e) { console.warn(e); }
+      }
+
       showToast('Cuenta creada. ¡Bienvenido!', 'ok');
-
-      try {
-        const { data: author } = await db.from('profiles').select('id').eq('is_author', true).limit(1).maybeSingle();
-        if (author?.id && signUpData?.user?.id) {
-          await db.from('notifications').insert({ user_id: author.id, type: 'new_user', from_user_id: signUpData.user.id });
-        }
-      } catch (e) { console.warn(e); }
-
       authModal.hidden = true;
       document.getElementById('regPassword').value = '';
       document.getElementById('regConfirmPassword').value = '';
@@ -717,21 +891,27 @@ function inyectarAuthModal() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* --- PÁGINAS --- */
+/* ============================================
+   PORTADA Y HOME
+   ============================================ */
+
 async function cargarHero() {
   const cont = document.getElementById('heroMount');
   if (!cont) return;
 
   try {
-    const { data, error } = await withTimeout(
-      db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured')
-        .eq('is_published', true)
-        .neq('status', 'Borrador')
-        .order('is_featured', { ascending: false })
-        .order('created_at', { ascending: false })
-        .limit(10),
-      8000
-    );
+    const esMayor = await esUsuarioMayorDeEdad();
+    let q = db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured, age_rating')
+      .eq('is_published', true)
+      .neq('status', 'Borrador')
+      .order('is_featured', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (!esMayor) {
+      q = q.neq('age_rating', '+18 (Adulto)');
+    }
+
+    const { data, error } = await withTimeout(q.limit(10), 8000);
 
     if (error || !data?.length) {
       cont.innerHTML = `
@@ -757,7 +937,7 @@ async function cargarHero() {
         <button class="hero-nav hero-nav-prev" id="heroPrev" aria-label="Anterior">${ic('chevron-left', 22)}</button>
         <button class="hero-nav hero-nav-next" id="heroNext" aria-label="Siguiente">${ic('chevron-right', 22)}</button>
         <div class="hero-dots" id="heroDots">
-          ${data.map((_, i) => `<button class="hero-dot ${i === 0 ? 'active' : ''}" data-slide="${i}" aria-label="Ir a la slide ${i + 1}"></button>`).join('')}
+          ${data.map((_, i) => `<button class="hero-dot ${i === 0 ? 'active' : ''}" data-slide="${i}" aria-label="Slide ${i + 1}"></button>`).join('')}
         </div>
       </section>
     `;
@@ -803,10 +983,8 @@ function renderHeroSlideHTML(s, isFirst = false) {
           ${isFeatured ? '<span class="hero-tag" style="margin-bottom:0;">Historia destacada</span>' : '<span class="hero-tag hero-tag-alt" style="margin-bottom:0;">Historia</span>'}
           ${isComingSoon ? '<span class="badge" style="background: var(--accent-color); color: #fff; padding: 5px 12px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; border-radius: 100px;">Próximamente</span>' : ''}
         </div>
-
         <h1 class="hero-title-c">${escapeHtml(s.title)}</h1>
         ${s.synopsis ? `<p class="hero-synopsis">${escapeHtml(s.synopsis)}</p>` : ''}
-
         ${!isComingSoon ? `
         <div class="hero-actions-c">
           <a href="historia.html?id=${s.id}" class="btn btn-primary">${ic('book-open')} Empezar a leer</a>
@@ -828,8 +1006,9 @@ async function cargarNovedades() {
   if (!cont) return;
 
   try {
+    const esMayor = await esUsuarioMayorDeEdad();
     const { data, error } = await withTimeout(
-      db.from('chapters').select('id, title, chapter_order, created_at, story_id, publish_at, stories(id, title, cover_url, status)')
+      db.from('chapters').select('id, title, chapter_order, created_at, story_id, publish_at, stories(id, title, cover_url, status, age_rating)')
         .order('created_at', { ascending: false })
         .limit(30),
       8000
@@ -840,6 +1019,7 @@ async function cargarNovedades() {
     const nowTime = Date.now();
     const capítulosVisibles = data.filter(c => {
       if (!c.stories || c.stories.status === 'Borrador') return false;
+      if (!esMayor && c.stories.age_rating === '+18 (Adulto)') return false;
       if (c.publish_at) {
         const pubTime = new Date(c.publish_at).getTime();
         if (pubTime > nowTime) return false;
@@ -891,15 +1071,16 @@ async function cargarProximamente() {
   if (!cont) return;
 
   try {
-    const { data, error } = await withTimeout(
-      db.from('stories')
-        .select('id, title, synopsis, cover_url, genre, status, release_date')
-        .eq('is_published', true)
-        .eq('status', 'Próximamente')
-        .order('created_at', { ascending: false }),
-      8000
-    );
+    const esMayor = await esUsuarioMayorDeEdad();
+    let q = db.from('stories')
+      .select('id, title, synopsis, cover_url, genre, status, release_date, age_rating')
+      .eq('is_published', true)
+      .eq('status', 'Próximamente')
+      .order('created_at', { ascending: false });
 
+    if (!esMayor) q = q.neq('age_rating', '+18 (Adulto)');
+
+    const { data, error } = await withTimeout(q, 8000);
     if (error || !data?.length) {
       cont.innerHTML = '';
       return;
@@ -919,11 +1100,7 @@ async function cargarProximamente() {
               let fechaTexto = null;
               if (s.release_date) {
                 const partes = s.release_date.split('-');
-                if (partes.length === 3) {
-                  fechaTexto = `${partes[2]}/${partes[1]}/${partes[0]}`;
-                } else {
-                  fechaTexto = s.release_date;
-                }
+                fechaTexto = partes.length === 3 ? `${partes[2]}/${partes[1]}/${partes[0]}` : s.release_date;
               }
 
               return `
@@ -965,7 +1142,7 @@ async function cargarRelatosHome() {
     if (error || !relatos?.length) return;
 
     const userIds = [...new Set(relatos.map(r => r.user_id))];
-    const { data: perfiles } = await db.from('profiles').select('id, username').in('id', userIds);
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username').in('id', userIds), 8000);
     const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     cont.innerHTML = `
@@ -1045,19 +1222,29 @@ async function cargarUltimoBlogHome() {
   }
 }
 
+/* ============================================
+   CATÁLOGO DE HISTORIAS
+   ============================================ */
+
 async function cargarHistorias({ limite = null, excluirDestacada = false, genero = null, busqueda = null } = {}) {
   const grid = document.getElementById('storiesGrid');
   if (!grid) return;
 
   try {
+    const esMayor = await esUsuarioMayorDeEdad();
+
     let query = db.from('stories').select('id, title, synopsis, cover_url, genre, status, is_featured, tags, age_rating')
       .eq('is_published', true)
       .neq('status', 'Próximamente')
       .neq('status', 'Borrador')
       .order('created_at', { ascending: false });
 
-    if (excluirDestacada) query = query.eq('is_featured', false);
+    // Filtrar fuera +18 si es menor o visitante sin sesión
+    if (!esMayor) {
+      query = query.neq('age_rating', '+18 (Adulto)');
+    }
 
+    if (excluirDestacada) query = query.eq('is_featured', false);
     if (genero) query = query.ilike('genre', `%${genero}%`);
 
     if (busqueda) {
@@ -1067,7 +1254,14 @@ async function cargarHistorias({ limite = null, excluirDestacada = false, genero
     if (historiasCurrentFilter === 'emision') query = query.eq('status', 'En emisión');
     if (historiasCurrentFilter === 'finalizado') query = query.eq('status', 'Finalizado');
     if (historiasCurrentFilter === 'pausa') query = query.eq('status', 'En pausa');
-    if (historiasCurrentFilter === 'adulto') query = query.eq('age_rating', '+18 (Adulto)');
+    if (historiasCurrentFilter === 'adulto') {
+      if (!esMayor) {
+        grid.innerHTML = emptyState('lock', 'Contenido restringido', 'Debes iniciar sesión con una cuenta mayor de 18 años para ver este catálogo.');
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+      query = query.eq('age_rating', '+18 (Adulto)');
+    }
 
     if (limite) query = query.limit(limite);
 
@@ -1095,7 +1289,7 @@ function renderStories(data, grid) {
       <h3 class="story-card-c-title">${escapeHtml(s.title)}</h3>
       <div class="story-card-c-meta">
         ${escapeHtml(s.genre || 'Sin género')}
-        ${s.status === 'Próximamente' ? '<span class="badge-coming-soon">Próximamente</span>' : ''}
+        ${s.age_rating === '+18 (Adulto)' ? '<span class="badge" style="background:rgba(229,9,20,0.15);color:var(--accent-color);font-size:9px;padding:2px 6px;margin-left:4px;">+18</span>' : ''}
       </div>
     </a>
   `).join('');
@@ -1130,6 +1324,11 @@ function cargarGeneros() {
 
   if (window.lucide) lucide.createIcons();
 }
+
+/* ============================================
+   BLOG Y ENTRADAS
+   ============================================ */
+
 async function cargarBlog(limite = null) {
   const list = document.getElementById('blogList');
   if (!list) return;
@@ -1140,7 +1339,6 @@ async function cargarBlog(limite = null) {
       .order('created_at', { ascending: false });
 
     if (limite) q = q.limit(limite);
-
     const { data, error } = await withTimeout(q, 10000);
 
     if (error || !data?.length) {
@@ -1223,14 +1421,12 @@ async function cargarComentarios(postId) {
     ]);
 
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
-
     const myId = session?.user?.id || null;
     if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
-
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
 
     const ids = [...new Set(data.map(c => c.user_id))];
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified').in('id', ids), 8000);
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified, badge_type').in('id', ids), 8000);
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
@@ -1245,26 +1441,7 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
   const p = perfilesMap[c.user_id] || {};
   const fecha = tiempoRelativo(c.created_at);
   const autor = escapeHtml(p.username || 'Lector');
-
-  let badge = '';
-  if (p.is_author) {
-    badge = `<span class="verified-admin-badge" title="Autor/Dueño">
-      <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="metalPlatinum" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stop-color="#ffffff" />
-            <stop offset="30%" stop-color="#d1d5db" />
-            <stop offset="65%" stop-color="#f87171" />
-            <stop offset="100%" stop-color="#6b7280" />
-          </linearGradient>
-        </defs>
-        <path fill="url(#metalPlatinum)" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-      </svg>
-    </span>`;
-  } else if (p.is_verified) {
-    badge = '<span class="verified-user-badge" title="Usuario verificado"><svg viewBox="0 0 24 24"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm-2 15l-5-5 1.4-1.4 3.6 3.6 7.6-7.6L19 8l-9 9z"/></svg></span>';
-  }
-
+  const badgeHtml = renderUserBadge(p);
   const texto = escapeHtml(c.content);
   const esMio = sessionUserId && c.user_id === sessionUserId;
   const autorLink = `<a href="perfil.html?id=${c.user_id}" style="color:inherit;text-decoration:none;">@${autor}</a>`;
@@ -1272,10 +1449,10 @@ function renderComment(c, perfilesMap, sessionUserId = null) {
   return `
     <div class="comment-c comment-c-new" data-comment-id="${c.id}">
       <div class="comment-head-c comment-head-c-new">
-        <div class="comment-author-c">${autorLink} ${badge}</div>
+        <div class="comment-author-c">${autorLink} ${badgeHtml}</div>
         <div class="comment-actions-c">
           <span class="comment-date-c">${fecha}</span>
-          ${esMio ? `<button class="comment-delete-btn" data-delete-comment="${c.id}" title="Eliminar comentario" aria-label="Eliminar comentario"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>` : ''}
+          ${esMio ? `<button class="comment-delete-btn" data-delete-comment="${c.id}" title="Eliminar comentario">${ic('trash-2', 14)}</button>` : ''}
         </div>
       </div>
       <div class="comment-body-wrap">
@@ -1291,8 +1468,7 @@ function activarVerMas() {
     const body = wrap.querySelector('.comment-body-c');
     const btn = wrap.querySelector('.comment-vermas');
     if (!body || !btn) return;
-    const h = body.scrollHeight;
-    if (h > 88) {
+    if (body.scrollHeight > 88) {
       btn.hidden = false;
       btn.addEventListener('click', () => {
         body.classList.remove('comment-body-clamped');
@@ -1310,7 +1486,7 @@ function activarBorradoComentarios(parentId, tipo) {
       const commentId = btn.dataset.deleteComment;
       if (!confirm('¿Eliminar este comentario?')) return;
       showLoading();
-      const { error } = await db.from('comments').delete().eq('id', commentId);
+      const { error } = await db.from(tipo === 'relato' ? 'relato_comments' : 'comments').delete().eq('id', commentId);
       hideLoading();
       if (error) { showToast('No se pudo eliminar: ' + error.message, 'error'); return; }
       showToast('Comentario eliminado', 'ok');
@@ -1368,259 +1544,9 @@ async function prepararFormComentario(postId) {
   });
 }
 
-async function cargarComentariosCapitulo(chapterId) {
-  const list = document.getElementById('chapterCommentsList');
-  const count = document.getElementById('chapterCommentsCount');
-  if (!list) return;
-
-  try {
-    const [{ data, error }, { data: { session } }] = await Promise.all([
-      withTimeout(db.from('comments').select('id, content, created_at, user_id').eq('chapter_id', chapterId).order('created_at', { ascending: true }), 8000),
-      db.auth.getSession()
-    ]);
-
-    if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
-
-    const myId = session?.user?.id || null;
-    if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
-    if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
-
-    const ids = [...new Set(data.map(c => c.user_id))];
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified').in('id', ids), 8000);
-    const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
-
-    list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
-    activarVerMas();
-    activarBorradoComentarios(chapterId, 'chapter');
-  } catch (e) {
-    list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
-  }
-}
-
-async function prepararFormComentarioCapitulo(chapterId) {
-  const mount = document.getElementById('chapterCommentFormMount');
-  if (!mount) return;
-
-  const { data: { session } } = await db.auth.getSession();
-  if (!session) {
-    mount.innerHTML = `
-      <div class="comment-login-prompt-c">
-        <p>Inicia sesión para comentar.</p>
-        <button class="btn btn-primary" id="chapterCommentLoginBtn">Iniciar sesión</button>
-      </div>
-    `;
-    document.getElementById('chapterCommentLoginBtn')?.addEventListener('click', () => {
-      document.getElementById('authModal').hidden = false;
-      window.__showLoginView?.();
-    });
-    return;
-  }
-
-  mount.innerHTML = `
-    <form class="comment-form-c" id="chapterCommentForm">
-      <textarea id="chapterCommentText" placeholder="Escribe tu comentario…" required maxlength="2000"></textarea>
-      <div class="comment-form-foot">
-        <span style="font-size:12px;color:var(--text-tertiary);">Máx. 2000 caracteres</span>
-        <button type="submit" class="btn btn-primary">Publicar</button>
-      </div>
-    </form>
-  `;
-
-  document.getElementById('chapterCommentForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const content = document.getElementById('chapterCommentText').value.trim();
-    if (!content) return;
-    showLoading();
-    const { data: insertedComment, error } = await db.from('comments')
-      .insert({ chapter_id: chapterId, user_id: session.user.id, content })
-      .select()
-      .maybeSingle();
-    hideLoading();
-    if (error) { showToast('No se pudo publicar el comentario', 'error'); return; }
-    showToast('Comentario publicado', 'ok');
-    document.getElementById('chapterCommentText').value = '';
-    const { data: ch } = await db.from('chapters').select('story_id').eq('id', chapterId).maybeSingle();
-    crearNotificacion({ type: 'comment_chapter', storyId: ch?.story_id, chapterId, commentId: insertedComment?.id });
-    await cargarComentariosCapitulo(chapterId);
-  });
-}
-
-async function cargarLikeBoton(tipo, id) {
-  const rowId = tipo === 'story' ? 'storyLikeRow' : 'chapterLikeRow';
-  const row = document.getElementById(rowId);
-  if (!row) return;
-
-  try {
-    const { data: { session } } = await db.auth.getSession();
-    const userId = session?.user?.id || null;
-    let dioLike = false;
-
-    if (userId) {
-      let q2 = db.from('likes').select('id');
-      if (tipo === 'story') q2 = q2.eq('story_id', id).is('chapter_id', null).eq('user_id', userId);
-      else q2 = q2.eq('chapter_id', id).eq('user_id', userId);
-      const { data: myLike } = await q2.maybeSingle();
-      dioLike = !!myLike;
-    }
-
-    let totalLikes = 0;
-    let queryCount = db.from('likes').select('id', { count: 'exact', head: true });
-    if (tipo === 'story') queryCount = queryCount.eq('story_id', id).is('chapter_id', null);
-    else queryCount = queryCount.eq('chapter_id', id);
-    const { count } = await queryCount;
-    totalLikes = count || 0;
-
-    let totalVistas = 0;
-    if (SITE_SETTINGS.show_views) {
-      try {
-        if (tipo === 'story') {
-          const { data: v } = await db.rpc('count_story_views', { story_id_param: id });
-          totalVistas = v || 0;
-        } else {
-          const { data: v } = await db.rpc('count_chapter_views', { chapter_id_param: id });
-          totalVistas = v || 0;
-        }
-      } catch (e) {
-        console.warn('Error contando vistas:', e);
-      }
-    }
-
-    const mostrarLikes = SITE_SETTINGS.show_likes;
-    const mostrarVistas = SITE_SETTINGS.show_views;
-    const labelLike = dioLike ? 'Te gusta' : 'Me gusta';
-    const spanLikes = mostrarLikes ? `<span class="like-count">${totalLikes.toLocaleString('es-ES')}</span>` : '';
-    const spanVistas = mostrarVistas ? `<span class="views-counter" title="Visualizaciones"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg> ${totalVistas.toLocaleString('es-ES')}</span>` : '';
-
-    row.innerHTML = `
-      <div class="like-row-inner">
-        <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}" title="${dioLike ? 'Quitar me gusta' : 'Me gusta'}" aria-label="${dioLike ? 'Quitar me gusta' : 'Me gusta'}">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="${dioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
-          </svg>
-          ${mostrarLikes ? spanLikes : `<span class="like-label">${labelLike}</span>`}
-        </button>
-        ${spanVistas}
-      </div>
-    `;
-
-    row.querySelector('.like-btn')?.addEventListener('click', async () => {
-      const { data: { session: s2 } } = await db.auth.getSession();
-      if (!s2?.user) {
-        showToast('Inicia sesión para dar me gusta', 'info');
-        document.getElementById('authModal').hidden = false;
-        window.__showLoginView?.();
-        return;
-      }
-      await toggleLike(tipo, id);
-    });
-  } catch (e) {
-    console.warn('Error cargando likes:', e);
-  }
-}
-
-async function toggleLike(tipo, id) {
-  const { data: { session } } = await db.auth.getSession();
-  if (!session?.user) return;
-  const userId = session.user.id;
-
-  try {
-    let q = db.from('likes').select('id');
-    if (tipo === 'story') q = q.eq('story_id', id).is('chapter_id', null).eq('user_id', userId);
-    else q = q.eq('chapter_id', id).eq('user_id', userId);
-
-    const { data: existing } = await q.maybeSingle();
-
-    if (existing) {
-      const { error } = await db.from('likes').delete().eq('id', existing.id);
-      if (error) throw error;
-      showToast('Me gusta quitado', 'info');
-    } else {
-      const insert = { user_id: userId };
-      if (tipo === 'story') insert.story_id = id;
-      else insert.chapter_id = id;
-      const { error } = await db.from('likes').insert(insert);
-      if (error) throw error;
-      showToast('¡Gracias por el me gusta!', 'ok');
-      if (tipo === 'story') crearNotificacion({ type: 'like_story', storyId: id });
-      else {
-        const { data: ch } = await db.from('chapters').select('story_id').eq('id', id).maybeSingle();
-        crearNotificacion({ type: 'like_chapter', storyId: ch?.story_id, chapterId: id });
-      }
-    }
-    await cargarLikeBoton(tipo, id);
-  } catch (e) {
-    console.error('Error toggle like:', e);
-    showToast('No se pudo actualizar el me gusta', 'error');
-  }
-}
-
-async function cargarRedes() {
-  const grid = document.getElementById('socialGrid');
-  if (!grid) return;
-
-  try {
-    const { data, error } = await withTimeout(
-      db.from('social_links').select('platform, url, display_order').order('display_order', { ascending: true }),
-      8000
-    );
-
-    if (error || !data?.length) {
-      grid.innerHTML = emptyState('share-2', 'Pronto añadiré mis redes', 'Aquí encontrarás todos mis perfiles.');
-      return;
-    }
-
-    grid.innerHTML = data.map(s => {
-      const platform = s.platform.toLowerCase();
-      const handle = (s.url || '').replace(/^https?:\/\/(www\.)?/, '').split('/').slice(0, 2).join('/');
-      return `
-        <a class="social-link-c" href="${s.url}" target="_blank" rel="noopener noreferrer">
-          <div class="social-link-c-icon">${socialIconSvg(platform, 20)}</div>
-          <div class="social-link-c-body">
-            <span class="social-link-c-name">${escapeHtml(capitalize(s.platform))}</span>
-            <span class="social-link-c-handle">${escapeHtml(handle)}</span>
-          </div>
-        </a>
-      `;
-    }).join('');
-  } catch (e) {
-    grid.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
-  }
-}
-
-async function cargarDonaciones() {
-  const grid = document.getElementById('donationsGrid');
-  if (!grid) return;
-
-  try {
-    const { data, error } = await withTimeout(
-      db.from('donations').select('id, platform, url, label, display_order').order('display_order', { ascending: true }),
-      8000
-    );
-
-    if (error || !data?.length) {
-      grid.innerHTML = emptyState('heart-handshake', 'Aún no hay formas de donar', 'Pronto añadiré opciones. ¡Gracias por tu interés!');
-      return;
-    }
-
-    grid.innerHTML = data.map(d => {
-      const isBinance = d.platform.toLowerCase() === 'binance';
-      const label = d.label || capitalize(d.platform);
-      const displayValue = isBinance ? `ID: ${d.url}` : d.url;
-      const href = isBinance ? 'https://www.binance.com/' : d.url;
-      return `
-        <a class="social-link-c" href="${href}" target="_blank" rel="noopener noreferrer">
-          <div class="social-link-c-icon">${donationIconSvg(d.platform.toLowerCase(), 20)}</div>
-          <div class="social-link-c-body">
-            <span class="social-link-c-name">${escapeHtml(label)}</span>
-            <span class="social-link-c-handle">${escapeHtml(displayValue)}</span>
-          </div>
-        </a>
-      `;
-    }).join('');
-  } catch (e) {
-    grid.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
-  }
-}
+/* ============================================
+   HISTORIA DETALLE Y CAPÍTULOS
+   ============================================ */
 
 async function cargarHistoriaDetalle() {
   const cont = document.getElementById('storyDetail');
@@ -1629,9 +1555,6 @@ async function cargarHistoriaDetalle() {
   try {
     const id = new URLSearchParams(location.search).get('id');
     if (!id) { render404(cont, 'Historia no encontrada', 'El enlace no incluye un identificador válido.'); return; }
-
-    const cached = cache.get('story:' + id);
-    if (cached) renderStory(cached, cont);
 
     const [storyRes, chaptersRes, sessionRes] = await withTimeout(
       Promise.all([
@@ -1643,40 +1566,30 @@ async function cargarHistoriaDetalle() {
     );
 
     const story = storyRes.data;
-    const chaptersRaw = chaptersRes.data || [];
-    const logged = !!(sessionRes?.data?.session);
+    if (!story) { render404(cont, 'Historia no encontrada', 'Puede que haya sido eliminada.'); return; }
 
-    if (!story) {
-      if (!cached) render404(cont, 'Historia no encontrada', 'Puede que haya sido eliminada o el enlace sea incorrecto.');
-      return;
+    // Validación Restricción de Edad (+18)
+    if (story.age_rating === '+18 (Adulto)') {
+      const esMayor = await esUsuarioMayorDeEdad();
+      if (!esMayor) {
+        renderAgeGate(cont);
+        return;
+      }
     }
 
+    const chaptersRaw = chaptersRes.data || [];
+    const logged = !!(sessionRes?.data?.session);
     const nowTime = Date.now();
     const chaptersVisibles = chaptersRaw.filter(c => {
       if (!c.publish_at) return true;
-      const pubTime = new Date(c.publish_at).getTime();
-      return pubTime <= nowTime;
+      return new Date(c.publish_at).getTime() <= nowTime;
     });
 
-    db.from('characters').select('id, name, role, description, avatar_url').eq('story_id', id).order('display_order', { ascending: true })
-      .then(({ data }) => {
-        if (data?.length) {
-          const mount = document.getElementById('charsMount');
-          if (mount) {
-            mount.innerHTML = renderCharacters(data);
-            if (window.lucide) lucide.createIcons();
-          }
-        }
-      }).catch(() => {});
-
-    cache.set('story:' + id, { story, chapters: chaptersVisibles, logged });
     renderStory({ story, chapters: chaptersVisibles, logged }, cont);
     registrarVista(story.id, null);
   } catch (err) {
     console.error('Error historia:', err);
-    if (!cont.innerHTML.includes('story-header')) {
-      render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.');
-    }
+    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
   }
 }
 
@@ -1744,14 +1657,8 @@ function renderStory({ story, chapters, logged }, cont) {
           ${story.synopsis ? `<p class="story-synopsis-c">${escapeHtml(story.synopsis)}</p>` : ''}
           ${tagsHtml}
           <div class="story-stats" style="margin-top: 16px;">
-            <div class="story-stats-item">
-              <span class="story-stats-label">Capítulos</span>
-              <span class="story-stats-value">${chapters.length}</span>
-            </div>
-            <div class="story-stats-item">
-              <span class="story-stats-label">Estado</span>
-              <span class="story-stats-value">${escapeHtml(story.status || 'En curso')}</span>
-            </div>
+            <div class="story-stats-item"><span class="story-stats-label">Capítulos</span><span class="story-stats-value">${chapters.length}</span></div>
+            <div class="story-stats-item"><span class="story-stats-label">Estado</span><span class="story-stats-value">${escapeHtml(story.status || 'En curso')}</span></div>
           </div>
           ${continueBtn ? `<div style="margin-top:20px;">${continueBtn}</div>` : ''}
         </div>
@@ -1760,42 +1667,17 @@ function renderStory({ story, chapters, logged }, cont) {
     <section class="section">
       <div class="container">
         <div class="section-head">
-          <div>
-            <h2 class="section-title">Capítulos</h2>
-            <p class="section-sub">${logged ? 'Acceso completo' : `Los primeros ${PREMIUM_FREE_LIMIT} capítulos son gratis`}</p>
-          </div>
+          <div><h2 class="section-title">Capítulos</h2><p class="section-sub">${logged ? 'Acceso completo' : `Los primeros ${PREMIUM_FREE_LIMIT} capítulos son gratis`}</p></div>
         </div>
         <div class="chapter-list">${chaptersHtml}</div>
       </div>
     </section>
-    <div id="charsMount"></div>
   `;
 
   if (window.lucide) lucide.createIcons();
   cargarLikeBoton('story', story.id);
 }
 
-function renderCharacters(chars) {
-  return `
-    <section class="section">
-      <div class="container">
-        <div class="section-head">
-          <div><h2 class="section-title">Personajes</h2><p class="section-sub">Quiénes protagonizan esta historia</p></div>
-        </div>
-        <div class="characters-grid">
-          ${chars.map(c => `
-            <div class="character-card">
-              <div class="character-avatar">${c.avatar_url ? `<img src="${c.avatar_url}" />` : escapeHtml(c.name.charAt(0))}</div>
-              <div class="character-name">${escapeHtml(c.name)}</div>
-              ${c.role ? `<div class="character-role">${escapeHtml(c.role)}</div>` : ''}
-              ${c.description ? `<div class="character-desc">${escapeHtml(c.description)}</div>` : ''}
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    </section>
-  `;
-}
 async function cargarCapitulo() {
   const cont = document.getElementById('chapterContent');
   if (!cont) return;
@@ -1803,7 +1685,7 @@ async function cargarCapitulo() {
 
   try {
     const id = new URLSearchParams(location.search).get('id');
-    if (!id) { render404(cont, 'Capítulo no encontrado', 'El enlace no incluye un identificador válido.'); return; }
+    if (!id) { render404(cont, 'Capítulo no encontrado', 'Falta el identificador.'); return; }
 
     const [chapterRes, sessionRes] = await withTimeout(
       Promise.all([
@@ -1814,25 +1696,27 @@ async function cargarCapitulo() {
     );
 
     const chapter = chapterRes.data;
-    const logged = !!(sessionRes?.data?.session);
-
     if (!chapter) { render404(cont, 'Capítulo no encontrado', 'Puede que haya sido eliminado.'); return; }
 
-    if (chapter.publish_at && new Date(chapter.publish_at).getTime() > new Date().getTime()) {
+    const { data: story } = await db.from('stories').select('id, title, age_rating').eq('id', chapter.story_id).maybeSingle();
+
+    // Restricción +18
+    if (story?.age_rating === '+18 (Adulto)') {
+      const esMayor = await esUsuarioMayorDeEdad();
+      if (!esMayor) {
+        renderAgeGate(cont);
+        return;
+      }
+    }
+
+    if (chapter.publish_at && new Date(chapter.publish_at).getTime() > Date.now()) {
       render404(cont, 'Capítulo no disponible', 'Este capítulo aún no ha sido publicado. Vuelve más tarde.');
       return;
     }
 
-    const [storyRes, siblingsRes] = await withTimeout(
-      Promise.all([
-        db.from('stories').select('id, title').eq('id', chapter.story_id).maybeSingle(),
-        db.from('chapters').select('id, title, chapter_order').eq('story_id', chapter.story_id).order('chapter_order', { ascending: true })
-      ]),
-      10000
-    );
+    const { data: siblings } = await db.from('chapters').select('id, title, chapter_order').eq('story_id', chapter.story_id).order('chapter_order', { ascending: true });
 
-    const story = storyRes.data;
-    const siblings = siblingsRes.data || [];
+    const logged = !!(sessionRes?.data?.session);
     const num = chapter.chapter_order || 0;
     const beyondFree = num > PREMIUM_FREE_LIMIT;
     const requiresAuth = chapter.is_premium || beyondFree;
@@ -1875,7 +1759,7 @@ async function cargarCapitulo() {
     marcarComoLeido(chapter.id);
     registrarVista(chapter.story_id, chapter.id);
 
-    const idx = siblings.findIndex(c => c.id === chapter.id);
+    const idx = (siblings || []).findIndex(c => c.id === chapter.id);
     const prev = idx > 0 ? siblings[idx - 1] : null;
     const next = idx >= 0 && idx < siblings.length - 1 ? siblings[idx + 1] : null;
 
@@ -1884,12 +1768,9 @@ async function cargarCapitulo() {
         <div class="chapter-head">
           <a href="historia.html?id=${story?.id || ''}" class="chapter-story-link">${ic('arrow-left', 14)} ${escapeHtml(story?.title || '')}</a>
           <h1 class="chapter-title-c">Capítulo ${num} · ${escapeHtml(chapter.title)}</h1>
-
           <div style="display:flex; gap:10px; align-items:center; margin-top:16px; flex-wrap:wrap;">
             <div class="like-row" id="chapterLikeRow"></div>
-            <button class="btn-mark-read" id="btnMarkRead">
-              ${ic('check-circle', 16)} <span id="btnMarkReadText">Marcar como leído</span>
-            </button>
+            <button class="btn-mark-read" id="btnMarkRead">${ic('check-circle', 16)} <span id="btnMarkReadText">Marcar como leído</span></button>
           </div>
         </div>
         <div class="chapter-body" id="chapterBody">${chapter.content || '<p>Sin contenido.</p>'}</div>
@@ -1899,7 +1780,6 @@ async function cargarCapitulo() {
           <a class="chapter-nav-btn" href="historia.html?id=${story?.id || ''}" style="align-items:center;text-align:center;"><span class="chapter-nav-label">${ic('list', 12)} Índice</span><span class="chapter-nav-title">Ver capítulos</span></a>
           ${next ? `<a class="chapter-nav-btn next" href="capitulo.html?id=${next.id}"><span class="chapter-nav-label">Siguiente ${ic('arrow-right', 12)}</span><span class="chapter-nav-title">${escapeHtml(next.title)}</span></a>` : `<div class="chapter-nav-btn next disabled"></div>`}
         </nav>
-
         <section class="chapter-comments-section">
           <div class="chapter-comments-head">
             <h2 class="chapter-comments-title">Comentarios</h2>
@@ -1920,12 +1800,9 @@ async function cargarCapitulo() {
       const btn = document.createElement('button');
       btn.className = 'icon-action reader-settings-btn-visible';
       btn.id = 'readerSettingsBtn';
-      btn.setAttribute('aria-label', 'Ajustes de lectura');
-      btn.title = 'Ajustes de lectura';
-      btn.innerHTML = '<strong style="font-family:Georgia,serif;font-size:15px;letter-spacing:-0.5px;">Aa</strong>';
+      btn.innerHTML = '<strong style="font-family:Georgia,serif;font-size:15px;">Aa</strong>';
       btn.addEventListener('click', abrirReaderSettings);
       actions.insertBefore(btn, actions.firstChild);
-      if (window.lucide) lucide.createIcons();
     }
 
     const progress = document.getElementById('readerProgress');
@@ -1946,87 +1823,237 @@ async function cargarCapitulo() {
     await prepararFormComentarioCapitulo(chapter.id);
     cargarLikeBoton('chapter', chapter.id);
 
-    // --- LÓGICA DEL BOTÓN "CAPÍTULO VISTO" ---
+    // Botón de leído
     const btnMarkRead = document.getElementById('btnMarkRead');
     const btnMarkReadText = document.getElementById('btnMarkReadText');
     const currentUser = sessionRes?.data?.session?.user;
 
-    if (btnMarkRead) {
-      if (currentUser) {
-        const { data: readData } = await db.from('chapter_reads')
-          .select('id')
-          .eq('chapter_id', chapter.id)
-          .eq('user_id', currentUser.id)
-          .maybeSingle();
+    if (btnMarkRead && currentUser) {
+      const { data: readData } = await db.from('chapter_reads').select('id').eq('chapter_id', chapter.id).eq('user_id', currentUser.id).maybeSingle();
+      let isRead = !!readData;
+      const updateBtn = () => {
+        btnMarkRead.classList.toggle('read', isRead);
+        btnMarkReadText.textContent = isRead ? 'Leído' : 'Marcar como leído';
+      };
+      updateBtn();
 
-        let isRead = !!readData;
-
-        const updateBtnState = () => {
-          if (isRead) {
-            btnMarkRead.classList.add('read');
-            btnMarkReadText.textContent = 'Leído';
-          } else {
-            btnMarkRead.classList.remove('read');
-            btnMarkReadText.textContent = 'Marcar como leído';
-          }
-        };
-        updateBtnState();
-
-        btnMarkRead.addEventListener('click', async () => {
-          showLoading();
-          if (isRead) {
-            await db.from('chapter_reads').delete().eq('chapter_id', chapter.id).eq('user_id', currentUser.id);
-            isRead = false;
-            showToast('Marcado como no leído', 'info');
-          } else {
-            await db.from('chapter_reads').insert({ chapter_id: chapter.id, user_id: currentUser.id });
-            isRead = true;
-            showToast('¡Guardado en tu progreso!', 'ok');
-          }
-          hideLoading();
-          updateBtnState();
-        });
-
-      } else {
-        btnMarkRead.addEventListener('click', () => {
-          showToast('Inicia sesión para guardar tu progreso', 'info');
-          document.getElementById('authModal').hidden = false;
-          window.__showLoginView?.();
-        });
-      }
+      btnMarkRead.addEventListener('click', async () => {
+        showLoading();
+        if (isRead) {
+          await db.from('chapter_reads').delete().eq('chapter_id', chapter.id).eq('user_id', currentUser.id);
+          isRead = false;
+        } else {
+          await db.from('chapter_reads').insert({ chapter_id: chapter.id, user_id: currentUser.id });
+          isRead = true;
+          showToast('¡Guardado en tu progreso!', 'ok');
+        }
+        hideLoading();
+        updateBtn();
+      });
     }
 
   } catch (err) {
     console.error('Error capítulo:', err);
-    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión. Intenta de nuevo.');
+    render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
   }
 }
 
-function activarAntiCopia(chapterBodyEl) {
-  if (!chapterBodyEl) return;
-  chapterBodyEl.addEventListener('contextmenu', (e) => e.preventDefault());
-  chapterBodyEl.addEventListener('copy', (e) => {
+async function cargarComentariosCapitulo(chapterId) {
+  const list = document.getElementById('chapterCommentsList');
+  const count = document.getElementById('chapterCommentsCount');
+  if (!list) return;
+
+  try {
+    const [{ data, error }, { data: { session } }] = await Promise.all([
+      withTimeout(db.from('comments').select('id, content, created_at, user_id').eq('chapter_id', chapterId).order('created_at', { ascending: true }), 8000),
+      db.auth.getSession()
+    ]);
+
+    if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
+    const myId = session?.user?.id || null;
+    if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
+    if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
+
+    const ids = [...new Set(data.map(c => c.user_id))];
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified, badge_type').in('id', ids), 8000);
+    const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
+
+    list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
+    activarVerMas();
+    activarBorradoComentarios(chapterId, 'chapter');
+  } catch (e) {
+    list.innerHTML = emptyState('alert-circle', 'Timeout', 'Vuelve a intentar.');
+  }
+}
+
+async function prepararFormComentarioCapitulo(chapterId) {
+  const mount = document.getElementById('chapterCommentFormMount');
+  if (!mount) return;
+
+  const { data: { session } } = await db.auth.getSession();
+  if (!session) {
+    mount.innerHTML = `
+      <div class="comment-login-prompt-c">
+        <p>Inicia sesión para comentar.</p>
+        <button class="btn btn-primary" id="chapterCommentLoginBtn">Iniciar sesión</button>
+      </div>
+    `;
+    document.getElementById('chapterCommentLoginBtn')?.addEventListener('click', () => {
+      document.getElementById('authModal').hidden = false;
+      window.__showLoginView?.();
+    });
+    return;
+  }
+
+  mount.innerHTML = `
+    <form class="comment-form-c" id="chapterCommentForm">
+      <textarea id="chapterCommentText" placeholder="Escribe tu comentario…" required maxlength="2000"></textarea>
+      <div class="comment-form-foot">
+        <span style="font-size:12px;color:var(--text-tertiary);">Máx. 2000 caracteres</span>
+        <button type="submit" class="btn btn-primary">Publicar</button>
+      </div>
+    </form>
+  `;
+
+  document.getElementById('chapterCommentForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    showToast('El contenido está protegido. Copiar no está permitido.', 'info');
+    const content = document.getElementById('chapterCommentText').value.trim();
+    if (!content) return;
+    showLoading();
+    const { data: insertedComment, error } = await db.from('comments')
+      .insert({ chapter_id: chapterId, user_id: session.user.id, content })
+      .select()
+      .maybeSingle();
+    hideLoading();
+    if (error) { showToast('No se pudo publicar el comentario', 'error'); return; }
+    showToast('Comentario publicado', 'ok');
+    document.getElementById('chapterCommentText').value = '';
+    const { data: ch } = await db.from('chapters').select('story_id').eq('id', chapterId).maybeSingle();
+    crearNotificacion({ type: 'comment_chapter', storyId: ch?.story_id, chapterId, commentId: insertedComment?.id });
+    await cargarComentariosCapitulo(chapterId);
   });
-  chapterBodyEl.addEventListener('cut', (e) => e.preventDefault());
-  chapterBodyEl.addEventListener('keydown', (e) => {
+}
+
+/* ============================================
+   LIKES Y VISTAS
+   ============================================ */
+
+async function cargarLikeBoton(tipo, id) {
+  const rowId = tipo === 'story' ? 'storyLikeRow' : 'chapterLikeRow';
+  const row = document.getElementById(rowId);
+  if (!row) return;
+
+  try {
+    const { data: { session } } = await db.auth.getSession();
+    const userId = session?.user?.id || null;
+    let dioLike = false;
+
+    if (userId) {
+      let q2 = db.from('likes').select('id');
+      if (tipo === 'story') q2 = q2.eq('story_id', id).is('chapter_id', null).eq('user_id', userId);
+      else q2 = q2.eq('chapter_id', id).eq('user_id', userId);
+      const { data: myLike } = await q2.maybeSingle();
+      dioLike = !!myLike;
+    }
+
+    let totalLikes = 0;
+    let queryCount = db.from('likes').select('id', { count: 'exact', head: true });
+    if (tipo === 'story') queryCount = queryCount.eq('story_id', id).is('chapter_id', null);
+    else queryCount = queryCount.eq('chapter_id', id);
+    const { count } = await queryCount;
+    totalLikes = count || 0;
+
+    let totalVistas = 0;
+    if (SITE_SETTINGS.show_views) {
+      try {
+        const { data: v } = await db.rpc(tipo === 'story' ? 'count_story_views' : 'count_chapter_views', {
+          [tipo === 'story' ? 'story_id_param' : 'chapter_id_param']: id
+        });
+        totalVistas = v || 0;
+      } catch (e) { console.warn(e); }
+    }
+
+    const spanLikes = SITE_SETTINGS.show_likes ? `<span class="like-count">${totalLikes.toLocaleString('es-ES')}</span>` : '';
+    const spanVistas = SITE_SETTINGS.show_views ? `<span class="views-counter" title="Visualizaciones">${ic('eye', 14)} ${totalVistas.toLocaleString('es-ES')}</span>` : '';
+
+    row.innerHTML = `
+      <div class="like-row-inner">
+        <button class="like-btn ${dioLike ? 'liked' : ''}" data-like-tipo="${tipo}" data-like-id="${id}">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="${dioLike ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2">
+            <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+          </svg>
+          ${SITE_SETTINGS.show_likes ? spanLikes : `<span class="like-label">${dioLike ? 'Te gusta' : 'Me gusta'}</span>`}
+        </button>
+        ${spanVistas}
+      </div>
+    `;
+
+    row.querySelector('.like-btn')?.addEventListener('click', async () => {
+      const { data: { session: s2 } } = await db.auth.getSession();
+      if (!s2?.user) {
+        showToast('Inicia sesión para dar me gusta', 'info');
+        document.getElementById('authModal').hidden = false;
+        window.__showLoginView?.();
+        return;
+      }
+      await toggleLike(tipo, id);
+    });
+  } catch (e) { console.warn(e); }
+}
+
+async function toggleLike(tipo, id) {
+  const { data: { session } } = await db.auth.getSession();
+  if (!session?.user) return;
+  const userId = session.user.id;
+
+  try {
+    let q = db.from('likes').select('id');
+    if (tipo === 'story') q = q.eq('story_id', id).is('chapter_id', null).eq('user_id', userId);
+    else q = q.eq('chapter_id', id).eq('user_id', userId);
+
+    const { data: existing } = await q.maybeSingle();
+
+    if (existing) {
+      await db.from('likes').delete().eq('id', existing.id);
+      showToast('Me gusta quitado', 'info');
+    } else {
+      const insert = { user_id: userId };
+      if (tipo === 'story') insert.story_id = id;
+      else insert.chapter_id = id;
+      await db.from('likes').insert(insert);
+      showToast('¡Gracias por el me gusta!', 'ok');
+      if (tipo === 'story') crearNotificacion({ type: 'like_story', storyId: id });
+      else {
+        const { data: ch } = await db.from('chapters').select('story_id').eq('id', id).maybeSingle();
+        crearNotificacion({ type: 'like_chapter', storyId: ch?.story_id, chapterId: id });
+      }
+    }
+    await cargarLikeBoton(tipo, id);
+  } catch (e) {
+    showToast('No se pudo actualizar el me gusta', 'error');
+  }
+}
+
+/* ============================================
+   ANTI-COPIA Y AJUSTES DE LECTURA
+   ============================================ */
+
+function aplicarProteccionCapitulo() {
+  const body = document.getElementById('chapterBody');
+  if (!body) return;
+  body.addEventListener('contextmenu', (e) => e.preventDefault());
+  body.addEventListener('copy', (e) => {
+    e.preventDefault();
+    showToast('El contenido está protegido contra copia.', 'info');
+  });
+  body.addEventListener('cut', (e) => e.preventDefault());
+  body.addEventListener('keydown', (e) => {
     const key = (e.key || '').toLowerCase();
     const ctrl = e.ctrlKey || e.metaKey;
     if ((ctrl && ['c', 'x', 'a', 'u', 's'].includes(key)) || key === 'f12') {
       e.preventDefault();
-      if (ctrl && ['c', 'x'].includes(key)) showToast('El contenido está protegido.', 'info');
     }
   });
-  chapterBodyEl.addEventListener('dragstart', (e) => e.preventDefault());
-  chapterBodyEl.style.userSelect = 'none';
-  chapterBodyEl.style.webkitUserSelect = 'none';
-  chapterBodyEl.style.webkitTouchCallout = 'none';
-}
-
-function aplicarProteccionCapitulo() {
-  const body = document.getElementById('chapterBody');
-  if (body) activarAntiCopia(body);
 }
 
 function abrirReaderSettings() {
@@ -2039,7 +2066,6 @@ function abrirReaderSettings() {
       <div class="modal-c">
         <button class="modal-close-c" id="rsClose">${ic('x')}</button>
         <h2 class="modal-title-c">Ajustes de lectura</h2>
-        <p class="modal-sub-c">Personaliza cómo lees</p>
         <div class="rs-group">
           <label class="rs-label">Tipografía</label>
           <div class="rs-segment" data-pref="fontFamily">
@@ -2078,7 +2104,6 @@ function abrirReaderSettings() {
     `;
     document.body.appendChild(modal);
     modal.querySelector('#rsClose').addEventListener('click', () => modal.hidden = true);
-    modal.addEventListener('click', (e) => { if (e.target === modal) modal.hidden = true; });
 
     modal.querySelectorAll('.rs-segment').forEach(seg => {
       seg.querySelectorAll('.rs-seg-btn').forEach(btn => {
@@ -2112,6 +2137,7 @@ function abrirReaderSettings() {
       toggleFocusMode();
     });
   }
+
   modal.hidden = false;
   actualizarReaderUI();
   if (window.lucide) lucide.createIcons();
@@ -2128,15 +2154,12 @@ function actualizarReaderUI() {
 }
 
 function toggleFocusMode() {
-  const isActive = document.body.classList.contains('focus-mode');
+  const isActive = document.body.classList.toggle('focus-mode');
   if (isActive) {
-    document.body.classList.remove('focus-mode');
-    const btn = document.getElementById('focusExitBtn');
-    if (btn) btn.remove();
-  } else {
-    document.body.classList.add('focus-mode');
     window.scrollTo({ top: 0, behavior: 'smooth' });
     crearBotonSalir();
+  } else {
+    document.getElementById('focusExitBtn')?.remove();
   }
 }
 
@@ -2144,12 +2167,10 @@ function crearBotonSalir() {
   if (document.getElementById('focusExitBtn')) return;
   const btn = document.createElement('button');
   btn.id = 'focusExitBtn';
-  btn.className = 'focus-exit-btn';
+  btn.className = 'focus-exit-btn visible';
   btn.innerHTML = '✕ Salir';
-  btn.setAttribute('aria-label', 'Salir del modo lectura');
   btn.addEventListener('click', toggleFocusMode);
   document.body.appendChild(btn);
-  requestAnimationFrame(() => btn.classList.add('visible'));
 }
 
 function initFocusModeExit() {
@@ -2173,29 +2194,23 @@ function restaurarPosicionLectura(chapterId) {
     if (saved.chapterId === chapterId && saved.percent > 5 && saved.percent < 95) {
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       const targetY = (saved.percent / 100) * docHeight;
-      showResumeToast(targetY);
+      const el = document.createElement('div');
+      el.className = 'resume-toast show';
+      el.innerHTML = `<span>Continuar donde lo dejaste</span><button>Ir</button>`;
+      document.body.appendChild(el);
+      el.querySelector('button').addEventListener('click', () => {
+        window.scrollTo({ top: targetY, behavior: 'smooth' });
+        el.remove();
+      });
+      setTimeout(() => el.remove(), 6000);
     }
   } catch {}
 }
 
-function showResumeToast(targetY) {
-  const el = document.createElement('div');
-  el.className = 'resume-toast';
-  el.innerHTML = `<span>Continuar desde donde dejaste</span><button>Ir</button>`;
-  document.body.appendChild(el);
-  requestAnimationFrame(() => el.classList.add('show'));
-  el.querySelector('button').addEventListener('click', () => {
-    window.scrollTo({ top: targetY, behavior: 'smooth' });
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 300);
-  });
-  setTimeout(() => {
-    el.classList.remove('show');
-    setTimeout(() => el.remove(), 300);
-  }, 6000);
-}
+/* ============================================
+   RELATOS DE LA COMUNIDAD
+   ============================================ */
 
-/* --- RELATOS --- */
 async function cargarRelatos() {
   const grid = document.getElementById('relatosGrid');
   const count = document.getElementById('relatosCount');
@@ -2211,7 +2226,6 @@ async function cargarRelatos() {
     );
 
     if (error) throw error;
-
     if (!relatos?.length) {
       grid.innerHTML = emptyState('pen-line', 'Aún no hay relatos', 'Sé el primero en compartir una historia.');
       if (count) count.textContent = '0 relatos';
@@ -2219,7 +2233,7 @@ async function cargarRelatos() {
     }
 
     const userIds = [...new Set(relatos.map(r => r.user_id))];
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, avatar_url').in('id', userIds), 8000);
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, avatar_url, badge_type, is_author, is_verified').in('id', userIds), 8000);
     const perfilesMap = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     const relatoIds = relatos.map(r => r.id);
@@ -2237,9 +2251,7 @@ async function cargarRelatos() {
     relatosCurrentPage = 1;
     aplicarFiltroYRenderRelatos();
   } catch (e) {
-    console.warn('Error cargando relatos:', e);
-    grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión e intenta de nuevo.');
-    if (count) count.textContent = 'Error';
+    grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión.');
     if (window.lucide) lucide.createIcons();
   }
 }
@@ -2268,17 +2280,15 @@ function aplicarFiltroYRenderRelatos() {
   const count = document.getElementById('relatosCount');
 
   if (!filtrados.length) {
-    grid.innerHTML = emptyState('search', 'Sin resultados', 'Prueba con otro término de búsqueda.');
+    grid.innerHTML = emptyState('search', 'Sin resultados', 'Prueba con otro término.');
     if (count) count.textContent = '0 relatos';
-    const pag = document.getElementById('relatosPagination');
-    if (pag) pag.innerHTML = '';
+    document.getElementById('relatosPagination')?.replaceChildren();
     if (window.lucide) lucide.createIcons();
     return;
   }
 
   if (count) {
-    const total = filtrados.length;
-    count.textContent = query ? `${total} ${total === 1 ? 'resultado' : 'resultados'} para "${relatosSearchQuery}"` : (total === 1 ? '1 relato' : `${total} relatos`);
+    count.textContent = query ? `${filtrados.length} resultados` : `${filtrados.length} relatos`;
   }
 
   renderRelatos(pageData, perfiles, grid, count, reactionsCount, commentsCount);
@@ -2299,10 +2309,11 @@ function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, c
       <a class="relato-card" href="relato.html?id=${r.id}">
         <div class="relato-card-title">${escapeHtml(r.title)}</div>
         <div class="relato-card-author" style="display:flex;align-items:center;gap:6px;">
-          <div style="width:20px;height:20px;border-radius:50%;overflow:hidden;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;color:var(--text-secondary);">
+          <div style="width:20px;height:20px;border-radius:50%;overflow:hidden;background:var(--bg-elevated);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:bold;">
             ${avatar ? `<img src="${avatar}" style="width:100%;height:100%;object-fit:cover;" />` : escapeHtml(nombre.charAt(0).toUpperCase())}
           </div>
-          Por <strong>@${escapeHtml(nombre)}</strong>
+          <span>Por <strong>@${escapeHtml(nombre)}</strong></span>
+          ${renderUserBadge(autor)}
         </div>
         <div class="relato-card-excerpt">${escapeHtml(excerpt)}${excerpt.length >= 180 ? '…' : ''}</div>
         <div class="relato-card-more">Leer relato ${ic('arrow-right', 14)}</div>
@@ -2318,7 +2329,7 @@ function renderRelatos(relatos, perfilesMap, grid, count, reactionsCount = {}, c
   if (window.lucide) lucide.createIcons();
 }
 
-function renderPaginacion(totalPages, totalItems) {
+function renderPaginacion(totalPages) {
   let pag = document.getElementById('relatosPagination');
   if (!pag) {
     pag = document.createElement('div');
@@ -2329,31 +2340,19 @@ function renderPaginacion(totalPages, totalItems) {
 
   if (totalPages <= 1) { pag.innerHTML = ''; return; }
 
-  const btnPrev = `<button class="pagination-btn" data-page="${relatosCurrentPage - 1}" ${relatosCurrentPage === 1 ? 'disabled' : ''}>${ic('chevron-left', 14)}</button>`;
-  const btnNext = `<button class="pagination-btn" data-page="${relatosCurrentPage + 1}" ${relatosCurrentPage === totalPages ? 'disabled' : ''}>${ic('chevron-right', 14)}</button>`;
   let pageButtons = '';
-
   for (let i = 1; i <= totalPages; i++) {
-    if (i === 1 || i === totalPages || (i >= relatosCurrentPage - 1 && i <= relatosCurrentPage + 1)) {
-      pageButtons += `<button class="pagination-btn ${i === relatosCurrentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
-    } else if (i === relatosCurrentPage - 2 || i === relatosCurrentPage + 2) {
-      pageButtons += `<span style="color:var(--text-tertiary);padding:0 4px;">…</span>`;
-    }
+    pageButtons += `<button class="pagination-btn ${i === relatosCurrentPage ? 'active' : ''}" data-page="${i}">${i}</button>`;
   }
 
-  pag.innerHTML = btnPrev + pageButtons + btnNext;
+  pag.innerHTML = pageButtons;
   pag.querySelectorAll('.pagination-btn').forEach(btn => {
     btn.addEventListener('click', () => {
-      const page = parseInt(btn.dataset.page);
-      if (page >= 1 && page <= totalPages) {
-        relatosCurrentPage = page;
-        aplicarFiltroYRenderRelatos();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }
+      relatosCurrentPage = parseInt(btn.dataset.page);
+      aplicarFiltroYRenderRelatos();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
-
-  if (window.lucide) lucide.createIcons();
 }
 
 async function cargarRelatoDetalle() {
@@ -2361,18 +2360,17 @@ async function cargarRelatoDetalle() {
   if (!cont) return;
 
   const id = new URLSearchParams(location.search).get('id');
-  if (!id) { render404(cont, 'Relato no encontrado', 'El enlace no incluye un identificador válido.'); return; }
+  if (!id) { render404(cont, 'Relato no encontrado', 'Falta el identificador.'); return; }
 
   try {
     const { data: relato, error } = await withTimeout(db.from('relatos').select('*').eq('id', id).maybeSingle(), 10000);
-    if (error || !relato) { render404(cont, 'Relato no encontrado', 'Puede que haya sido eliminado o el enlace sea incorrecto.'); return; }
+    if (error || !relato) { render404(cont, 'Relato no encontrado', 'Fue eliminado o el enlace es incorrecto.'); return; }
 
     const [{ data: autor }, { data: session }] = await Promise.all([
-      withTimeout(db.from('profiles').select('id, username, avatar_url').eq('id', relato.user_id).maybeSingle(), 8000),
+      withTimeout(db.from('profiles').select('id, username, avatar_url, badge_type, is_author, is_verified').eq('id', relato.user_id).maybeSingle(), 8000),
       db.auth.getSession()
     ]);
 
-    actualizarMetaOG(relato, autor);
     const sessionUserId = session?.user?.id || null;
     const autorNombre = autor?.username || 'Lector';
     const avatarUrl = autor?.avatar_url;
@@ -2385,20 +2383,24 @@ async function cargarRelatoDetalle() {
             <a href="perfil.html?id=${relato.user_id}" class="relato-author-avatar" style="text-decoration:none;">
               ${avatarUrl ? `<img src="${avatarUrl}" alt="" />` : escapeHtml(autorNombre.charAt(0).toUpperCase())}
             </a>
-            <span>Por <a href="perfil.html?id=${relato.user_id}" class="relato-author-name" style="text-decoration:none;">@${escapeHtml(autorNombre)}</a></span>
+            <div style="display:inline-flex;align-items:center;gap:6px;">
+              <span>Por <a href="perfil.html?id=${relato.user_id}" class="relato-author-name">@${escapeHtml(autorNombre)}</a></span>
+              ${renderUserBadge(autor)}
+            </div>
             <span class="relato-author-date">· ${tiempoRelativo(relato.created_at)}</span>
             ${sessionUserId && sessionUserId !== relato.user_id ? `<button class="report-btn" id="btnReportarRelato">${ic('flag', 14)} Reportar</button>` : ''}
           </div>
         </header>
 
-        <div class="chapter-body reader-body-c">${relato.content || '<p>Sin contenido.</p>'}</div>
+        <!-- Contenido renderizado con sanitización estricta anti-XSS -->
+        <div class="chapter-body reader-body-c">${formatearContenidoRelato(relato.content)}</div>
+        
         <div id="reactionsMount"></div>
 
         <div class="relato-share-row">
           <span class="relato-share-label">Compartir</span>
-          <button class="share-btn" id="shareRelatoNative">${ic('share-2', 14)} Compartir</button>
-          <a class="share-btn" id="shareRelatoTwitter" target="_blank" rel="noopener noreferrer" href="#">${ic('twitter', 14)} Twitter / X</a>
-          <a class="share-btn" id="shareRelatoWhatsapp" target="_blank" rel="noopener noreferrer" href="#">${ic('message-circle', 14)} WhatsApp</a>
+          <a class="share-btn" target="_blank" rel="noopener noreferrer" href="https://twitter.com/intent/tweet?text=${encodeURIComponent('"' + relato.title + '" en Azael Colina')}&url=${encodeURIComponent(location.href)}">${ic('twitter', 14)} Twitter / X</a>
+          <a class="share-btn" target="_blank" rel="noopener noreferrer" href="https://wa.me/?text=${encodeURIComponent(relato.title + ' ' + location.href)}">${ic('message-circle', 14)} WhatsApp</a>
           <button class="share-btn" id="shareRelatoCopy">${ic('copy', 14)} Copiar enlace</button>
         </div>
 
@@ -2416,18 +2418,11 @@ async function cargarRelatoDetalle() {
     if (window.lucide) lucide.createIcons();
     aplicarProteccionCapitulo();
 
-    document.getElementById('btnReportarRelato')?.addEventListener('click', () => abrirModalReportar(relato.id));
-    const relatoUrl = `${location.origin}/relato.html?id=${relato.id}`;
-    const relatoTexto = `"${relato.title}" — un relato de la comunidad en Azael Colina.`;
-
-    document.getElementById('shareRelatoNative')?.addEventListener('click', () => abrirCompartirRelato(relato));
-    document.getElementById('shareRelatoTwitter')?.setAttribute('href', `https://twitter.com/intent/tweet?text=${encodeURIComponent(relatoTexto)}&url=${encodeURIComponent(relatoUrl)}`);
-    document.getElementById('shareRelatoWhatsapp')?.setAttribute('href', `https://wa.me/?text=${encodeURIComponent(relatoTexto + ' ' + relatoUrl)}`);
     document.getElementById('shareRelatoCopy')?.addEventListener('click', () => {
-      navigator.clipboard.writeText(relatoUrl)
-        .then(() => showToast('Enlace copiado', 'ok'))
-        .catch(() => showToast('No se pudo copiar el enlace', 'error'));
+      navigator.clipboard.writeText(location.href).then(() => showToast('Enlace copiado', 'ok'));
     });
+
+    document.getElementById('btnReportarRelato')?.addEventListener('click', () => abrirModalReportar(relato.id));
 
     await cargarReaccionesRelato(relato.id);
     await cargarComentariosRelato(relato.id);
@@ -2436,57 +2431,6 @@ async function cargarRelatoDetalle() {
     console.error('Error cargando relato:', e);
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
   }
-}
-
-function abrirCompartirRelato(relato) {
-  const url = `${location.origin}/relato.html?id=${relato.id}`;
-  const texto = `"${relato.title}" — un relato de la comunidad en Azael Colina.`;
-  if (navigator.share) {
-    navigator.share({ title: relato.title, text: texto, url }).catch(() => {});
-    return;
-  }
-  navigator.clipboard.writeText(url)
-    .then(() => showToast('Enlace copiado al portapapeles', 'ok'))
-    .catch(() => abrirInputModal({ title: 'Compartir relato', desc: 'Copia este enlace para compartirlo.', label: 'Enlace', value: url, iconName: 'share-2' }));
-}
-
-function actualizarMetaOG(relato, autor) {
-  const setMeta = (prop, val) => {
-    let el = document.querySelector(`meta[property="${prop}"]`);
-    if (!el) {
-      el = document.createElement('meta');
-      el.setAttribute('property', prop);
-      document.head.appendChild(el);
-    }
-    el.setAttribute('content', val);
-  };
-
-  const setMetaName = (name, val) => {
-    let el = document.querySelector(`meta[name="${name}"]`);
-    if (!el) {
-      el = document.createElement('meta');
-      el.setAttribute('name', name);
-      document.head.appendChild(el);
-    }
-    el.setAttribute('content', val);
-  };
-
-  const excerpt = (relato.content || '').replace(/<[^>]+>/g, '').trim().slice(0, 160);
-  const url = `${location.origin}/relato.html?id=${relato.id}`;
-
-  document.title = `${relato.title} — Azael Colina`;
-  setMetaName('description', excerpt);
-  setMeta('og:type', 'article');
-  setMeta('og:title', relato.title);
-  setMeta('og:description', excerpt);
-  setMeta('og:url', url);
-  setMeta('og:image', `${location.origin}/og-image.jpg`);
-  setMetaName('twitter:card', 'summary_large_image');
-  setMetaName('twitter:title', relato.title);
-  setMetaName('twitter:description', excerpt);
-
-  const ht = document.querySelector('.header-title');
-  if (ht) ht.textContent = relato.title;
 }
 
 async function cargarReaccionesRelato(relatoId) {
@@ -2514,7 +2458,7 @@ async function cargarReaccionesRelato(relatoId) {
           const count = counts[rec.emoji] || 0;
           const active = miReaccion === rec.emoji;
           return `
-            <button class="reaction-btn ${active ? 'active' : ''} ${count === 0 ? 'reaction-btn-empty' : ''}" data-emoji="${rec.emoji}" title="${rec.label}">
+            <button class="reaction-btn ${active ? 'active' : ''} ${count === 0 ? 'reaction-btn-empty' : ''}" data-emoji="${rec.emoji}">
               <span class="reaction-btn-emoji">${rec.emoji}</span>
               <span class="reaction-btn-count">${count}</span>
             </button>
@@ -2524,9 +2468,7 @@ async function cargarReaccionesRelato(relatoId) {
     `;
 
     mount.querySelectorAll('.reaction-btn').forEach(btn => btn.addEventListener('click', () => toggleReaccion(relatoId, btn.dataset.emoji)));
-  } catch (e) {
-    console.warn('Error reacciones:', e);
-  }
+  } catch (e) { console.warn(e); }
 }
 
 async function toggleReaccion(relatoId, emoji) {
@@ -2539,7 +2481,6 @@ async function toggleReaccion(relatoId, emoji) {
   }
 
   const userId = session.user.id;
-
   try {
     const { data: existing } = await db.from('relato_reactions').select('id, emoji').eq('relato_id', relatoId).eq('user_id', userId).maybeSingle();
 
@@ -2548,20 +2489,14 @@ async function toggleReaccion(relatoId, emoji) {
       else await db.from('relato_reactions').update({ emoji }).eq('id', existing.id);
     } else {
       await db.from('relato_reactions').insert({ relato_id: relatoId, user_id: userId, emoji });
-      const { data: relato } = await db.from('relatos').select('user_id, title').eq('id', relatoId).maybeSingle();
+      const { data: relato } = await db.from('relatos').select('user_id').eq('id', relatoId).maybeSingle();
       if (relato?.user_id && relato.user_id !== userId) {
-        try {
-          await db.from('notifications').insert({ user_id: relato.user_id, type: 'reaction_relato', from_user_id: userId, relato_id: relatoId });
-        } catch (e) {
-          console.warn('Error notif reacción:', e);
-        }
+        await db.from('notifications').insert({ user_id: relato.user_id, type: 'reaction_relato', from_user_id: userId, relato_id: relatoId });
       }
     }
-
     await cargarReaccionesRelato(relatoId);
   } catch (e) {
-    console.error('Error toggle reacción:', e);
-    showToast('No se pudo actualizar la reacción', 'error');
+    showToast('No se pudo guardar la reacción', 'error');
   }
 }
 
@@ -2577,14 +2512,12 @@ async function cargarComentariosRelato(relatoId) {
     ]);
 
     if (error) { list.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.'); return; }
-
     const myId = session?.user?.id || null;
     if (count) count.textContent = data?.length === 1 ? '1 comentario' : `${data?.length || 0} comentarios`;
-
     if (!data?.length) { list.innerHTML = emptyState('message-circle', 'Sé el primero en comentar', 'Comparte lo que piensas.'); return; }
 
     const ids = [...new Set(data.map(c => c.user_id))];
-    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified').in('id', ids), 8000);
+    const { data: perfiles } = await withTimeout(db.from('profiles').select('id, username, is_author, is_verified, badge_type').in('id', ids), 8000);
     const map = Object.fromEntries((perfiles || []).map(p => [p.id, p]));
 
     list.innerHTML = data.map(c => renderComment(c, map, myId)).join('');
@@ -2634,16 +2567,6 @@ async function prepararFormComentarioRelato(relatoId) {
     if (error) { showToast('No se pudo publicar el comentario', 'error'); return; }
     showToast('Comentario publicado', 'ok');
     document.getElementById('relatoCommentText').value = '';
-
-    const { data: relato } = await db.from('relatos').select('user_id').eq('id', relatoId).maybeSingle();
-    if (relato?.user_id && relato.user_id !== session.user.id) {
-      try {
-        await db.from('notifications').insert({ user_id: relato.user_id, type: 'comment_relato', from_user_id: session.user.id, relato_id: relatoId });
-      } catch (e) {
-        console.warn('Error notif comentario:', e);
-      }
-    }
-
     await cargarComentariosRelato(relatoId);
   });
 }
@@ -2652,19 +2575,14 @@ async function abrirModalReportar(relatoId) {
   const { data: { session } } = await db.auth.getSession();
   if (!session?.user) { showToast('Inicia sesión para reportar', 'info'); return; }
 
-  const motivo = await abrirInputModal({
-    title: 'Reportar relato',
-    desc: 'Cuéntanos por qué crees que este relato incumple las normas.',
-    label: 'Motivo del reporte',
-    placeholder: 'Ej: contiene lenguaje ofensivo, es spam, etc.',
-    iconName: 'flag'
-  });
-
-  if (!motivo) return;
-  if (motivo.length < 10) { showToast('El motivo debe tener al menos 10 caracteres', 'error'); return; }
+  const motivo = prompt('Motivo del reporte (mínimo 10 caracteres):');
+  if (!motivo || motivo.trim().length < 10) {
+    showToast('El motivo debe tener al menos 10 caracteres.', 'error');
+    return;
+  }
 
   showLoading();
-  const { error } = await db.from('relato_reports').insert({ relato_id: relatoId, user_id: session.user.id, reason: motivo });
+  const { error } = await db.from('relato_reports').insert({ relato_id: relatoId, user_id: session.user.id, reason: motivo.trim() });
   hideLoading();
 
   if (error) {
@@ -2672,51 +2590,13 @@ async function abrirModalReportar(relatoId) {
     else showToast('Error al reportar: ' + error.message, 'error');
     return;
   }
-  showToast('Reporte enviado. Gracias por ayudar.', 'ok');
+  showToast('Reporte enviado. Gracias por colaborar.', 'ok');
 }
 
-function abrirInputModal({ title, desc, label, placeholder, hint, iconName = 'link', type = 'text', value = '' }) {
-  return new Promise((resolve) => {
-    const modal = document.createElement('div');
-    modal.className = 'custom-input-overlay';
-    modal.innerHTML = `
-      <div class="custom-input-modal">
-        <div class="custom-input-icon">${ic(iconName, 26)}</div>
-        <h3 class="custom-input-title">${escapeHtml(title)}</h3>
-        ${desc ? `<p class="custom-input-desc">${escapeHtml(desc)}</p>` : ''}
-        <div class="custom-input-field">
-          <label for="customInputField">${escapeHtml(label)}</label>
-          <input type="${type}" id="customInputField" placeholder="${escapeHtml(placeholder || '')}" value="${escapeHtml(value)}" autocomplete="off" />
-          ${hint ? `<p class="custom-input-hint">${escapeHtml(hint)}</p>` : ''}
-        </div>
-        <div class="custom-input-actions">
-          <button class="btn btn-ghost" id="customInputCancel">Cancelar</button>
-          <button class="btn btn-primary" id="customInputOk">Aceptar</button>
-        </div>
-      </div>
-    `;
-    document.body.appendChild(modal);
-    if (window.lucide) lucide.createIcons();
+/* ============================================
+   MIS RELATOS (EDITOR Y GESTIÓN)
+   ============================================ */
 
-    const input = modal.querySelector('#customInputField');
-    const okBtn = modal.querySelector('#customInputOk');
-    const cancelBtn = modal.querySelector('#customInputCancel');
-    setTimeout(() => input.focus(), 100);
-
-    function close(value) {
-      modal.remove();
-      resolve(value);
-    }
-
-    okBtn.addEventListener('click', () => close(input.value.trim()));
-    cancelBtn.addEventListener('click', () => close(null));
-    modal.addEventListener('click', (e) => { if (e.target === modal) close(null); });
-    input.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') { e.preventDefault(); close(input.value.trim()); }
-      if (e.key === 'Escape') close(null);
-    });
-  });
-}
 async function cargarMisRelatos() {
   const cont = document.getElementById('misRelatosContent');
   if (!cont) return;
@@ -2748,7 +2628,7 @@ async function cargarMisRelatos() {
   const editId = urlParams.get('edit');
 
   if (editId) { await mostrarFormularioEdicion(editId, userId); return; }
-  if (urlParams.get('new') === '1') { mostrarFormularioNuevo(userId); return; }
+  if (urlParams.get('new') === '1') { mostrarFormularioRelato(null, userId); return; }
 
   await mostrarListaMisRelatos(userId);
 }
@@ -2765,10 +2645,7 @@ async function mostrarListaMisRelatos(userId) {
         <a href="mis-relatos.html?new=1" class="btn btn-primary">${ic('plus', 16)} Escribir nuevo relato</a>
       </div>
       <div class="mis-relatos-list" id="misRelatosList">
-        <div class="empty-c">
-          <div class="empty-icon">${ic('loader-2', 48)}</div>
-          <div class="empty-title">Cargando…</div>
-        </div>
+        <div class="empty-c"><div class="empty-icon">${ic('loader-2', 48)}</div><div class="empty-title">Cargando…</div></div>
       </div>
     </div>
   `;
@@ -2777,13 +2654,13 @@ async function mostrarListaMisRelatos(userId) {
 
   try {
     const { data: relatos, error } = await withTimeout(
-      db.from('relatos').select('id, title, content, created_at, updated_at').eq('user_id', userId).order('created_at', { ascending: false }),
+      db.from('relatos').select('id, title, content, created_at').eq('user_id', userId).order('created_at', { ascending: false }),
       10000
     );
 
     if (error) throw error;
-
     const list = document.getElementById('misRelatosList');
+
     if (!relatos?.length) {
       list.innerHTML = emptyState('pen-line', 'Sin relatos aún', 'Escribe tu primer relato con el botón de arriba.');
       if (window.lucide) lucide.createIcons();
@@ -2814,35 +2691,24 @@ async function mostrarListaMisRelatos(userId) {
 
     document.querySelectorAll('[data-delete-relato]').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!confirm('¿Eliminar este relato? Esta acción no se puede deshacer.')) return;
+        if (!confirm('¿Eliminar este relato?')) return;
         showLoading();
-        const { error } = await db.from('relatos').delete().eq('id', btn.dataset.deleteRelato);
+        await db.from('relatos').delete().eq('id', btn.dataset.deleteRelato);
         hideLoading();
-        if (error) { showToast('Error: ' + error.message, 'error'); return; }
         showToast('Relato eliminado', 'ok');
         await mostrarListaMisRelatos(userId);
       });
     });
   } catch (e) {
-    console.warn('Error cargando mis relatos:', e);
-    document.getElementById('misRelatosList').innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión.');
-    if (window.lucide) lucide.createIcons();
+    document.getElementById('misRelatosList').innerHTML = emptyState('alert-circle', 'Error al cargar', 'Intenta de nuevo.');
   }
-}
-
-function mostrarFormularioNuevo(userId) {
-  mostrarFormularioRelato(null, userId);
 }
 
 async function mostrarFormularioEdicion(relatoId, userId) {
   showLoading();
-  const { data, error } = await db.from('relatos').select('*').eq('id', relatoId).eq('user_id', userId).maybeSingle();
+  const { data } = await db.from('relatos').select('*').eq('id', relatoId).eq('user_id', userId).maybeSingle();
   hideLoading();
-  if (error || !data) {
-    showToast('No se pudo cargar el relato', 'error');
-    location.href = 'mis-relatos.html';
-    return;
-  }
+  if (!data) { location.href = 'mis-relatos.html'; return; }
   mostrarFormularioRelato(data, userId);
 }
 
@@ -2857,11 +2723,10 @@ function mostrarFormularioRelato(relatoExistente, userId) {
       <a href="mis-relatos.html" class="btn-back">${ic('arrow-left', 14)} Volver a mis relatos</a>
       <div class="page-head-c" style="border-bottom:none;padding-bottom:8px;">
         <h1 class="page-title-c">${esEdicion ? 'Editar relato' : 'Nuevo relato'}</h1>
-        <p class="page-sub-c">${esEdicion ? 'Actualiza tu historia' : 'Comparte una historia corta con la comunidad'}</p>
       </div>
       <div class="relato-normas-warning">
         ${ic('alert-triangle', 20)}
-        <div><strong>Normas de la comunidad:</strong> contenido respetuoso, sin discriminación, sin spam, sin contenido sexual explícito ni violencia gráfica. Los relatos que incumplan serán eliminados.</div>
+        <div><strong>Normas:</strong> Respeto, sin discriminación ni spam. Relatos inapropiados serán eliminados.</div>
       </div>
       <form class="admin-form" id="relatoForm" style="max-width:none;">
         <label class="admin-field">
@@ -2878,7 +2743,7 @@ function mostrarFormularioRelato(relatoExistente, userId) {
         </label>
         <div class="relato-form-consent">
           <input type="checkbox" id="relatoConsent" ${esEdicion ? 'checked' : ''} />
-          <label for="relatoConsent">Confirmo que este relato es de mi autoría y cumple las normas de la comunidad. Entiendo que puede ser eliminado si las incumple.</label>
+          <label for="relatoConsent">Confirmo que este relato es de mi autoría y cumple las normas.</label>
         </div>
         <div class="admin-form-actions">
           <a href="mis-relatos.html" class="btn btn-ghost">Cancelar</a>
@@ -2892,53 +2757,50 @@ function mostrarFormularioRelato(relatoExistente, userId) {
 
   const textarea = document.getElementById('relatoContentInput');
   const counter = document.getElementById('relatoCharCount');
-  const updateCount = () => {
-    counter.textContent = `${textarea.value.length} / ${RELATO_MAX_LENGTH}`;
-    counter.style.color = textarea.value.length > RELATO_MAX_LENGTH * 0.9 ? '#ff8a8a' : 'var(--text-tertiary)';
-  };
+  const updateCount = () => { counter.textContent = `${textarea.value.length} / ${RELATO_MAX_LENGTH}`; };
   textarea.addEventListener('input', updateCount);
   updateCount();
 
   document.getElementById('relatoForm').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const titulo = document.getElementById('relatoTitle').value.trim();
-    const contenido = textarea.value.trim();
+    const t = document.getElementById('relatoTitle').value.trim();
+    const c = textarea.value.trim();
     const consent = document.getElementById('relatoConsent').checked;
 
-    if (!titulo) { showToast('El título es obligatorio', 'error'); return; }
-    if (contenido.length < RELATO_MIN_LENGTH) { showToast(`El contenido debe tener al menos ${RELATO_MIN_LENGTH} caracteres`, 'error'); return; }
-    if (contenido.length > RELATO_MAX_LENGTH) { showToast(`El contenido no puede superar ${RELATO_MAX_LENGTH} caracteres`, 'error'); return; }
-    if (!consent) { showToast('Debes aceptar las normas para publicar', 'error'); return; }
+    if (!t) { showToast('El título es obligatorio', 'error'); return; }
+    if (c.length < RELATO_MIN_LENGTH) { showToast(`Mínimo ${RELATO_MIN_LENGTH} caracteres`, 'error'); return; }
+    if (!consent) { showToast('Acepta las normas para continuar', 'error'); return; }
 
     showLoading();
     let error;
     if (esEdicion) {
-      ({ error } = await db.from('relatos').update({ title: titulo, content: contenido, updated_at: new Date().toISOString() }).eq('id', relatoExistente.id).eq('user_id', userId));
+      ({ error } = await db.from('relatos').update({ title: t, content: c, updated_at: new Date().toISOString() }).eq('id', relatoExistente.id).eq('user_id', userId));
     } else {
-      ({ error } = await db.from('relatos').insert({ user_id: userId, title: titulo, content: contenido }));
+      ({ error } = await db.from('relatos').insert({ user_id: userId, title: t, content: c }));
     }
     hideLoading();
 
     if (error) { showToast('Error al guardar: ' + error.message, 'error'); return; }
     showToast(esEdicion ? 'Relato actualizado' : 'Relato publicado', 'ok');
-    cache.clear();
     setTimeout(() => { location.href = 'mis-relatos.html'; }, 600);
   });
 }
 
-/* --- HISTORIAL DEL LECTOR --- */
+/* ============================================
+   HISTORIAL DEL LECTOR
+   ============================================ */
+
 async function cargarHistorial() {
   const cont = document.getElementById('historialContent');
   if (!cont) return;
 
   const { data: { session } } = await db.auth.getSession();
-
   if (!session?.user) {
     cont.innerHTML = `
       <div class="empty-c">
         <div class="empty-icon">${ic('lock', 48)}</div>
         <div class="empty-title">Inicia sesión</div>
-        <div class="empty-sub">Necesitas una cuenta para ver tu historial de lectura.</div>
+        <div class="empty-sub">Necesitas una cuenta para registrar tu historial de lectura.</div>
         <div style="margin-top:20px;"><button class="btn btn-primary" onclick="document.getElementById('authModal').hidden=false">Iniciar sesión</button></div>
       </div>
     `;
@@ -2946,17 +2808,8 @@ async function cargarHistorial() {
     return;
   }
 
-  cont.innerHTML = `<div class="empty-c"><div class="empty-icon">${ic('loader-2', 48)}</div><div class="empty-title">Cargando…</div></div>`;
-  if (window.lucide) lucide.createIcons();
-
   const { data, error } = await db.from('chapter_reads')
-    .select(`
-      read_at,
-      chapters (
-        id, title, chapter_order, story_id,
-        stories ( id, title, cover_url )
-      )
-    `)
+    .select(`read_at, chapters ( id, title, chapter_order, story_id, stories ( id, title, cover_url ) )`)
     .eq('user_id', session.user.id)
     .order('read_at', { ascending: false });
 
@@ -2976,7 +2829,6 @@ function renderHistorial() {
 
   const ahora = new Date();
   const ayer = new Date(ahora); ayer.setDate(ayer.getDate() - 1);
-
   const agrupado = {};
   const librosSet = new Set();
 
@@ -2992,7 +2844,6 @@ function renderHistorial() {
 
     const fecha = new Date(item.read_at);
     let fechaKey = fecha.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-
     if (fecha.toDateString() === ahora.toDateString()) fechaKey = 'Hoy';
     else if (fecha.toDateString() === ayer.toDateString()) fechaKey = 'Ayer';
 
@@ -3004,14 +2855,10 @@ function renderHistorial() {
 
   if (historialFilter === 'libros') {
     const libros = Array.from(librosSet).map(s => JSON.parse(s));
-    if (!libros.length) { cont.innerHTML = emptyState('book', 'Sin libros', 'Aún no has leído libros.'); return; }
-
     html = `<div class="historial-list">
       ${libros.map(s => `
         <a href="historia.html?id=${s.id}" class="historial-item">
-          <div class="historial-item-cover">
-            ${s.cover_url ? `<img src="${s.cover_url}" />` : escapeHtml(s.title.charAt(0))}
-          </div>
+          <div class="historial-item-cover">${s.cover_url ? `<img src="${s.cover_url}" />` : escapeHtml(s.title.charAt(0))}</div>
           <div class="historial-item-body">
             <div class="historial-item-title">${escapeHtml(s.title)}</div>
             <div class="historial-item-meta">Libro abierto</div>
@@ -3024,13 +2871,11 @@ function renderHistorial() {
     for (const [fecha, items] of Object.entries(agrupado)) {
       html += `
         <div class="historial-group">
-          <div class="historial-date-title">${fecha} <span style="font-size:12px;font-weight:400;color:var(--text-tertiary);">(${items.length} capítulo${items.length > 1 ? 's' : ''})</span></div>
+          <div class="historial-date-title">${fecha} (${items.length})</div>
           <div class="historial-list">
             ${items.map(i => `
               <a href="capitulo.html?id=${i.chapters.id}" class="historial-item">
-                <div class="historial-item-cover">
-                  ${i.story?.cover_url ? `<img src="${i.story.cover_url}" />` : escapeHtml((i.story?.title || '?').charAt(0))}
-                </div>
+                <div class="historial-item-cover">${i.story?.cover_url ? `<img src="${i.story.cover_url}" />` : escapeHtml((i.story?.title || '?').charAt(0))}</div>
                 <div class="historial-item-body">
                   <div class="historial-item-title">Cap. ${i.chapters.chapter_order || '?'} · ${escapeHtml(i.chapters.title)}</div>
                   <div class="historial-item-meta">${escapeHtml(i.story?.title || 'Historia')}</div>
@@ -3048,52 +2893,54 @@ function renderHistorial() {
   if (window.lucide) lucide.createIcons();
 }
 
-/* --- PERFIL Y BIOGRAFÍA --- */
+/* ============================================
+   PERFIL Y BIOGRAFÍA
+   ============================================ */
+
 async function cargarPerfilPublico() {
   const cont = document.getElementById('perfilContent');
   if (!cont) return;
 
   const { data: { session } } = await db.auth.getSession();
-  if (!session?.user) { location.href = 'index.html'; return; }
+  const id = new URLSearchParams(location.search).get('id') || session?.user?.id;
 
-  const id = new URLSearchParams(location.search).get('id') || session.user.id;
+  if (!id) { location.href = 'index.html'; return; }
+
   showLoading();
   const { data: perfil, error } = await db.from('profiles').select('*').eq('id', id).maybeSingle();
   hideLoading();
 
   if (error || !perfil) {
-    cont.innerHTML = `
-      <div class="container">
-        <div class="empty-c">
-          <div class="empty-icon">${ic('user-x', 48)}</div>
-          <div class="empty-title">Perfil no encontrado</div>
-          <div class="empty-sub">Puede que el usuario haya eliminado su cuenta.</div>
-          <div style="margin-top:20px;"><a href="index.html" class="btn btn-primary">Volver al inicio</a></div>
-        </div>
-      </div>
-    `;
+    cont.innerHTML = emptyState('user-x', 'Perfil no encontrado', 'El usuario no existe.');
     if (window.lucide) lucide.createIcons();
     return;
   }
 
-  const esPropio = session.user.id === perfil.id;
+  const esPropio = session?.user?.id === perfil.id;
   const fechaRegistro = new Date(perfil.created_at).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+  const badgeHtml = renderUserBadge(perfil);
+
+  let fechaNacTexto = 'No especificada';
+  if (perfil.birthdate) {
+    const fechaObj = new Date(perfil.birthdate + 'T00:00:00');
+    const edad = calcularEdad(perfil.birthdate);
+    fechaNacTexto = `${fechaObj.toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' })} ${edad !== null ? `(${edad} años)` : ''}`;
+  }
 
   cont.innerHTML = `
     <section class="page-head-c">
       <div class="container">
-        <h1 class="page-title-c">Mi Perfil</h1>
-        <p class="page-sub-c">Información de tu cuenta</p>
+        <h1 class="page-title-c">${esPropio ? 'Mi Perfil' : 'Perfil de lector'}</h1>
       </div>
     </section>
     <section class="section">
       <div class="container">
-        <div class="perfil-card" style="max-width: 500px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; padding: 40px 20px; border-radius: 18px; background: var(--bg-surface); border: 1px solid var(--border-color);">
+        <div class="perfil-card" style="max-width: 520px; margin: 0 auto; text-align: center; display: flex; flex-direction: column; align-items: center; padding: 40px 24px; border-radius: 18px; background: var(--bg-surface); border: 1px solid var(--border-color);">
           <div class="perfil-avatar-wrap" style="margin-bottom: 20px; position: relative;">
-            <div class="perfil-avatar" style="width: 140px; height: 140px; border-radius: 50%; overflow: hidden; border: 3px solid var(--border-color); box-shadow: 0 8px 24px rgba(0,0,0,0.5);">
+            <div class="perfil-avatar" style="width: 130px; height: 130px; border-radius: 50%; overflow: hidden; border: 3px solid var(--border-color);">
               ${perfil.avatar_url
-                ? `<img src="${perfil.avatar_url}" style="width:100%; height:100%; object-fit:cover;" alt="" />`
-                : `<span style="font-size: 56px; display: flex; align-items: center; justify-content: center; height: 100%; background: var(--bg-elevated); color: var(--text-tertiary); font-family: var(--font-serif);">${escapeHtml((perfil.username || 'U').charAt(0).toUpperCase())}</span>`}
+                ? `<img src="${perfil.avatar_url}" style="width:100%; height:100%; object-fit:cover;" />`
+                : `<span style="font-size: 52px; display: flex; align-items: center; justify-content: center; height: 100%;">${escapeHtml((perfil.username || 'U').charAt(0).toUpperCase())}</span>`}
             </div>
             ${esPropio ? `
               <input type="file" id="userAvatarInput" accept="image/*" hidden />
@@ -3103,11 +2950,15 @@ async function cargarPerfilPublico() {
             ` : ''}
           </div>
           <div class="perfil-body" style="width: 100%;">
-            <h2 class="perfil-name" style="font-size: 28px; margin-bottom: 4px; font-family: var(--font-serif);">@${escapeHtml(perfil.username || 'usuario')}</h2>
+            <h2 class="perfil-name" style="font-size: 26px; margin-bottom: 4px; display: flex; align-items: center; justify-content: center; gap: 8px;">
+              @${escapeHtml(perfil.username || 'usuario')}
+              ${badgeHtml}
+            </h2>
             <p style="color: var(--text-tertiary); font-size: 13px; margin-bottom: 24px;">Miembro desde ${fechaRegistro}</p>
-            <div style="display: flex; flex-direction: column; gap: 12px; text-align: left; background: var(--bg-elevated); padding: 16px; border-radius: 12px; margin-bottom: 24px;">
-              <div><span style="color:var(--text-tertiary); font-size: 12px;">Correo:</span> <span style="color:var(--text-primary); font-size: 14px;">${escapeHtml(session.user.email || 'No definido')}</span></div>
-              ${perfil.gender ? `<div><span style="color:var(--text-tertiary); font-size: 12px;">Género:</span> <span style="color:var(--text-primary); font-size: 14px;">${escapeHtml(perfil.gender)}</span></div>` : ''}
+            <div style="display: flex; flex-direction: column; gap: 12px; text-align: left; background: var(--bg-elevated); padding: 18px; border-radius: 12px;">
+              ${esPropio && session.user.email ? `<div><span style="color:var(--text-tertiary); font-size: 12px; display:block;">Correo:</span> <span style="font-size: 14px;">${escapeHtml(session.user.email)}</span></div>` : ''}
+              <div><span style="color:var(--text-tertiary); font-size: 12px; display:block;">Fecha de nacimiento:</span> <span style="font-size: 14px;">${fechaNacTexto}</span></div>
+              <div><span style="color:var(--text-tertiary); font-size: 12px; display:block;">Sexo:</span> <span style="font-size: 14px;">${escapeHtml(perfil.gender || 'No especificado')}</span></div>
             </div>
           </div>
         </div>
@@ -3122,7 +2973,7 @@ async function cargarPerfilPublico() {
     document.getElementById('userAvatarInput')?.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
-      if (file.size > 5 * 1024 * 1024) { showToast('La imagen supera 5 MB', 'error'); return; }
+      if (file.size > 5 * 1024 * 1024) { showToast('Máximo 5 MB', 'error'); return; }
       showLoading();
       try {
         const ext = file.name.split('.').pop();
@@ -3130,8 +2981,7 @@ async function cargarPerfilPublico() {
         const { error: upErr } = await db.storage.from('media').upload(filename, file);
         if (upErr) throw upErr;
         const { data: pub } = db.storage.from('media').getPublicUrl(filename);
-        const { error } = await db.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', session.user.id);
-        if (error) throw error;
+        await db.from('profiles').update({ avatar_url: pub.publicUrl }).eq('id', session.user.id);
         showToast('Foto actualizada', 'ok');
         cargarPerfilPublico();
       } catch (err) {
@@ -3147,17 +2997,17 @@ async function cargarBiografia() {
   if (!cont) return;
 
   try {
-    const { data, error } = await withTimeout(
+    const { data } = await withTimeout(
       db.from('profiles').select('username, bio, avatar_url, birthdate, gender').eq('is_author', true).limit(1).maybeSingle(),
       8000
     );
 
-    if (error || !data) {
+    if (!data) {
       cont.innerHTML = emptyState('user', 'Sin biografía', 'Pronto escribiré algo sobre mí.');
       return;
     }
 
-    const fechaNac = data.birthdate ? new Date(data.birthdate).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
+    const fechaNac = data.birthdate ? new Date(data.birthdate + 'T00:00:00').toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : null;
 
     cont.innerHTML = `
       <div class="bio-avatar-c">
@@ -3178,7 +3028,10 @@ async function cargarBiografia() {
   }
 }
 
-/* --- RESEÑAS LITERARIAS --- */
+/* ============================================
+   RESEÑAS LITERARIAS
+   ============================================ */
+
 async function cargarResenas() {
   const grid = document.getElementById('resenasGrid');
   if (!grid) return;
@@ -3191,7 +3044,7 @@ async function cargarResenas() {
     if (error) throw error;
 
     if (!data?.length) {
-      grid.innerHTML = emptyState('book-marked', 'Sin reseñas aún', 'Las reseñas que escriba el autor aparecerán aquí.');
+      grid.innerHTML = emptyState('book-marked', 'Sin reseñas aún', 'Las reseñas que escriba aparecerán aquí.');
       if (window.lucide) lucide.createIcons();
       return;
     }
@@ -3208,7 +3061,6 @@ async function cargarResenas() {
     }).join('');
     if (window.lucide) lucide.createIcons();
   } catch (e) {
-    console.error('cargarResenas', e);
     grid.innerHTML = emptyState('alert-circle', 'No se pudieron cargar', 'Revisa tu conexión.');
     if (window.lucide) lucide.createIcons();
   }
@@ -3222,20 +3074,13 @@ async function cargarResenaDetalle() {
   if (!id) { render404(cont, 'Reseña no encontrada', 'Falta el identificador.'); return; }
 
   try {
-    const { data, error } = await withTimeout(
-      db.from('resenas').select('*').eq('id', id).maybeSingle(),
-      10000
-    );
-    if (error || !data) {
-      render404(cont, 'Reseña no encontrada', 'Puede que haya sido eliminada.');
-      return;
-    }
+    const { data } = await withTimeout(db.from('resenas').select('*').eq('id', id).maybeSingle(), 10000);
+    if (!data) { render404(cont, 'Reseña no encontrada', 'Puede que haya sido eliminada.'); return; }
 
     document.title = `${data.title} — Azael Colina`;
     const ht = document.querySelector('.header-title');
     if (ht) ht.textContent = data.title;
 
-    // Parsear links: formato "Sitio | https://..." una por línea
     const linksHtml = (data.links || '')
       .split('\n')
       .map(l => l.trim())
@@ -3248,61 +3093,78 @@ async function cargarResenaDetalle() {
       .filter(Boolean)
       .join('');
 
-    const fecha = new Date(data.created_at).toLocaleDateString('es-ES', {
-      day: 'numeric', month: 'long', year: 'numeric',
-    });
-    const url = `${location.origin}/resena.html?id=${data.id}`;
-    const texto = `"${data.title}" — reseña de Azael Colina.`;
+    const fecha = new Date(data.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
 
     cont.innerHTML = `
       <div class="chapter-shell">
         <header class="relato-header">
           <h1 class="relato-title">${escapeHtml(data.title)}</h1>
-          <div class="relato-author-info">
-            <span class="relato-author-date">${fecha}</span>
-          </div>
+          <div class="relato-author-info"><span class="relato-author-date">${fecha}</span></div>
         </header>
         <div class="chapter-body reader-body-c">${data.content || '<p>Sin contenido.</p>'}</div>
         ${linksHtml ? `<div class="resena-links">${linksHtml}</div>` : ''}
-        <div class="resena-share-row">
-          <span class="relato-share-label">Compartir</span>
-          <button class="share-btn" id="shareResenaNative">${ic('share-2', 14)} Compartir</button>
-          <a class="share-btn" id="shareResenaTwitter" target="_blank" rel="noopener noreferrer" href="#">${ic('twitter', 14)} Twitter / X</a>
-          <a class="share-btn" id="shareResenaWhatsapp" target="_blank" rel="noopener noreferrer" href="#">${ic('message-circle', 14)} WhatsApp</a>
-          <button class="share-btn" id="shareResenaCopy">${ic('copy', 14)} Copiar enlace</button>
-        </div>
       </div>
     `;
 
     if (window.lucide) lucide.createIcons();
-
-    document.getElementById('shareResenaTwitter')?.setAttribute(
-      'href', `https://twitter.com/intent/tweet?text=${encodeURIComponent(texto)}&url=${encodeURIComponent(url)}`
-    );
-    document.getElementById('shareResenaWhatsapp')?.setAttribute(
-      'href', `https://wa.me/?text=${encodeURIComponent(texto + ' ' + url)}`
-    );
-    document.getElementById('shareResenaCopy')?.addEventListener('click', () => {
-      navigator.clipboard.writeText(url)
-        .then(() => showToast('Enlace copiado', 'ok'))
-        .catch(() => showToast('No se pudo copiar', 'error'));
-    });
-    document.getElementById('shareResenaNative')?.addEventListener('click', () => {
-      if (navigator.share) {
-        navigator.share({ title: data.title, text: texto, url }).catch(() => {});
-      } else {
-        navigator.clipboard.writeText(url)
-          .then(() => showToast('Enlace copiado', 'ok'))
-          .catch(() => showToast('No se pudo copiar', 'error'));
-      }
-    });
   } catch (e) {
-    console.error('cargarResenaDetalle', e);
     render404(cont, 'No se pudo cargar', 'Hubo un problema de conexión.');
   }
 }
 
-/* --- ROUTER E INICIALIZACIÓN --- */
+async function cargarRedes() {
+  const grid = document.getElementById('socialGrid');
+  if (!grid) return;
+  try {
+    const { data } = await withTimeout(db.from('social_links').select('platform, url').order('display_order', { ascending: true }), 8000);
+    if (!data?.length) {
+      grid.innerHTML = emptyState('share-2', 'Pronto añadiré mis redes', 'Aquí encontrarás todos mis perfiles.');
+      return;
+    }
+    grid.innerHTML = data.map(s => `
+      <a class="social-link-c" href="${s.url}" target="_blank" rel="noopener noreferrer">
+        <div class="social-link-c-icon">${socialIconSvg(s.platform.toLowerCase(), 20)}</div>
+        <div class="social-link-c-body">
+          <span class="social-link-c-name">${escapeHtml(capitalize(s.platform))}</span>
+        </div>
+      </a>
+    `).join('');
+  } catch {
+    grid.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.');
+  }
+}
+
+async function cargarDonaciones() {
+  const grid = document.getElementById('donationsGrid');
+  if (!grid) return;
+  try {
+    const { data } = await withTimeout(db.from('donations').select('*').order('display_order', { ascending: true }), 8000);
+    if (!data?.length) {
+      grid.innerHTML = emptyState('heart-handshake', 'Aún no hay métodos de donación', 'Pronto añadiré opciones.');
+      return;
+    }
+    grid.innerHTML = data.map(d => {
+      const isBinance = d.platform.toLowerCase() === 'binance';
+      const label = d.label || capitalize(d.platform);
+      return `
+        <a class="social-link-c" href="${isBinance ? 'https://www.binance.com/' : d.url}" target="_blank" rel="noopener noreferrer">
+          <div class="social-link-c-icon">${donationIconSvg(d.platform.toLowerCase(), 20)}</div>
+          <div class="social-link-c-body">
+            <span class="social-link-c-name">${escapeHtml(label)}</span>
+            <span class="social-link-c-handle">${escapeHtml(isBinance ? 'ID: ' + d.url : d.url)}</span>
+          </div>
+        </a>
+      `;
+    }).join('');
+  } catch {
+    grid.innerHTML = emptyState('alert-circle', 'Error', 'No se pudieron cargar.');
+  }
+}
+
+/* ============================================
+   ROUTER & DISPATCHER
+   ============================================ */
+
 function dispararContenidoSegunPath() {
   const path = pagActiva();
   const params = new URLSearchParams(location.search);
@@ -3391,6 +3253,10 @@ function dispararContenidoSegunPath() {
   }
 }
 
+/* ============================================
+   INICIALIZACIÓN
+   ============================================ */
+
 initTheme();
 loadReaderPrefs();
 inyectarHeader();
@@ -3405,21 +3271,19 @@ if (yearEl) yearEl.textContent = new Date().getFullYear();
 
 (async () => {
   await cargarSiteSettings();
-
   if (typeof actualizarDrawerSessionLinks === 'function') {
     actualizarDrawerSessionLinks();
   }
-
   dispararContenidoSegunPath();
   if (window.lucide) lucide.createIcons();
 })();
 
 window.addEventListener('load', () => { if (window.lucide) lucide.createIcons(); });
 
-/* PWA */
+/* Soporte PWA */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('[PWA] Error al registrar SW:', err));
+    navigator.serviceWorker.register('/sw.js').catch((err) => console.warn('[PWA] Error SW:', err));
   });
 }
 
@@ -3436,7 +3300,6 @@ function mostrarBotonInstalar() {
   btn.id = 'pwa-install-btn';
   btn.innerHTML = '📲 Instalar app';
   btn.className = 'pwa-install-btn';
-  btn.setAttribute('aria-label', 'Instalar aplicación');
   btn.addEventListener('click', async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -3449,6 +3312,12 @@ function mostrarBotonInstalar() {
 
 window.addEventListener('appinstalled', () => {
   deferredPrompt = null;
-  const btn = document.getElementById('pwa-install-btn');
-  if (btn) btn.remove();
+  document.getElementById('pwa-install-btn')?.remove();
 });
+
+Siguiente paso recomendado:
+
+Reemplaza tu archivo main.js actual por este código. Una vez que lo hagas, el
+siguiente paso será actualizar admin.js para que puedas cambiar y asignar los
+nuevos rangos (Dueño, Moderador, Colaborador, VIP, Verificado) directamente
+desde la lista de usuarios de tu panel de escritor.
