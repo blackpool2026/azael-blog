@@ -1,5 +1,7 @@
 /* ============================================
    AZAEL BLOG — admin.js COMPLETO Y CORREGIDO
+   v2 — con toggle "Mostrar likes en reseñas"
+   y contadores ❤️/🔗 en lista de reseñas
    ============================================ */
 
 const SUPABASE_URL = 'https://bqliduwiarryqcqtignd.supabase.co';
@@ -629,7 +631,7 @@ function abrirModalAsignarRango(user) {
     <div class="custom-input-modal" style="max-width: 440px;">
       <h3 class="custom-input-title" style="margin-bottom:4px;">Asignar Rango</h3>
       <p class="custom-input-desc">Selecciona la insignia para <strong>@${escapeHtml(user.username || 'usuario')}</strong></p>
-      
+
       <div style="display:flex; flex-direction:column; gap:8px; margin: 16px 0 24px;">
         ${RANKS.map(r => `
           <button type="button" class="rank-option ${currentBadge === r.value ? 'selected' : ''}" data-rank="${r.value}">
@@ -675,7 +677,7 @@ function abrirModalAsignarRango(user) {
 }
 
 /* ============================================
-   RESEÑAS ADMIN
+   RESEÑAS ADMIN (CON CONTEO DE LIKES Y SHARES)
    ============================================ */
 
 async function abrirResenaAdminForm(id = null) {
@@ -707,26 +709,49 @@ async function cargarResenasAdminList() {
   const list = document.getElementById('adminResenasList');
   if (!list) return;
   showLoading();
-  const { data } = await db.from('resenas').select('id, title, created_at').order('created_at', { ascending: false });
-  hideLoading();
+
+  const { data } = await db
+    .from('resenas')
+    .select('id, title, created_at')
+    .order('created_at', { ascending: false });
 
   if (!data?.length) {
+    hideLoading();
     list.innerHTML = emptyState('book-marked', 'Sin reseñas', 'Escribe tu primera reseña.');
     if (window.lucide) lucide.createIcons();
     return;
   }
 
-  list.innerHTML = data.map(r => `
-    <div class="admin-item">
-      <div class="admin-item-body">
-        <div class="admin-item-title">${escapeHtml(r.title)}</div>
-        <div class="admin-item-meta">
-          <span>${new Date(r.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+  // Conteos de likes y shares en paralelo
+  const ids = data.map(r => r.id);
+  const [{ data: likesData }, { data: sharesData }] = await Promise.all([
+    db.from('resena_likes').select('resena_id').in('resena_id', ids),
+    db.from('resena_shares').select('resena_id').in('resena_id', ids),
+  ]);
+  hideLoading();
+
+  const likesMap = {};
+  (likesData || []).forEach(l => { likesMap[l.resena_id] = (likesMap[l.resena_id] || 0) + 1; });
+  const sharesMap = {};
+  (sharesData || []).forEach(s => { sharesMap[s.resena_id] = (sharesMap[s.resena_id] || 0) + 1; });
+
+  list.innerHTML = data.map(r => {
+    const likes = likesMap[r.id] || 0;
+    const shares = sharesMap[r.id] || 0;
+    return `
+      <div class="admin-item">
+        <div class="admin-item-body">
+          <div class="admin-item-title">${escapeHtml(r.title)}</div>
+          <div class="admin-item-meta">
+            <span>${new Date(r.created_at).toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            <span>· ❤️ ${likes}</span>
+            <span>· 🔗 ${shares}</span>
+          </div>
         </div>
+        <button class="admin-item-action" data-action="edit-resena" data-id="${r.id}">${ic('edit-2', 16)}</button>
       </div>
-      <button class="admin-item-action" data-action="edit-resena" data-id="${r.id}">${ic('edit-2', 16)}</button>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 
   list.querySelectorAll('[data-action="edit-resena"]').forEach(btn => {
     btn.addEventListener('click', () => abrirResenaAdminForm(btn.dataset.id));
@@ -1221,7 +1246,6 @@ function guardarBorrador(editorId) {
     }));
   } catch {}
 }
-
 /* ============================================
    RELATOS DE LA COMUNIDAD ADMIN
    ============================================ */
@@ -1770,7 +1794,7 @@ async function cargarRelatosAdmin() {
 }
 
 /* ============================================
-   AJUSTES DEL SITIO ADMIN
+   AJUSTES DEL SITIO ADMIN (con toggle de reseñas)
    ============================================ */
 
 async function abrirAjustesView() {
@@ -1783,6 +1807,7 @@ async function abrirAjustesView() {
     document.getElementById('toggleShowViews').checked = !!data.show_views;
     document.getElementById('toggleShowRelatosBtn').checked = data.show_relatos_btn !== false;
     document.getElementById('toggleShowMisRelatosMenu').checked = data.show_mis_relatos_menu !== false;
+    document.getElementById('toggleShowResenaLikes').checked = data.show_resena_likes !== false;
   }
 }
 
@@ -1793,7 +1818,8 @@ document.getElementById('saveSettingsBtn')?.addEventListener('click', async () =
     show_views: document.getElementById('toggleShowViews').checked,
     show_relatos_btn: document.getElementById('toggleShowRelatosBtn').checked,
     show_mis_relatos_menu: document.getElementById('toggleShowMisRelatosMenu').checked,
-    updated_at: new Date().toISOString()
+    show_resena_likes: document.getElementById('toggleShowResenaLikes').checked,
+    updated_at: new Date().toISOString(),
   }).eq('id', 1);
   hideLoading();
   toast('Ajustes guardados', 'ok');
