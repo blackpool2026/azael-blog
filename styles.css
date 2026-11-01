@@ -8624,3 +8624,300 @@ input, textarea, select {
   .resena-reader-title { font-size: 24px; }
   .resena-reader-body { font-size: 16px; }
 }
+/* ============================================
+   RESEÑAS — TARJETAS + LECTOR (DISEÑO NUEVO)
+   ============================================ */
+
+.resenas-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+}
+
+.resena-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  padding: 24px;
+  text-decoration: none;
+  color: inherit;
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.resena-card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent-color);
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition: transform .3s cubic-bezier(.2,.8,.2,1);
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.resena-card:hover {
+  border-color: var(--accent-color);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.4);
+}
+
+.resena-card:hover::before {
+  transform: scaleY(1);
+}
+
+/* Autor de la tarjeta */
+.resena-card-author {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.resena-card-avatar {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-serif);
+  font-weight: 700;
+  color: var(--text-secondary);
+  border: 2px solid var(--border-color);
+  flex-shrink: 0;
+}
+
+.resena-card-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.resena-card-author-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.resena-card-author-name {
+  font-weight: 600;
+  font-size: 13.5px;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.resena-card-author-date {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+
+/* Textos de la tarjeta */
+.resena-card-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.3;
+}
+
+.resena-card-excerpt {
+  font-size: 14px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Footer de la tarjeta */
+.resena-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.resena-card-more {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-color);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: gap .2s;
+}
+
+.resena-card:hover .resena-card-more {
+  gap: 12px;
+}
+
+.resena-card-likes {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent-color);
+}
+
+/* ============================================
+   LECTOR DE RESEÑA (FONDO CLARO/GRIS)
+   ============================================ */
+
+.resena-reader-wrapper {
+  max-width: 760px;
+  margin: 32px auto;
+  padding: 0 20px;
+}
+
+.resena-reader-inner {
+  background: #f3f3f0;
+  color: #1a1a1a;
+  border-radius: 18px;
+  padding: 48px 40px;
+  box-shadow: 0 10px 40px rgba(0,0,0,.15);
+}
+
+[data-theme="dark"] .resena-reader-inner {
+  background: #1e1e22;
+  color: #e8e8ed;
+}
+
+.resena-reader-head {
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+
+[data-theme="dark"] .resena-reader-head {
+  border-bottom-color: rgba(255,255,255,.08);
+}
+
+.resena-reader-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.resena-reader-avatar {
+  width: 48px !important;
+  height: 48px !important;
+}
+
+.resena-reader-author {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.2;
+}
+
+.resena-reader-title {
+  font-family: var(--font-serif);
+  font-size: clamp(26px,4vw,38px);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.15;
+}
+
+.resena-reader-body {
+  font-family: var(--font-serif);
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.resena-reader-body p { margin-bottom: 1.2em; }
+.resena-reader-body p:last-child { margin-bottom: 0; }
+
+.resena-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(0,0,0,.08);
+}
+
+[data-theme="dark"] .resena-actions-row {
+  border-top-color: rgba(255,255,255,.08);
+}
+
+.resena-like-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 18px;
+  border-radius: 100px;
+  background: transparent;
+  border: 1px solid rgba(0,0,0,.15);
+  color: inherit;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all .2s;
+}
+
+[data-theme="dark"] .resena-like-btn {
+  border-color: rgba(255,255,255,.2);
+}
+
+.resena-like-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  transform: translateY(-2px);
+}
+
+.resena-like-btn.liked {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+  box-shadow: 0 6px 20px var(--accent-glow);
+}
+
+.resena-like-btn svg { transition: transform .2s; }
+.resena-like-btn:hover svg { transform: scale(1.15); }
+
+/* Compartir dentro del lector */
+.resena-reader-inner .resena-share-row {
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+.resena-reader-inner .share-btn {
+  background: rgba(0,0,0,.04);
+  border-color: rgba(0,0,0,.12);
+  color: inherit;
+}
+[data-theme="dark"] .resena-reader-inner .share-btn {
+  background: rgba(255,255,255,.05);
+  border-color: rgba(255,255,255,.15);
+}
+.resena-reader-inner .share-btn:hover {
+  background: var(--accent-color);
+  color: #fff;
+  border-color: var(--accent-color);
+}
+.resena-reader-inner .resena-share-label {
+  color: inherit;
+  opacity: 0.7;
+}
+
+@media (max-width: 600px) {
+  .resena-reader-inner { padding: 32px 22px; }
+  .resena-reader-title { font-size: 24px; }
+  .resena-reader-body { font-size: 16px; }
+}
