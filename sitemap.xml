@@ -1,42 +1,47 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://azael-escritor.vercel.app/</loc>
+    <loc>https://azaelcolinaescritor.com/</loc>
     <changefreq>daily</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://azael-escritor.vercel.app/historias</loc>
+    <loc>https://azaelcolinaescritor.com/historias</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://azael-escritor.vercel.app/generos</loc>
+    <loc>https://azaelcolinaescritor.com/generos</loc>
     <changefreq>weekly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://azael-escritor.vercel.app/relatos</loc>
+    <loc>https://azaelcolinaescritor.com/relatos</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://azael-escritor.vercel.app/blog</loc>
+    <loc>https://azaelcolinaescritor.com/resenas</loc>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://azaelcolinaescritor.com/blog</loc>
     <changefreq>daily</changefreq>
     <priority>0.9</priority>
   </url>
   <url>
-    <loc>https://azael-escritor.vercel.app/biografia</loc>
+    <loc>https://azaelcolinaescritor.com/biografia</loc>
     <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://azael-escritor.vercel.app/redes</loc>
+    <loc>https://azaelcolinaescritor.com/redes</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://azael-escritor.vercel.app/donaciones</loc>
+    <loc>https://azaelcolinaescritor.com/donaciones</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>

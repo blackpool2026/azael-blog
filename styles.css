@@ -7364,8 +7364,7 @@ input, textarea, select {
 /* 4. Grillas automáticas (Libros, Géneros, Relatos) */
 /* Esto hace que en PC se vean 5 o 6 columnas, en tablet 3, y en móvil 2 */
 .stories-grid-c, 
-.genres-grid-c, 
-.relatos-grid {
+.genres-grid-c {
   display: grid !important;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 140px), 1fr)) !important;
   gap: 16px !important;
@@ -7376,7 +7375,7 @@ input, textarea, select {
 .hero-title-c { font-size: clamp(28px, 6vw, 68px) !important; }
 .section-title { font-size: clamp(20px, 3.5vw, 30px) !important; }
 .chapter-title-c, .reader-title-c { font-size: clamp(22px, 4vw, 38px) !important; }
-.chapter-body, .reader-body-c { font-size: clamp(16px, 2.5vw, 19px) !important; }
+.chapter-body, .reader-body-c { font-size: clamp(16px, 2.5vw, 19px); }
 
 /* 6. Contenedor principal y espaciados */
 .container {
@@ -7739,10 +7738,6 @@ input, textarea, select {
   color: #ffffff;
   box-shadow: 0 0 16px var(--accent-glow);
 }
-/* ============ BOTÓN CAPÍTULO VISTO ============ */
-.btn-mark-read {
-  display: inline-flex;
-  align-items: center;
 /* ============ SISTEMA DE VERIFICADOS ============ */
 /* Verificado de Dueño (Check Metálico 3D) */
 .verified-admin-badge {
@@ -7878,7 +7873,6 @@ input, textarea, select {
   text-overflow: ellipsis;
 }
 
-.historial-item-meta {
 /* ============ BOTÓN CAPÍTULO VISTO ============ */
 .btn-mark-read {
   display: inline-flex;
@@ -8920,4 +8914,28 @@ input, textarea, select {
   .resena-reader-inner { padding: 32px 22px; }
   .resena-reader-title { font-size: 24px; }
   .resena-reader-body { font-size: 16px; }
+}
+
+
+/* ============================================
+   LOGO (AC Editorial) + RELATOS GRID
+   ============================================ */
+.logo-img { display: block; height: auto; }
+.logo-for-light { display: none; }
+[data-theme="light"] .logo-for-dark { display: none; }
+[data-theme="light"] .logo-for-light { display: block; }
+.header-logo { display: inline-flex; align-items: center; flex-shrink: 0; margin-right: 4px; }
+.header-logo .logo-img { width: 36px; height: 36px; }
+.drawer-brand-mark { background: transparent !important; border: 0 !important; box-shadow: none !important; width: 40px; height: 40px; display: inline-flex; align-items: center; justify-content: center; }
+.drawer-brand-mark .logo-img { width: 40px; height: 40px; }
+.footer-logo { display: flex; justify-content: center; margin-bottom: 8px; }
+.footer-logo .logo-img { width: 44px; height: 44px; opacity: .9; }
+.relatos-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)) !important;
+  gap: 16px !important;
+}
+.relato-card-meta { flex-wrap: nowrap; white-space: nowrap; }
+@media (max-width: 700px) {
+  .relatos-grid { grid-template-columns: 1fr !important; gap: 12px !important; }
 }

@@ -1,5 +1,5 @@
 {
-  "name": "Azael Escritor — Historias y relatos",
+  "name": "Azael Colina — Historias y relatos",
   "short_name": "Azael",
   "description": "Historias, relatos y un rincón para leer. Escritos por Azael Colina.",
   "start_url": "/",
@@ -25,7 +25,7 @@
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "/icon-maskable-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "maskable"

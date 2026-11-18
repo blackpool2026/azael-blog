@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://azael-escritor.vercel.app/sitemap.xml
+Sitemap: https://azaelcolinaescritor.com/sitemap.xml

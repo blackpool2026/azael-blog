@@ -1,18 +1,19 @@
-const CACHE_VERSION = 'azael-v74';
+const CACHE_VERSION = 'azael-v75';
 const CACHE_STATIC = `${CACHE_VERSION}-static`;
 const CACHE_RUNTIME = `${CACHE_VERSION}-runtime`;
 
 const STATIC_ASSETS = [
-  '/', '/index.html', '/historias.html', '/generos.html', '/relatos.html',
-  '/blog.html', '/redes.html', '/donaciones.html', '/biografia.html',
-  '/perfil.html', '/styles.css', '/main.js', '/favicon.svg',
-  '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png', '/manifest.json'
+  '/', '/historias', '/generos', '/relatos', '/resenas',
+  '/blog', '/redes', '/donaciones', '/biografia', '/perfil',
+  '/styles.css', '/main.js', '/favicon.svg', '/manifest.json',
+  '/icon-192.png', '/icon-512.png', '/apple-touch-icon.png',
+  '/logo-mark-light.png', '/logo-mark-dark.png'
 ];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_STATIC)
-      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then((cache) => Promise.allSettled(STATIC_ASSETS.map((u) => cache.add(u))))
       .then(() => self.skipWaiting())
       .catch((err) => console.warn('[SW] Error cacheando:', err))
   );

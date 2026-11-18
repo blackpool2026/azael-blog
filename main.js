@@ -471,6 +471,7 @@ function inyectarHeader() {
         <button class="hamburger" id="hamburgerBtn" aria-label="Menú">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
         </button>
+        <a href="/" class="header-logo" aria-label="Azael Colina — AC Editorial"><img class="logo-img logo-for-dark" src="/logo-mark-light.png" alt="" width="36" height="36" /><img class="logo-img logo-for-light" src="/logo-mark-dark.png" alt="" width="36" height="36" /></a>
         <h1 class="header-title">${title}</h1>
         <nav class="desktop-nav">
           ${NAV_ITEMS.map(i => `<a href="${i.href}" class="${path === i.href ? 'active' : ''}">${i.label}</a>`).join('')}
@@ -483,6 +484,11 @@ function inyectarHeader() {
       </div>
     </header>
   `;
+
+  document.querySelectorAll('.footer-brand').forEach(el => {
+    if (el.querySelector('.logo-img')) return;
+    el.insertAdjacentHTML('afterbegin', '<span class="footer-logo">'+`<img class="logo-img logo-for-dark" src="/logo-mark-light.png" alt="" width="44" height="44" /><img class="logo-img logo-for-light" src="/logo-mark-dark.png" alt="" width="44" height="44" />`+'</span>');
+  });
 
   document.getElementById('hamburgerBtn').addEventListener('click', () => document.body.classList.add('drawer-open'));
   document.getElementById('themeToggle').addEventListener('click', () => {
@@ -500,10 +506,10 @@ function inyectarDrawer() {
     <aside class="drawer" id="drawer">
       <div class="drawer-header">
         <a href="index.html" class="drawer-brand">
-          <span class="drawer-brand-mark">A</span>
+          <span class="drawer-brand-mark"><img class="logo-img logo-for-dark" src="/logo-mark-light.png" alt="" width="40" height="40" /><img class="logo-img logo-for-light" src="/logo-mark-dark.png" alt="" width="40" height="40" /></span>
           <span class="drawer-brand-text">
             <span class="drawer-brand-name">Azael Colina</span>
-            <span class="drawer-brand-sub">Un rincón para leer</span>
+            <span class="drawer-brand-sub">AC Editorial</span>
           </span>
         </a>
         <button class="drawer-close" id="drawerClose" aria-label="Cerrar">
@@ -1662,11 +1668,11 @@ async function cargarCapitulo() {
           </div>
           <div class="paywall">
             <div class="paywall-icon">${ic('lock', 56)}</div>
-            <h3>Este capítulo es para lectores registrados</h3>
-            <p>Crea una cuenta gratis para seguir leyendo.</p>
+            <h3>Sigue leyendo gratis</h3>
+            <p>Crea tu cuenta gratuita y continúa la historia donde la dejaste. Solo te toma un minuto.</p>
             <div class="paywall-actions">
-              <button class="btn btn-primary" id="paywallLogin">${ic('log-in', 16)} Iniciar sesión</button>
-              <button class="btn btn-ghost" id="paywallRegister">Crear cuenta gratis</button>
+              <button class="btn btn-primary" id="paywallRegister">${ic('user-plus', 16)} Crear cuenta gratis</button>
+              <button class="btn btn-ghost" id="paywallLogin">Ya tengo cuenta</button>
             </div>
           </div>
         </div>
