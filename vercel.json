@@ -6,13 +6,7 @@
       "source": "/(.*)",
       "has": [{ "type": "host", "value": "azael-escritor.vercel.app" }],
       "destination": "https://azaelcolinaescritor.com/$1",
-      "permanent": true
-    },
-    {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.azaelcolinaescritor.com" }],
-      "destination": "https://azaelcolinaescritor.com/$1",
-      "permanent": true
+      "permanent": false
     }
   ]
 }
